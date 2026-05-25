@@ -1,32 +1,31 @@
-export function CaseBar({ bar, prevCase, nextCase, prevId, nextId, onClose, onSwitch }) {
+/** Floating case index when a case is open — flat labels, no duplicated titles or arrows. */
+export function CaseBar({ cases, activeCaseId, onSelectCase, onOverview }) {
   return (
-    <div className="case-bar">
-      <div className="cb-left">
-        <span className="cb-num">{bar.num}</span>
-        <span className="cb-title">{bar.title}</span>
-        <span className="cb-layer">{bar.layer}</span>
-      </div>
-      <div className="cb-actions">
-        <button
-          type="button"
-          className="cb-switch"
-          onClick={() => onSwitch(prevId)}
-          aria-label={`Go to previous case`}
-        >
-          ← {prevCase?.overview.num}
-        </button>
-        <button type="button" className="cb-back" onClick={onClose}>
+    <nav
+      className="case-switch-dock"
+      aria-label="Case index"
+      title="Switch case or return to overview · Escape closes case view"
+    >
+      <div className="case-switch-dock__inner">
+        {cases.map((c) => {
+          const active = c.id === activeCaseId;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              className={`case-switch-dock__btn${active ? ' is-active' : ''}`}
+              onClick={() => onSelectCase(c.id)}
+              aria-current={active ? 'page' : undefined}
+            >
+              {c.overview.num}
+            </button>
+          );
+        })}
+        <span className="case-switch-dock__rule" aria-hidden="true" />
+        <button type="button" className="case-switch-dock__btn" onClick={onOverview}>
           Overview
         </button>
-        <button
-          type="button"
-          className="cb-switch"
-          onClick={() => onSwitch(nextId)}
-          aria-label={`Go to next case`}
-        >
-          {nextCase?.overview.num} →
-        </button>
       </div>
-    </div>
+    </nav>
   );
 }

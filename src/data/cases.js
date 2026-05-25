@@ -18,56 +18,60 @@ export const cases = [
       openAria: "Open Conversational AI case",
       num: "Case 01",
       title: "Conversational AI",
-      layerPill: "Post-response workflow",
+      layer: "Enterprise Conversational UX & Workflow Alignment",
+      tension:
+        "Chat had to anticipate needs, clarify roles, and hand off to real systems—not stop at the reply.",
       signal:
-        "Turns conversation into operational progress after the response.",
-      graphicVariant: "case01-card",
+        "Workflow-aligned conversation strategy, human–AI interaction design, system integration.",
     },
     bar: {
       num: "Case 01",
       title: "Conversational AI",
-      layer: "Post-response workflow",
+      layer: "Enterprise Conversational UX & Workflow Alignment",
     },
     aside: {
       num: "Case 01",
       title: "Conversational AI",
-      layer: "Post-response workflow",
-      judgeLead: "AI response is not completion.",
-      judgeRest: "Conversation must define what happens next.",
+      layer: "Enterprise Conversational UX & Workflow Alignment",
+      judgeLead: "Conversation strategy has to align with how work actually moves.",
+      judgeRest:
+        "Map goals and touchpoints, define patterns that always resolve toward a task, then wire dialogue into handoffs, agents, APIs, and flows.",
       path: [
-        { n: "01", t: "Route before answer" },
-        { n: "02", t: "Recover before failure" },
-        { n: "03", t: "Orchestrate support work" },
+        { n: "01", t: "Strategy: goals, touchpoints, outcomes" },
+        { n: "02", t: "Patterns: intent, fallback, validation, escalation" },
+        { n: "03", t: "Integration: handoffs, agents, APIs, Cognigy flows" },
       ],
       signal:
-        "Buildable conversational AI logic for enterprise support environments.",
+        "Workflow-aligned conversation strategy, human–AI interaction design, system integration.",
       tags: ["3 systems", "support workflow", "dashboard"],
     },
     hero: {
-      kicker: "Case 01 · Post-response workflow layer",
-      title: "Conversational design does not end at the answer.",
+      kicker: "Case 01 · Enterprise conversational UX & workflows",
+      title: "Conversational strategy tied to real outcomes.",
       intro:
-        "Across three conversational AI systems, the key design work was not response copy. It was defining how conversation routes the request, recovers from bad input, connects to operational context, and moves unresolved work into support.",
+        "Mapped user goals and service touchpoints into a coherent conversational strategy that anticipates needs, clarifies roles, and aligns AI interventions with real outcomes. Defined interaction patterns—intent, fallback, validation, escalation—so conversations reliably lead to task resolution rather than dead ends. Integrated dialogue outputs with downstream systems (handoffs, agents, APIs, Cognigy flows) so AI responses trigger meaningful operational actions.",
       graphicVariant: "case01-hero",
       caption:
-        "Responsibility moves after understanding — toward resolution, clarity, or escalation. The point is not a better chat surface; it is post-response operational continuation.",
+        "Intent → validation → escalation → orchestration. The thread continues into systems, not only messages.",
     },
+    decisionsIntro:
+      "Three decisions turned the assistant from an answer surface into a support flow: route the request, recover the journey, and continue the work beyond conversation.",
     decisions: [
       {
         dNum: "Decision 01",
-        dTitle: "Route before answer",
+        dTitle: "Route before response generation",
         dThesis:
-          "The first job of the system was not answering. It was deciding where the request belonged.",
+          "Support requests were not treated as one generic intent. Before the assistant could answer, the system needed to identify the relevant scenario, knowledge domain, and request context.",
         nb: [
           {
             strong: "Not",
             but: false,
-            text: "User selects the right handbook before asking.",
+            text: "User selects the right handbook or support domain before asking.",
           },
           {
             strong: "But",
             but: true,
-            text: "The system routes to the correct knowledge domain before answer generation.",
+            text: "The system routes the request to the relevant scenario and knowledge domain before generating a response.",
           },
         ],
         flip: false,
@@ -77,25 +81,24 @@ export const cases = [
           {
             label: "Why this matters",
             parts: [
+              { text: "Routing becomes system responsibility. ", bold: true },
               {
-                text: "The user no longer needs to understand the internal handbook structure before the conversation can begin. ",
+                text: "Users no longer need to understand the internal knowledge structure before the conversation can begin.",
                 bold: false,
               },
-              { text: "Routing becomes system responsibility.", bold: true },
-              { text: " ", bold: false },
             ],
           },
           {
             proof:
-              "Caption: From user description to routed handbook. The system identifies topic and keywords before answer generation.",
+              "From user description to routed domain: the system identifies topic, context, and knowledge source before response generation.",
           },
         ],
       },
       {
         dNum: "Decision 02",
-        dTitle: "Recover before failure",
+        dTitle: "Design recovery as part of the support flow",
         dThesis:
-          "If conversational support only works on clean input, it fails where support is needed most.",
+          "Invalid, incomplete, or ambiguous inputs were treated as expected support conditions. The flow needed validation, clarification, retry, fallback, and handoff paths that keep the user moving.",
         nb: [
           {
             strong: "Not",
@@ -105,7 +108,7 @@ export const cases = [
           {
             strong: "But",
             but: true,
-            text: "Validation, clarification, retry, and support handoff become one executable recovery chain.",
+            text: "Validation, clarification, retry, fallback, and handoff become one continuous recovery path.",
           },
         ],
         flip: true,
@@ -117,35 +120,35 @@ export const cases = [
         ],
         readout: [
           {
-            label: "Logic",
+            label: "Why this matters",
             parts: [
               {
-                text: "The main path includes uncertainty. The system can move from bad input to clarification, from problem branch to support, and from explanation to action.",
+                text: "Recovery is part of the journey. The system can keep the user moving even when the initial request is incomplete, unclear, or not immediately answerable.",
                 bold: false,
               },
             ],
           },
           {
             proof:
-              "Supporting proof: C1-7 is stronger than a welcome screen because it shows action continuation, not just chat entry.",
+              "Recovery chain: validation → clarification → retry → fallback → handoff, instead of a single failure message.",
           },
         ],
       },
       {
         dNum: "Decision 03",
-        dTitle: "Orchestrate support work from conversation",
+        dTitle: "Continue support work beyond conversation",
         dThesis:
-          "The support system needed more than a chat surface. It needed a conversational entry point into the operational ecosystem.",
+          "Conversation was positioned as the entry point, not the whole product surface. When the request required action, follow-up, or human support, the flow needed to carry context into tickets, dashboards, handoff paths, or workflow states.",
         nb: [
           {
             strong: "Not",
             but: false,
-            text: "A larger chat with more answers.",
+            text: "A larger chat interface with more answers.",
           },
           {
             strong: "But",
             but: true,
-            text: "Conversation explains and locates the issue while dashboard carries state, context, and follow-up work.",
+            text: "Conversation captures and routes the request while operational systems carry state, context, and follow-up work.",
           },
         ],
         flip: false,
@@ -153,26 +156,26 @@ export const cases = [
         slotLines: ["C1-4 Dashboard home", "", "Inset: C1-5 Orchestrator chat"],
         readout: [
           {
-            label: "Repositioning",
+            label: "Why this matters",
             parts: [
               {
-                text: "Conversation becomes an orchestration layer inside a broader support ecosystem — not the whole product surface.",
+                text: "The assistant does not only respond. It helps move requests toward resolution, handoff, and follow-up action.",
                 bold: false,
               },
             ],
           },
           {
             proof:
-              "The dashboard gives visibility across tickets, device status, and follow-up work while conversation remains the intelligent entry point.",
+              "Conversation as entry point; dashboard, ticket state, and handoff paths carry the operational continuation.",
           },
         ],
       },
     ],
     outcome: {
       paragraph:
-        "Across three systems, conversational AI became operationally usable because responsibility after the response was defined: routing before answer, recovery before failure, and orchestration before escalation.",
+        "Across three implementations, the through-line was the same: define the support journey first—then routing, recovery, and orchestration become buildable, reviewable logic aligned with how conversational AI platforms expect flows to behave.",
       hiring:
-        "I can design the post-response workflow layer that turns conversational AI into operational progress across enterprise support environments.",
+        "I can design the AI support journey logic that turns conversational AI into operational progress across enterprise support environments.",
     },
   },
   {
@@ -183,37 +186,41 @@ export const cases = [
       openAria: "Open Contract Intelligence case",
       num: "Case 02",
       title: "Contract Intelligence",
-      layerPill: "Decision traceability",
-      signal: "Makes AI-assisted contract decisions reviewable and auditable.",
-      graphicVariant: "case02-card",
+      layer: "Human-in-the-Loop & Auditable Workflow Design",
+      tension:
+        "AI could analyze contracts; judgment still had to stay visible, owned, and traceable.",
+      signal:
+        "Human-in-the-loop design, governance UX, traceability in AI workflows.",
     },
     bar: {
       num: "Case 02",
       title: "Contract Intelligence",
-      layer: "Decision traceability",
+      layer: "Human-in-the-Loop & Auditable Workflow Design",
     },
     aside: {
       num: "Case 02",
       title: "Contract Intelligence",
-      layer: "Decision traceability",
-      judgeLead: "AI analysis is not judgment.",
-      judgeRest: "The workflow must define unit, source, state, and owner.",
+      layer: "Human-in-the-Loop & Auditable Workflow Design",
+      judgeLead: "Review is not one opaque answer—it is structured, actionable units.",
+      judgeRest:
+        "Clause, classification, answer, rationale, and state separate suggestion from legal decision and keep audit paths explicit.",
       path: [
-        { n: "01", t: "Define the review context" },
-        { n: "02", t: "Separate AI from human judgment" },
-        { n: "03", t: "Preserve provenance and confirmation" },
+        { n: "01", t: "Structure review units for actionability" },
+        { n: "02", t: "Separate AI suggestions from human judgment" },
+        { n: "03", t: "Audit paths and explicit decision boundaries" },
       ],
-      signal: "Auditable AI-assisted decision design for contract workflows.",
+      signal:
+        "Human-in-the-loop design, governance UX, traceability in AI workflows.",
       tags: ["contract review", "state", "audit trail"],
     },
     hero: {
-      kicker: "Case 02 · Decision traceability layer",
-      title: "AI analysis is not the decision.",
+      kicker: "Case 02 · Human-in-the-loop & auditable workflows",
+      title: "Judgment stays visible, owned, and traceable.",
       intro:
-        "In contract review, the real design problem was not generating insight. It was deciding how AI analysis, human judgment, source context, and confirmation state coexist inside one review workflow without collapsing into an untraceable answer field.",
+        "Translated contract review processes into structured units (clause, classification, answer, rationale, state) that make AI output actionable and reviewable. Separated AI suggestions, user edits, and legal decisions so judgment remains visible, owned, and traceable throughout the workflow. Built clear audit paths and decision boundaries so reviewers can verify, correct, and own contract outcomes.",
       graphicVariant: "case02-hero",
       caption:
-        "Traceability comes from separation: AI analysis, reviewer judgment, and confirmation state are distinct, then preserved as one reviewable decision record.",
+        "Structured units, separated roles, and preserved provenance—so every outcome can be reviewed and defended.",
     },
     decisions: [
       {
@@ -350,40 +357,39 @@ export const cases = [
       openAria: "Open Supply Chain Agents case",
       num: "Case 03",
       title: "Supply Chain Agents",
-      layerPill: "Human-in-the-loop control",
-      signal:
-        "Defines how agent execution, control, and human judgment work together.",
-      graphicVariant: "case03-card",
+      layer: "Agentic Workflow & Human Control Integration",
+      tension:
+        "Agents needed explicit rules for when to act, defer, or pull humans in.",
+      signal: "Agentic workflows, control design, exception handling UX.",
     },
     bar: {
       num: "Case 03",
       title: "Supply Chain Agents",
-      layer: "Human-in-the-loop control",
+      layer: "Agentic Workflow & Human Control Integration",
     },
     aside: {
       num: "Case 03",
       title: "Supply Chain Agents",
-      layer: "Human-in-the-loop control",
-      judgeLead:
-        "Autonomy does not reduce work when control remains undefined.",
+      layer: "Agentic Workflow & Human Control Integration",
+      judgeLead: "Autonomy without control boundaries only scales noise.",
       judgeRest:
-        "Agentic systems need explicit ownership of execution, intervention, and escalation.",
+        "Define autonomy vs deferral vs human intervention; turn exceptions into gates; unify agents, alerts, and conversation in one execution model.",
       path: [
-        { n: "01", t: "Delegate execution with scope" },
-        { n: "02", t: "Turn alerts into decision gates" },
-        { n: "03", t: "Govern agents through orchestration state" },
+        { n: "01", t: "When agents act, defer, or escalate to humans" },
+        { n: "02", t: "Alerts & exceptions as decision gates" },
+        { n: "03", t: "Unified execution: agents, alerts, conversation" },
       ],
-      signal: "Control design for enterprise agent workflows.",
+      signal: "Agentic workflows, control design, exception handling UX.",
       tags: ["agentic workflow", "orchestration", "gates"],
     },
     hero: {
-      kicker: "Case 03 · Human-in-the-loop control layer",
-      title: "Autonomy needs a control architecture.",
+      kicker: "Case 03 · Agentic workflow & human control",
+      title: "Autonomy balanced with explicit intervention.",
       intro:
-        "The challenge was not adding more agents. It was defining how agents, orchestrator, alerts, chat, and human judgment work together so the system can execute without forcing people to monitor everything.",
+        "Defined when AI agents act autonomously, when they defer, and when humans intervene to maintain control in operational flows. Turned alerts and exceptions into decision gates with context and explicit intervention points. Unified agents, alerts, and conversational touchpoints into an execution model that balances autonomy with oversight.",
       graphicVariant: "case03-hero",
       caption:
-        "The orchestrator owns workflow state. Agents execute within scope; alerts trigger gates; chat carries context; humans enter where judgment is required.",
+        "Same spine: scoped autonomy, gated exceptions, and humans where judgment belongs.",
     },
     decisions: [
       {
@@ -521,39 +527,41 @@ export const cases = [
       openAria: "Open AI Companion case",
       num: "Case 04",
       title: "AI Companion",
-      layerPill: "Presence & continuity",
+      layer: "Presence & Continuity-Driven Engagement Design",
+      tension:
+        "Engagement had to persist beyond isolated sessions—through continuity, not more prompts.",
       signal:
-        "Redesigns companion engagement around continuity, return, and presence.",
-      graphicVariant: "case04-card",
+        "Companion experience design, continuity UX, adaptive engagement.",
     },
     bar: {
       num: "Case 04",
       title: "AI Companion",
-      layer: "Presence & continuity",
+      layer: "Presence & Continuity-Driven Engagement Design",
     },
     aside: {
       num: "Case 04",
       title: "AI Companion",
-      layer: "Presence & continuity",
-      judgeLead: "Engagement does not come from more interaction.",
-      judgeRest: "It comes from continuity and low-friction return.",
+      layer: "Presence & Continuity-Driven Engagement Design",
+      judgeLead: "The lever is presence and continuity—not interaction volume.",
+      judgeRest:
+        "Ground the companion in context; use memory and state for low-friction return; measure relationship, not single sessions.",
       path: [
-        { n: "01", t: "Demote visible interaction" },
-        { n: "02", t: "Redefine engagement as continuity" },
-        { n: "03", t: "Maintain presence without demanding attention" },
+        { n: "01", t: "From isolated interactions to persistent presence" },
+        { n: "02", t: "Continuity signals & personalized return paths" },
+        { n: "03", t: "Metrics: relational indicators over single sessions" },
       ],
       signal:
-        "Companion system design beyond chat volume and surface activity.",
+        "Companion experience design, continuity UX, adaptive engagement.",
       tags: ["consumer AI", "continuity", "presence"],
     },
     hero: {
-      kicker: "Case 04 · Presence & continuity layer",
-      title: "The real lever turned out to be presence.",
+      kicker: "Case 04 · Presence & continuity-driven engagement",
+      title: "Engagement as an ongoing relationship.",
       intro:
-        "The original system assumed that a richer environment and more visible interaction would drive engagement. What emerged instead was a different design problem: how to create continuity, lower re-entry friction, and keep the relationship present even when the user is not actively interacting.",
+        "Shifted design focus from isolated interactions to persistent companion presence grounded in user context and behavior. Used continuity signals (memory, session state, preference cues) to create low-friction return paths and personalized engagement. Reframed engagement metrics from single sessions to accumulated relational indicators.",
       graphicVariant: "case04-hero",
       caption:
-        "The key area is not the visible session. It is what persists between sessions, so returning feels like continuation instead of starting from zero.",
+        "What persists between visits shapes whether the product feels like a companion—or a reset every time.",
     },
     decisions: [
       {
