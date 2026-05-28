@@ -7,12 +7,17 @@ const BLINK_MIN_MS = 3200;
 const BLINK_MAX_MS = 5200;
 const BLINK_HOLD_MS = 250;
 const MAX_EYE_OFFSET = 2.2;
+const SCROLL_IDLE_RESET_MS = 180;
 
 const BLOB_PATH_D =
   'M50,8 C72,5 88,18 90,38 C92,58 78,78 58,82 C38,86 12,74 8,54 C4,34 18,11 50,8 Z';
 
 function EyeDot({ x, y, r, className }) {
   return <circle className={className} cx={x} cy={y} r={r} />;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 /**
@@ -30,6 +35,8 @@ function EyeDot({ x, y, r, className }) {
  *  emotionalTone?: string[];
  *  alive?: boolean;
  *  mood?: string;
+ *  scrollReactive?: boolean;
+ *  greeting?: boolean;
  * }} props
  */
 export function GuideOrb({
@@ -45,11 +52,17 @@ export function GuideOrb({
   emotionalTone,
   alive = true,
   mood = 'neutral',
+  scrollReactive = false,
+  greeting = false,
 }) {
   const rootRef = useRef(null);
   const [eye, setEye] = useState({ x: 0, y: 0 });
   const [blinking, setBlinking] = useState(false);
   const [drift, setDrift] = useState({ x: 0, y: 0 });
+  const [scrollFx, setScrollFx] = useState({ x: 0, y: 0, tilt: 0, strength: 0, direction: 0 });
+  const scrollStateRef = useRef({ y: 0, t: 0 });
+  const scrollRafRef = useRef(0);
+  const scrollResetTimerRef = useRef(0);
   const reducedMotion = useRef(
     typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -57,7 +70,20 @@ export function GuideOrb({
 
   const photoMood = useMemo(() => resolveGuideOrbMood(emotionalTone), [emotionalTone]);
   const hasPhotoMood = Boolean(emotionalTone?.length);
-  const displayMood = hasPhotoMood ? photoMood : mood || 'neutral';
+  const shouldAutoMoodFromScroll = scrollReactive && !hasPhotoMood && (mood || 'neutral') === 'neutral';
+  const scrollMood =
+    scrollFx.strength > 0.58
+      ? scrollFx.direction >= 0
+        ? 'playful'
+        : 'wonder'
+      : scrollFx.strength > 0.24
+        ? 'warm'
+        : 'neutral';
+  const displayMood = hasPhotoMood
+    ? photoMood
+    : shouldAutoMoodFromScroll
+      ? scrollMood
+      : mood || 'neutral';
 
   const updateEye = useCallback(
     (clientX, clientY) => {
@@ -117,6 +143,53 @@ export function GuideOrb({
     return startIdleDrift(setDrift);
   }, [alive, thinking]);
 
+  useEffect(() => {
+    if (!scrollReactive || reducedMotion.current) {
+      setScrollFx({ x: 0, y: 0, tilt: 0, strength: 0, direction: 0 });
+      return undefined;
+    }
+
+    scrollStateRef.current = { y: window.scrollY, t: performance.now() };
+
+    const resetFx = () => {
+      setScrollFx({ x: 0, y: 0, tilt: 0, strength: 0, direction: 0 });
+    };
+
+    const handleScroll = () => {
+      if (scrollRafRef.current) return;
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollRafRef.current = 0;
+        const nowY = window.scrollY;
+        const nowT = performance.now();
+        const prev = scrollStateRef.current;
+        const dy = nowY - prev.y;
+        const dt = Math.max(12, nowT - prev.t);
+        const speed = Math.abs(dy) / dt; // px/ms
+        const strength = clamp(speed / 1.4, 0, 1);
+        const direction = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+
+        setScrollFx({
+          x: clamp(direction * strength * 1.8, -2.4, 2.4),
+          y: direction >= 0 ? clamp(strength * 2.8, 0, 2.8) : clamp(-strength * 1.1, -1.2, 0),
+          tilt: clamp(direction * strength * 5.5, -6, 6),
+          strength,
+          direction,
+        });
+
+        scrollStateRef.current = { y: nowY, t: nowT };
+        window.clearTimeout(scrollResetTimerRef.current);
+        scrollResetTimerRef.current = window.setTimeout(resetFx, SCROLL_IDLE_RESET_MS);
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollRafRef.current) window.cancelAnimationFrame(scrollRafRef.current);
+      window.clearTimeout(scrollResetTimerRef.current);
+    };
+  }, [scrollReactive]);
+
   const sizeW = size;
   const sizeH = Math.round(size * 1.05);
   const isHovered = hovered || bright;
@@ -133,6 +206,11 @@ export function GuideOrb({
         blinking ? 'is-blinking' : '',
         thinking ? 'is-thinking' : '',
         speaking ? 'is-speaking' : '',
+        scrollReactive ? 'is-scroll-reactive' : '',
+        scrollFx.strength > 0.12 ? 'is-scroll-active' : '',
+        scrollFx.direction > 0 ? 'is-scroll-down' : '',
+        scrollFx.direction < 0 ? 'is-scroll-up' : '',
+        greeting ? 'is-greeting' : '',
         isHovered ? 'is-hovered' : '',
         className ? ` ${className}` : '',
       ]
@@ -144,6 +222,9 @@ export function GuideOrb({
         height: sizeH,
         '--guide-drift-x': `${drift.x}px`,
         '--guide-drift-y': `${drift.y}px`,
+        '--guide-scroll-x': `${scrollFx.x}px`,
+        '--guide-scroll-y': `${scrollFx.y}px`,
+        '--guide-scroll-tilt': `${scrollFx.tilt}deg`,
       }}
       aria-hidden="true"
     >

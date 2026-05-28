@@ -8,6 +8,9 @@
   pointer-events:none;
   transform-origin:50% 70%;
   --guide-orb-fill:#c8f000;
+  --guide-scroll-x:0px;
+  --guide-scroll-y:0px;
+  --guide-scroll-tilt:0deg;
 }
 
 .guide-orb__svg{
@@ -18,8 +21,13 @@
 }
 
 .guide-orb.is-alive{
-  transform:translate(var(--guide-drift-x, 0), var(--guide-drift-y, 0));
-  transition:transform 120ms ease-out;
+  transform:
+    translate(
+      calc(var(--guide-drift-x, 0px) + var(--guide-scroll-x, 0px)),
+      calc(var(--guide-drift-y, 0px) + var(--guide-scroll-y, 0px))
+    )
+    rotate(var(--guide-scroll-tilt, 0deg));
+  transition:transform 140ms ease-out;
 }
 
 .guide-orb__float{
@@ -105,6 +113,32 @@
 .guide-orb__eyes-look{
   transform-origin:50% 30%;
   transition:transform 600ms ease;
+}
+
+.guide-orb.is-scroll-active .guide-orb__float{
+  animation-duration:2.6s, 5.8s;
+}
+.guide-orb.is-scroll-down .guide-orb__eyes-look{
+  transform:translateY(0.8px);
+}
+.guide-orb.is-scroll-up .guide-orb__eyes-look{
+  transform:translateY(-0.6px);
+}
+
+.guide-orb.is-greeting .guide-orb__float{
+  animation:
+    guide-blob-float 2.2s ease-in-out infinite,
+    guide-blob-sway 4.8s ease-in-out infinite;
+}
+.guide-orb.is-greeting .guide-orb__body-wrap{
+  animation:guide-greeting-pop 900ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+@keyframes guide-greeting-pop{
+  0%{ transform:scale(0.9,0.9) rotate(-5deg); }
+  45%{ transform:scale(1.12,0.92) rotate(4deg); }
+  70%{ transform:scale(0.96,1.05) rotate(-2deg); }
+  100%{ transform:scale(1,1) rotate(0deg); }
 }
 
 .guide-orb.is-alive:not(.is-thinking):not(.is-following) .guide-orb__eyes-look{

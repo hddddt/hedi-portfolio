@@ -450,6 +450,7 @@ export function PortfolioGuide() {
   }, [isLanding, teaserDismissed, teaserOpened, isFullMode]);
 
   const shouldShowRoot = scrollVisible || teaserVisible || isLanding || open;
+  const greetingActive = isLanding && !open && (entranceAnimate || teaserVisible) && teaserInViewportZone;
 
   /** Orb entrance — runs once whenever the guide first becomes visible (any chapter). */
   useEffect(() => {
@@ -531,6 +532,7 @@ export function PortfolioGuide() {
                   blink={orbSignalTick % 2 === 1}
                   alive
                   mood={orbMood}
+                  scrollReactive
                 />
               </div>
             </header>
@@ -658,7 +660,7 @@ export function PortfolioGuide() {
           <button
             ref={triggerRef}
             type="button"
-            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}`}
+            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}${greetingActive ? ' is-greeting' : ''}`}
             aria-label="Open portfolio guide"
             aria-expanded={open}
             onClick={togglePanel}
@@ -674,6 +676,8 @@ export function PortfolioGuide() {
               blink={orbSignalTick % 2 === 1}
               alive
               mood={orbMood}
+              scrollReactive
+              greeting={greetingActive}
             />
           </button>
         </div>
