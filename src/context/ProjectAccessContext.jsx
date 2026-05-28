@@ -1,28 +1,15 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
-const STORAGE_KEY = 'portfolio_project_unlock_v2';
-
 const ProjectAccessContext = createContext(null);
 
 /** Client-side gate for portfolio case details — use server auth for confidential work. */
 export function ProjectAccessProvider({ children }) {
-  const [unlocked, setUnlocked] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
+  const [unlocked, setUnlocked] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingCaseId, setPendingCaseId] = useState(null);
 
   const persistUnlock = useCallback(() => {
     setUnlocked(true);
-    try {
-      localStorage.setItem(STORAGE_KEY, '1');
-    } catch {
-      /* ignore quota / private mode */
-    }
   }, []);
 
   const requestAccess = useCallback(

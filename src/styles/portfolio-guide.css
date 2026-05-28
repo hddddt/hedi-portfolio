@@ -72,23 +72,6 @@
     guide-ball-pulse 420ms ease-in-out 860ms 1 both;
 }
 
-.portfolio-guide__trigger.is-greeting::after {
-  content: 'Hi';
-  position: absolute;
-  top: -14px;
-  right: -6px;
-  padding: 3px 8px 4px;
-  border-radius: 999px;
-  border: 1px solid rgba(190, 255, 50, 0.34);
-  background: rgba(9, 14, 8, 0.9);
-  color: rgba(232, 248, 196, 0.94);
-  font-family: var(--font-interface-metric);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  animation: guide-hi-pop 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  pointer-events: none;
-}
 
 .portfolio-guide__teaser {
   position: absolute;
@@ -808,21 +791,6 @@
   }
   100% {
     transform: scale(1);
-  }
-}
-
-@keyframes guide-hi-pop {
-  0% {
-    opacity: 0;
-    transform: translateY(4px) scale(0.7);
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(0) scale(1.02);
-  }
-  100% {
-    opacity: 0.9;
-    transform: translateY(0) scale(1);
   }
 }
 
