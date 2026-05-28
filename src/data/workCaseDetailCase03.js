@@ -129,10 +129,4 @@ export const CASE03_FLOW = [
     outcome:
       'The system shifted from parallel AI touchpoints to one orchestrated workflow with defined control transfer.',
   },
-  {
-    id: 'resulting-value',
-    type: 'resulting-value',
-    outcome:
-      '→ Agentic systems scale only when execution and control are deliberately separated.',
-  },
 ];

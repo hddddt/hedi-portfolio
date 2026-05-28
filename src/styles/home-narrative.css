@@ -845,6 +845,69 @@
   }
 }
 
+@media(max-width:720px){
+  .cap-dial__intro-layer{
+    padding:96px 14px 44px;
+  }
+  .cap-dial__dial-layer .cap-dial__stage,
+  .cap-dial.cap-dial--wheel .cap-dial__stage{
+    gap:16px;
+    padding:96px 14px 44px;
+  }
+  .cap-dial__main{
+    margin-top:8px;
+    padding-top:4px;
+    min-height:0;
+  }
+  .cap-dial__headline{
+    font-size:clamp(1.75rem,9.2vw,2.3rem);
+    line-height:1.08;
+  }
+  .cap-dial__lede{
+    font-size:clamp(14px,3.9vw,16px);
+    line-height:1.52;
+  }
+  .cap-dial__chips{
+    gap:8px;
+  }
+  .cap-dial__chip{
+    font-size:13px;
+    padding:6px 12px;
+  }
+
+  .work-scroll{
+    height:auto !important;
+    min-height:0 !important;
+    padding-bottom:84px;
+  }
+  .work-scroll__snap{
+    height:auto;
+    min-height:0;
+  }
+  .work-narrative__frame{
+    row-gap:18px;
+  }
+  .work-narrative__stage{
+    min-height:min(34vh,300px);
+  }
+  .work-narrative__copy{
+    min-height:0;
+  }
+
+  .work-case-detail{
+    top:0;
+    max-height:100dvh;
+    border-radius:14px 14px 0 0;
+  }
+  .work-case-detail__shell{
+    padding:12px 12px 14px;
+  }
+  .work-case-detail__title{
+    font-size:clamp(1.35rem,6.8vw,1.8rem);
+    line-height:1.16;
+  }
+}
+
 .work-narrative-chapter.narrative-chapter{
   background:transparent;
   color:rgba(250,248,243,.9);

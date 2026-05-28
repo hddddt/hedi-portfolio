@@ -168,9 +168,20 @@ function DesignDecisionBlock({ decision }) {
   );
 }
 
-function CaseMapColumn({ map, activeSection, onNavClick, sectionPrefix = 'case01' }) {
+function CaseMapColumn({
+  map,
+  activeSection,
+  onNavClick,
+  sectionPrefix = 'case01',
+  hasOutcomeSection = false,
+}) {
   const rail = map.railMode;
-  const decisions = map.readingMap.decisions ?? [];
+  const decisionItems = map.readingMap.decisions ?? [];
+  const navItems = [
+    { slug: 'overview', d: '00', title: 'Overview' },
+    ...decisionItems,
+    ...(hasOutcomeSection ? [{ slug: 'outcome', d: '99', title: 'Outcome' }] : []),
+  ];
   const provesLabel = map.provesLabel ?? 'Why this layer matters';
 
   return (
@@ -192,7 +203,7 @@ function CaseMapColumn({ map, activeSection, onNavClick, sectionPrefix = 'case01
       </ValueField>
       <ValueField label={map.readingMap.navLabel ?? 'ON THIS CASE'}>
         <nav className="work-case-detail__rail-nav" aria-label="On this case">
-          {decisions.map((item) => {
+          {navItems.map((item) => {
             const slug = item.slug ?? item.num;
             const dLabel = item.d ?? item.num;
             const isActive = activeSection === slug;
@@ -232,7 +243,7 @@ function CaseMapColumn({ map, activeSection, onNavClick, sectionPrefix = 'case01
   );
 }
 
-function EvidenceFlowColumn({ evidence, caseId }) {
+function EvidenceFlowColumn({ evidence, caseId, activeSection }) {
   if (isStagedCaseId(caseId, evidence)) {
     const flow = STAGED_CASE_FLOW[caseId];
     if (!flow) {
@@ -244,7 +255,7 @@ function EvidenceFlowColumn({ evidence, caseId }) {
     }
     return (
       <div className="work-case-detail__evidence-inner work-case-detail__evidence-inner--staged">
-        <StagedCaseFlow flow={flow} sectionPrefix={caseId} />
+        <StagedCaseFlow flow={flow} sectionPrefix={caseId} activeSection={activeSection} />
       </div>
     );
   }
@@ -396,6 +407,9 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
   const evidence = detail?.evidence;
   const isStagedCase = isStagedCaseId(item.id, evidence);
   const sectionPrefix = item.id;
+  const hasOutcomeSection = Boolean(
+    isStagedCase && STAGED_CASE_FLOW[item.id]?.some((node) => node.type === 'resulting-value'),
+  );
 
   const scrollToSection = useCallback(
     (slug) => {
@@ -414,27 +428,41 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
     const root = scrollRef.current;
     if (!root) return undefined;
 
-    const sectionSlugs = ['d1', 'd2', 'd3'];
-    const prefix = `${sectionPrefix}-`;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]?.target?.id) {
-          setActiveSection(visible[0].target.id.replace(prefix, ''));
+    const sectionSlugs = hasOutcomeSection
+      ? ['overview', 'd1', 'd2', 'd3', 'outcome']
+      : ['overview', 'd1', 'd2', 'd3'];
+    let rafId = 0;
+
+    const updateActiveSection = () => {
+      rafId = 0;
+      const anchorY = root.scrollTop + 110;
+      let bestSlug = sectionSlugs[0];
+      let bestDistance = Number.POSITIVE_INFINITY;
+      sectionSlugs.forEach((slug) => {
+        const el = document.getElementById(`${sectionPrefix}-${slug}`);
+        if (!el) return;
+        const distance = Math.abs(el.offsetTop - anchorY);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestSlug = slug;
         }
-      },
-      { root, threshold: 0.3 },
-    );
+      });
+      setActiveSection(bestSlug);
+    };
 
-    sectionSlugs.forEach((slug) => {
-      const el = document.getElementById(`${sectionPrefix}-${slug}`);
-      if (el) observer.observe(el);
-    });
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(updateActiveSection);
+    };
 
-    return () => observer.disconnect();
-  }, [isStagedCase, sectionPrefix]);
+    updateActiveSection();
+    root.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      root.removeEventListener('scroll', onScroll);
+    };
+  }, [hasOutcomeSection, isStagedCase, sectionPrefix]);
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -448,7 +476,7 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-    if (isStagedCase) setActiveSection('d1');
+    if (isStagedCase) setActiveSection('overview');
   }, [item.id, isStagedCase]);
 
   if (!caseMap || !evidence) return null;
@@ -502,12 +530,17 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
           <CaseMapColumn
             map={caseMap}
             sectionPrefix={sectionPrefix}
+            hasOutcomeSection={hasOutcomeSection}
             activeSection={isStagedCase ? activeSection : undefined}
             onNavClick={isStagedCase ? scrollToSection : undefined}
           />
 
           <div ref={scrollRef} className="work-case-detail__scroll" tabIndex={-1}>
-            <EvidenceFlowColumn evidence={evidence} caseId={item.id} />
+            <EvidenceFlowColumn
+              evidence={evidence}
+              caseId={item.id}
+              activeSection={isStagedCase ? activeSection : undefined}
+            />
           </div>
         </div>
       </div>

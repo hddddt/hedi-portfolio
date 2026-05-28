@@ -1,35 +1,38 @@
 import '../../styles/evidence-image.css';
 
-function fitMode(variant) {
-  if (variant === 'topCrop' || variant === 'detailCrop') return 'cover';
-  return 'contain';
+function frameStage(caseId, variant) {
+  if (caseId === 'case04') return 'evidence-frame--dark';
+  if (variant === 'topCrop' || variant === 'detailCrop') return 'evidence-frame--light evidence-frame--screen';
+  return 'evidence-frame--light';
 }
 
-function EvidenceFigure({ item }) {
+function frameShapeClass(variant) {
+  if (variant === 'heroImage') return 'evidence-frame--hero';
+  return 'evidence-frame--supporting';
+}
+
+function fitClass(variant) {
+  if (variant === 'topCrop') return 'evidence-frame--board';
+  if (variant === 'detailCrop') return 'evidence-frame--screen';
+  if (variant === 'containCard' || variant === 'smallStrip') return 'evidence-frame--diagram';
+  return 'evidence-frame--diagram';
+}
+
+function EvidenceFigure({ item, caseId }) {
   if (!item?.src) return null;
-  const style = {
-    '--evidence-max-height': `${item.maxHeight ?? 560}px`,
-    '--evidence-object-position': item.objectPosition ?? 'center center',
-  };
   return (
-    <figure
-      className={`evidence-image evidence-image--${item.variant ?? 'containCard'}${
-        item.visualWeight === 'highest' ? ' evidence-image--highest' : ''
-      }`}
-      style={style}
-    >
+    <figure className={`evidence-image${item.visualWeight === 'highest' ? ' evidence-image--highest' : ''}`}>
       {item.label ? <p className="evidence-image__label">{item.label}</p> : null}
-      <div className="evidence-image__frame">
+      <div
+        className={`evidence-frame ${frameStage(caseId, item.variant)} ${frameShapeClass(item.variant)} ${fitClass(item.variant)}`}
+      >
         <img
           src={item.src}
           alt={item.label ?? 'Evidence screenshot'}
-          className="evidence-image__img"
+          className="evidence-frame__img"
           loading="lazy"
           decoding="async"
-          style={{
-            objectFit: fitMode(item.variant),
-            objectPosition: 'var(--evidence-object-position)',
-          }}
+          style={{ objectPosition: item.objectPosition ?? 'center center' }}
         />
       </div>
       {item.caption ? <figcaption className="evidence-image__caption">{item.caption}</figcaption> : null}
@@ -37,24 +40,23 @@ function EvidenceFigure({ item }) {
   );
 }
 
-function HorizontalPair({ item }) {
+function HorizontalPair({ item, caseId }) {
   if (!item?.items?.length) return null;
-  const style = {
-    '--evidence-max-height': `${item.maxHeight ?? 500}px`,
-  };
   return (
-    <figure className="evidence-image evidence-image--horizontalPair" style={style}>
+    <figure className="evidence-image evidence-image--horizontalPair">
       {item.label ? <p className="evidence-image__label">{item.label}</p> : null}
       <div className="evidence-image__pair">
         {item.items.map((pairItem) => (
-          <div key={pairItem.src} className="evidence-image__pair-item">
+          <div
+            key={pairItem.src}
+            className={`evidence-frame evidence-frame--supporting ${frameStage(caseId, item.variant)} ${fitClass(item.variant)}`}
+          >
             <img
               src={pairItem.src}
               alt={pairItem.label ?? 'Evidence screenshot'}
-              className="evidence-image__img evidence-image__img--pair"
+              className="evidence-frame__img"
               loading="lazy"
               decoding="async"
-              style={{ objectFit: 'contain', objectPosition: 'center center' }}
             />
           </div>
         ))}
@@ -64,24 +66,23 @@ function HorizontalPair({ item }) {
   );
 }
 
-function HorizontalTriptych({ item }) {
+function HorizontalTriptych({ item, caseId }) {
   if (!item?.items?.length) return null;
-  const style = {
-    '--evidence-max-height': `${item.maxHeight ?? 240}px`,
-  };
   return (
-    <figure className="evidence-image evidence-image--horizontalTriptych" style={style}>
+    <figure className="evidence-image evidence-image--horizontalTriptych">
       {item.label ? <p className="evidence-image__label">{item.label}</p> : null}
       <div className="evidence-image__triptych">
         {item.items.map((triptychItem) => (
-          <div key={triptychItem.src} className="evidence-image__triptych-item">
+          <div
+            key={triptychItem.src}
+            className={`evidence-frame evidence-frame--supporting ${frameStage(caseId, item.variant)} ${fitClass(item.variant)}`}
+          >
             <img
               src={triptychItem.src}
               alt={triptychItem.label ?? 'Evidence screenshot'}
-              className="evidence-image__img evidence-image__img--triptych"
+              className="evidence-frame__img"
               loading="lazy"
               decoding="async"
-              style={{ objectFit: 'contain', objectPosition: 'center center' }}
             />
           </div>
         ))}
@@ -91,9 +92,9 @@ function HorizontalTriptych({ item }) {
   );
 }
 
-export function EvidenceImage({ item }) {
+export function EvidenceImage({ item, caseId = 'case01' }) {
   if (!item) return null;
-  if (item.variant === 'horizontalPair') return <HorizontalPair item={item} />;
-  if (item.variant === 'horizontalTriptych') return <HorizontalTriptych item={item} />;
-  return <EvidenceFigure item={item} />;
+  if (item.variant === 'horizontalPair') return <HorizontalPair item={item} caseId={caseId} />;
+  if (item.variant === 'horizontalTriptych') return <HorizontalTriptych item={item} caseId={caseId} />;
+  return <EvidenceFigure item={item} caseId={caseId} />;
 }

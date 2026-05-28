@@ -734,6 +734,48 @@ html.home-scroll-page body{
   }
 }
 @media(max-width:720px){
+  html.home-scroll-page body{
+    overflow-x:hidden;
+  }
+
+  .home-header{
+    grid-template-columns:auto 1fr;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px 14px;
+    mix-blend-mode:normal;
+    background:linear-gradient(180deg,rgba(6,6,6,.82) 0%,rgba(6,6,6,.45) 70%,transparent 100%);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  .home-header__spacer{
+    display:none;
+  }
+  .home-header__mark{
+    grid-column:1;
+    justify-self:start;
+    font-size:12px;
+    letter-spacing:.16em;
+    margin-top:2px;
+  }
+  .home-header__nav{
+    grid-column:2;
+    justify-self:end;
+    display:grid;
+    grid-template-columns:repeat(2,auto);
+    gap:8px 12px;
+  }
+  .home-header__link{
+    font-size:13px;
+    line-height:1.2;
+    opacity:.92;
+  }
+
+  .home-section{
+    min-height:auto;
+    padding:88px 14px 56px;
+  }
+
   .opening-card__scroll-rig__narrative{
     padding:clamp(24px,5vh,40px) clamp(20px,5vw,28px);
   }

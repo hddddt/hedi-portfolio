@@ -133,10 +133,4 @@ export const CASE04_FLOW = [
     ],
     outcome: 'The product became something users return to, not just something users operate.',
   },
-  {
-    id: 'resulting-value',
-    type: 'resulting-value',
-    outcome:
-      'Return does not always come from more interaction. It can come from a stronger sense of continuity.',
-  },
 ];

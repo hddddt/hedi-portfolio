@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CASE01_FLOW } from '../../data/workCaseDetailCase01.js';
 import { DECISION_01_UX_ARTIFACT } from '../../data/case01ShsArtifacts.js';
 import { getDecisionEvidenceImages, getScopeEvidenceImages } from '../../data/workCaseImages.js';
@@ -438,7 +438,7 @@ function Case01ContextStrip({ projects }) {
   );
 }
 
-function Case01Intro({ inputs, scope }) {
+function Case01Intro({ inputs, scope, sectionPrefix = 'case01' }) {
   if (!scope) return null;
   const scopeImages = getScopeEvidenceImages('case01');
   return (
@@ -450,7 +450,7 @@ function Case01Intro({ inputs, scope }) {
       {scopeImages.length ? (
         <div className="case01-scope-evidence">
           {scopeImages.map((item) => (
-            <EvidenceImage key={item.id} item={item} />
+            <EvidenceImage key={item.id} item={item} caseId={sectionPrefix} />
           ))}
         </div>
       ) : null}
@@ -538,7 +538,7 @@ function ScopeClarification({ node, sectionPrefix }) {
       {scopeImages.length ? (
         <div className="case01-scope-evidence">
           {scopeImages.map((item) => (
-            <EvidenceImage key={item.id} item={item} />
+            <EvidenceImage key={item.id} item={item} caseId={sectionPrefix} />
           ))}
         </div>
       ) : null}
@@ -732,8 +732,8 @@ function StagedImageArtifact({ item }) {
 function StagedEvidenceNotes({ items }) {
   if (!items?.length) return null;
   return (
-    <div className="case01-context-details case01-context-details--evidence">
-      <p className="case01-context-details__label">Supporting evidence</p>
+    <div className="case01-evidence-support">
+      <p className="case01-evidence-support__label">Supporting evidence</p>
       <ul className="case01-evidence-notes">
         {items.map((note) => (
           <li key={note}>{note}</li>
@@ -799,7 +799,7 @@ function RegistryEvidenceGroup({ sectionPrefix, slug }) {
   return (
     <div className="case01-registry-evidence">
       {images.map((item) => (
-        <EvidenceImage key={item.id} item={item} />
+        <EvidenceImage key={item.id} item={item} caseId={sectionPrefix} />
       ))}
     </div>
   );
@@ -836,16 +836,13 @@ function ContextMetaDetails({ grid }) {
   if (!rows.length) return null;
 
   return (
-    <div className="case01-context-details">
-      <p className="case01-context-details__label">Context details</p>
-      <ul className="case01-meta-rows case01-meta-rows--compact">
-        {rows.map(([label, value]) => (
-          <li key={label}>
-            <span className="case01-meta-rows__key">{label}</span>
-            <span className="case01-meta-rows__val">{value}</span>
-          </li>
-        ))}
-      </ul>
+    <div className="case01-meta-strip" aria-label="Decision context">
+      {rows.map(([label, value]) => (
+        <div key={label} className="case01-meta-strip__item">
+          <span className="case01-meta-strip__key">{label}</span>
+          <span className="case01-meta-strip__val">{value}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1067,16 +1064,11 @@ function DecisionJudgmentHeader({ node }) {
       <p className="case01-decision-module__d">{node.d}</p>
       <h3 className="case01-decision-module__title">{node.title}</h3>
       {node.coreMove ? <p className="case01-decision-module__core-move">{node.coreMove}</p> : null}
-      {node.subtitle ? <p className="case01-decision-module__subtitle">{node.subtitle}</p> : null}
     </header>
   );
 }
 
-function DecisionEvidenceLayer({
-  node,
-  hasAppliedCases,
-  sectionPrefix,
-}) {
+function DecisionEvidenceLayer({ node, hasAppliedCases, sectionPrefix }) {
   const hasStagedEvidence =
     node.heroEvidence || node.artifacts?.length || node.table || node.evidenceNotes?.length;
   const hasEvidenceList = Boolean(node.evidence?.length);
@@ -1364,7 +1356,14 @@ function Decision03Sub({ sub }) {
   );
 }
 
-function renderFlowNode(node, sectionPrefix) {
+function decisionOrderIndex(slug) {
+  if (slug === 'd1') return 0;
+  if (slug === 'd2') return 1;
+  if (slug === 'd3') return 2;
+  return -1;
+}
+
+function renderFlowNode(node, sectionPrefix, activeSection, sectionStageMap) {
   switch (node.type) {
     case 'project-inputs':
     case 'design-scope':
@@ -1377,13 +1376,20 @@ function renderFlowNode(node, sectionPrefix) {
       return null;
 
     case 'decision':
+      {
+        const activeIdx = decisionOrderIndex(activeSection);
+        const nodeIdx = decisionOrderIndex(node.slug);
+        const isActive = activeSection === node.slug;
+        const isNear = !isActive && activeIdx >= 0 && nodeIdx >= 0 && Math.abs(activeIdx - nodeIdx) === 1;
+        const stage = sectionStageMap[node.slug] ?? 0;
       return (
         <section
           key={node.id}
           id={`${sectionPrefix}-${node.slug}`}
+          data-stage={stage}
           className={`case01-chapter case01-chapter--decision${
             node.featured || node.visualWeight === 'highest' ? ' case01-chapter--decision-featured' : ''
-          }`}
+          }${isActive ? ' case01-chapter--decision-active' : ''}${isNear ? ' case01-chapter--decision-near' : ''} case01-reveal`}
         >
           {node.contextReminder ? (
             <>
@@ -1400,6 +1406,7 @@ function renderFlowNode(node, sectionPrefix) {
           </article>
         </section>
       );
+      }
 
     case 'value':
       return (
@@ -1431,7 +1438,8 @@ function renderFlowNode(node, sectionPrefix) {
   }
 }
 
-export function StagedCaseFlow({ flow, sectionPrefix = 'case01' }) {
+export function StagedCaseFlow({ flow, sectionPrefix = 'case01', activeSection = 'overview' }) {
+  const flowRef = useRef(null);
   const introInputs = flow.find((n) => n.type === 'project-inputs');
   const introScope = flow.find((n) => n.type === 'design-scope');
   const introContract = flow.find((n) => n.type === 'intro');
@@ -1443,35 +1451,86 @@ export function StagedCaseFlow({ flow, sectionPrefix = 'case01' }) {
   const isCase01 = sectionPrefix === 'case01';
   const isCase03 = sectionPrefix === 'case03';
   const isCase04 = sectionPrefix === 'case04';
+  const [sectionStageMap, setSectionStageMap] = useState({ d1: 0, d2: 0, d3: 0 });
+
+  useEffect(() => {
+    const host = flowRef.current;
+    if (!host) return undefined;
+    const scrollRoot = host.closest('.work-case-detail__scroll');
+    if (!scrollRoot) return undefined;
+    const decisionIds = ['d1', 'd2', 'd3'];
+
+    let rafId = 0;
+    const run = () => {
+      rafId = 0;
+      const rootRect = scrollRoot.getBoundingClientRect();
+      const next = {};
+      decisionIds.forEach((slug) => {
+        const section = host.querySelector(`#${sectionPrefix}-${slug}`);
+        if (!section) {
+          next[slug] = 0;
+          return;
+        }
+        const rect = section.getBoundingClientRect();
+        const start = rootRect.top + rootRect.height * 0.72;
+        const end = rootRect.top + rootRect.height * 0.22;
+        const progressRaw = (start - rect.top) / Math.max(1, start - end + rect.height * 0.12);
+        const progress = Math.max(0, Math.min(1, progressRaw));
+        const stage = progress < 0.15 ? 0 : progress < 0.35 ? 1 : progress < 0.5 ? 2 : progress < 0.8 ? 3 : 4;
+        next[slug] = stage;
+      });
+      setSectionStageMap((prev) => {
+        if (prev.d1 === next.d1 && prev.d2 === next.d2 && prev.d3 === next.d3) return prev;
+        return next;
+      });
+    };
+
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(run);
+    };
+
+    run();
+    scrollRoot.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      scrollRoot.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [sectionPrefix]);
 
   return (
-    <div className={`case01-flow case01-flow--${sectionPrefix}`}>
-      {isCase01 ? (
-        <>
-          <Case01Intro inputs={introInputs} scope={introScope} />
-          {projectMap ? <ProjectMap node={projectMap} /> : null}
-        </>
-      ) : isCase03 ? (
-        <>
-          <Case03Intro node={introCompanion} />
-          {scopeClarification ? <ScopeClarification node={scopeClarification} sectionPrefix={sectionPrefix} /> : null}
-        </>
-      ) : isCase04 ? (
-        <>
-          <Case04Intro node={introCompanion} />
-          {scopeClarification ? <ScopeClarification node={scopeClarification} sectionPrefix={sectionPrefix} /> : null}
-          {decisionOverview?.columns ? (
-            <section className="case01-chapter case01-chapter--roadmap" aria-label="Decisions on this case">
-              <DesignDecisionRoadmap columns={decisionOverview.columns} />
-            </section>
-          ) : null}
-        </>
-      ) : (
-        <Case02Intro node={introContract} overview={decisionOverview} />
-      )}
+    <div ref={flowRef} className={`case01-flow case01-flow--${sectionPrefix}`}>
+      <section id={`${sectionPrefix}-overview`} className="case01-chapter case01-chapter--overview case01-reveal">
+        {isCase01 ? (
+          <>
+          <Case01Intro inputs={introInputs} scope={introScope} sectionPrefix={sectionPrefix} />
+            {projectMap ? <ProjectMap node={projectMap} /> : null}
+          </>
+        ) : isCase03 ? (
+          <>
+            <Case03Intro node={introCompanion} />
+            {scopeClarification ? <ScopeClarification node={scopeClarification} sectionPrefix={sectionPrefix} /> : null}
+          </>
+        ) : isCase04 ? (
+          <>
+            <Case04Intro node={introCompanion} />
+            {scopeClarification ? <ScopeClarification node={scopeClarification} sectionPrefix={sectionPrefix} /> : null}
+            {decisionOverview?.columns ? (
+              <section className="case01-chapter case01-chapter--roadmap" aria-label="Decisions on this case">
+                <DesignDecisionRoadmap columns={decisionOverview.columns} />
+              </section>
+            ) : null}
+          </>
+        ) : (
+          <Case02Intro node={introContract} overview={decisionOverview} />
+        )}
+      </section>
       {flow.map((node) => (
         <div key={node.id}>
-          {renderFlowNode(node, sectionPrefix)}
+          {renderFlowNode(node, sectionPrefix, activeSection, sectionStageMap)}
           {sectionPrefix === 'case01' && node.type === 'decision' && node.slug === 'd1' ? (
             <section
               id={`${sectionPrefix}-d1-bridge`}
@@ -1480,14 +1539,18 @@ export function StagedCaseFlow({ flow, sectionPrefix = 'case01' }) {
               <div className="case01-decision-transition" aria-hidden="true" />
               <div className="case01-registry-evidence">
                 {getDecisionEvidenceImages(sectionPrefix, 'd1Bridge').map((item) => (
-                  <EvidenceImage key={item.id} item={item} />
+                  <EvidenceImage key={item.id} item={item} caseId={sectionPrefix} />
                 ))}
               </div>
             </section>
           ) : null}
         </div>
       ))}
-      {resultingValue ? <ResultingValueBlock node={resultingValue} /> : null}
+      {resultingValue ? (
+        <section id={`${sectionPrefix}-outcome`} className="case01-reveal">
+          <ResultingValueBlock node={resultingValue} />
+        </section>
+      ) : null}
     </div>
   );
 }

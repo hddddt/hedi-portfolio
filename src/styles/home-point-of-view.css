@@ -502,23 +502,143 @@
 }
 
 @media(max-width:720px){
+  .pov-scroll{
+    height:auto !important;
+    min-height:0 !important;
+    padding:clamp(18px,3vh,30px) 0 clamp(96px,14vh,132px);
+  }
+
   .pov-pin{
-    padding-left:clamp(20px,5vw,28px);
-    padding-right:clamp(20px,5vw,28px);
+    position:relative;
+    top:auto;
+    height:auto;
+    max-height:none;
+    align-items:stretch;
+    padding:0 clamp(16px,4vw,24px);
   }
   .pov-pin__stage{
-    padding-left:0;
-    max-width:100%;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    padding:0;
+    height:auto;
+    min-height:0;
+    max-height:none;
+    max-width:min(42rem,100%);
   }
   .pov-curve{
     display:none;
   }
-  .pov-pin{
+
+  .pov-slide{
+    position:relative;
+    inset:auto;
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+    height:auto;
+    min-height:0;
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:16px;
+    background:linear-gradient(165deg,rgba(15,15,15,0.62) 0%,rgba(8,8,8,0.58) 100%);
+    padding:clamp(20px,3.4vh,28px) clamp(16px,4vw,22px);
+    box-sizing:border-box;
+  }
+
+  .pov-slide .pov-line,
+  .pov-slide .pov-pairs{
+    opacity:1;
+    transform:none;
+    animation:none;
+  }
+
+  .pov-slide--thesis-origin,
+  .pov-slide--saw,
+  .pov-slide--believe,
+  .pov-slide--design-close{
+    display:flex;
     flex-direction:column;
+    justify-content:flex-start;
+    gap:10px;
   }
-  .pov-pin__stage{
-    padding-bottom:clamp(24px,4vh,40px);
+
+  .pov-slide--thesis-origin .pov-zone--declare,
+  .pov-slide--saw .pov-zone--setup,
+  .pov-slide--saw .pov-zone--weight,
+  .pov-slide--thesis-origin .pov-zone--provenance{
+    padding:0;
+    margin:0;
+    transform:none;
   }
+
+  .pov-slide--thesis-origin .pov-line--label,
+  .pov-slide--design-close .pov-line--practice{
+    margin-bottom:6px;
+  }
+
+  .pov-slide--thesis-origin .pov-line--gravity{
+    font-size:clamp(1.95rem,8.2vw,2.5rem);
+    max-width:100%;
+  }
+
+  .pov-slide--saw .pov-line--setup{
+    font-size:clamp(1.2rem,5.8vw,1.55rem);
+    max-width:100%;
+  }
+
+  .pov-slide--saw .pov-line--core{
+    font-size:clamp(2rem,9.2vw,2.85rem);
+    margin-bottom:10px;
+    max-width:100%;
+  }
+
+  .pov-slide--believe{
+    place-items:initial;
+    padding-inline:clamp(16px,4vw,22px);
+  }
+
+  .pov-slide--believe .pov-zone--stance{
+    max-width:100%;
+  }
+
+  .pov-slide--believe .pov-line--statement{
+    margin-bottom:12px;
+    font-size:clamp(1.6rem,7.4vw,2.15rem);
+    max-width:100%;
+  }
+
+  .pov-slide--believe .pov-line--statementEmphasis{
+    font-size:clamp(1.75rem,8vw,2.25rem);
+    max-width:100%;
+  }
+
+  .pov-design__upper{
+    max-width:100%;
+    padding-top:0;
+  }
+
+  .pov-slide--design-close .pov-boundaries{
+    margin-top:8px;
+  }
+
+  .pov-slide--design-close .pov-line--closingGravity{
+    font-size:clamp(1.7rem,8vw,2.3rem);
+    max-width:100%;
+  }
+
+  .pov-slide--design-close .pov-closing{
+    margin-top:10px;
+    max-width:100%;
+  }
+
+  .pov-slide--saw .pov-line--pair,
+  .pov-slide--design-close .pov-line--boundary,
+  .pov-slide--thesis-origin .pov-line--origin{
+    font-size:clamp(0.95rem,3.9vw,1.05rem);
+    max-width:100%;
+  }
+
   .pov-sources-dock{
     right:clamp(16px,4vw,24px);
     bottom:clamp(32px,6vh,56px);

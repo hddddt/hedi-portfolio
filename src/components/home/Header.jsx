@@ -9,11 +9,15 @@ function scrollToSection(href) {
   const id = href.replace('#', '');
   const target = document.getElementById(id);
   if (!target) return;
-  const block =
-    id === 'home-work-narrative' || id === 'home-life-archive'
-      ? 'start'
-      : 'center';
-  target.scrollIntoView({ behavior: 'smooth', block });
+  const rectTop = target.getBoundingClientRect().top + window.scrollY;
+  const nudge =
+    id === 'home-life-archive'
+      ? Math.max(24, Math.round(window.innerHeight * 0.04))
+      : 0;
+  window.scrollTo({
+    top: Math.max(0, rectTop + nudge),
+    behavior: 'smooth',
+  });
 }
 
 function scrollToFirstScreen() {

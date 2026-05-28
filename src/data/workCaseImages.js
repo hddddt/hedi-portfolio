@@ -102,7 +102,7 @@ export const WORK_CASE_IMAGES = {
       d1: [
         {
           id: 'case02-d1-primary',
-          src: '/images/case2/Case2-01.jpg',
+          src: '/images/case2/Case2-05.jpg',
           label: 'D1 primary evidence',
           caption:
             'The review starts from contract context, topic structure, and risk overview — not from an isolated AI answer.',
