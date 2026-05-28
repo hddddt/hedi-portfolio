@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { CASE01_FLOW } from '../../data/workCaseDetailCase01.js';
 import { DECISION_01_UX_ARTIFACT } from '../../data/case01ShsArtifacts.js';
+import { getDecisionEvidenceImages, getScopeEvidenceImages } from '../../data/workCaseImages.js';
+import { HeroAnswerStateModel } from './HeroAnswerStateModel.jsx';
+import { EvidenceImage } from '../work/EvidenceImage.jsx';
 
 /** Four roles only: label · title · body · meta */
 function SectionLabel({ children, variant }) {
@@ -417,24 +420,445 @@ function DiagramFigure({ caption, title, children }) {
   );
 }
 
-const GRID_LABELS = [
-  ['challenge', 'Challenge'],
-  ['focus', 'Focus'],
-  ['role', 'My Role'],
-  ['solution', 'Solution'],
-];
+const SCOPE_CONVERSATION_COPY =
+  'Conversation design still mattered: intent definition, response writing, happy paths, fallback copy, and tone refinement.';
 
-function DecisionGrid({ grid }) {
-  if (!grid) return null;
+const SCOPE_SYSTEM_COPY =
+  'But the real work was defining how the system routes context, recovers from failure, hands work off, and keeps service continuity.';
+
+function Case01ContextStrip({ projects }) {
+  if (!projects?.length) return null;
+  const tags =
+    'Project inputs: Stakeholder service context · Knowledge-user segmentation · Transactional support flow';
   return (
-    <div className="case01-decision-grid" role="list">
-      {GRID_LABELS.map(([key, label]) => (
-        <div key={key} className="case01-decision-grid__cell" role="listitem">
-          <p className="case01-decision-grid__label">{label}</p>
-          <p className="case01-decision-grid__text">{grid[key]}</p>
+    <div className="case01-context-strip" aria-label="Case context">
+      <p className="case01-context-strip__lead">Three conversational AI inputs</p>
+      <p className="case01-context-strip__tags">{tags}</p>
+    </div>
+  );
+}
+
+function Case01Intro({ inputs, scope }) {
+  if (!scope) return null;
+  const scopeImages = getScopeEvidenceImages('case01');
+  return (
+    <section className="case01-chapter case01-chapter--intro">
+      {inputs?.projects ? <Case01ContextStrip projects={inputs.projects} /> : null}
+      <MainTitle lines={scope.mainTitle} className="case01-thesis" />
+      <Body className="case01-body--scope">{SCOPE_CONVERSATION_COPY}</Body>
+      <Body className="case01-body--scope">{SCOPE_SYSTEM_COPY}</Body>
+      {scopeImages.length ? (
+        <div className="case01-scope-evidence">
+          {scopeImages.map((item) => (
+            <EvidenceImage key={item.id} item={item} />
+          ))}
         </div>
+      ) : null}
+      <DesignDecisionRoadmap columns={scope.columns} />
+    </section>
+  );
+}
+
+function Case02Intro({ node, overview }) {
+  if (!node) return null;
+  const { metadataStrip, caseThesis, scopeParagraphs } = node;
+  return (
+    <section className="case01-chapter case01-chapter--intro case01-chapter--intro-contract">
+      {metadataStrip ? (
+        <div className="case01-context-strip" aria-label="Case context">
+          <p className="case01-context-strip__lead">{metadataStrip.lead}</p>
+          <p className="case01-context-strip__body">{metadataStrip.body}</p>
+        </div>
+      ) : null}
+      <MainTitle lines={caseThesis} className="case01-thesis" />
+      {scopeParagraphs?.map((p) => (
+        <Body key={p.slice(0, 48)} className="case01-body--scope">
+          {p}
+        </Body>
+      ))}
+      {node.heroArtifact ? (
+        <div className="case01-case-hero">
+          <StagedImageArtifact item={node.heroArtifact} />
+        </div>
+      ) : null}
+      {overview?.columns ? <DesignDecisionRoadmap columns={overview.columns} /> : null}
+    </section>
+  );
+}
+
+function Case04Intro({ node }) {
+  if (!node) return null;
+  const { metadataStrip, caseThesis, caseThesisSupport } = node;
+  return (
+    <section className="case01-chapter case01-chapter--intro case01-chapter--intro-companion">
+      {metadataStrip ? (
+        <div className="case01-context-strip" aria-label="Case context">
+          <p className="case01-context-strip__lead">{metadataStrip.lead}</p>
+          <p className="case01-context-strip__body">{metadataStrip.body}</p>
+        </div>
+      ) : null}
+      <MainTitle lines={caseThesis} className="case01-thesis" />
+      {caseThesisSupport ? <Body className="case01-body--thesis-support">{caseThesisSupport}</Body> : null}
+    </section>
+  );
+}
+
+function Case03Intro({ node }) {
+  if (!node) return null;
+  const { metadataStrip, caseThesis, caseThesisSupport, heroArtifact } = node;
+  return (
+    <section className="case01-chapter case01-chapter--intro case01-chapter--intro-agentic">
+      {metadataStrip ? (
+        <div className="case01-context-strip" aria-label="Case context">
+          {metadataStrip.lead ? <p className="case01-context-strip__lead">{metadataStrip.lead}</p> : null}
+          {metadataStrip.body ? <p className="case01-context-strip__body">{metadataStrip.body}</p> : null}
+        </div>
+      ) : null}
+      <MainTitle lines={caseThesis} className="case01-thesis" />
+      {caseThesisSupport ? <Body className="case01-body--thesis-support">{caseThesisSupport}</Body> : null}
+      {heroArtifact ? (
+        <div className="case01-case-hero">
+          <StagedImageArtifact item={heroArtifact} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ScopeClarification({ node, sectionPrefix }) {
+  if (!node?.paragraphs?.length) return null;
+  const scopeImages = getScopeEvidenceImages(sectionPrefix);
+  return (
+    <section className="case01-chapter case01-chapter--scope-clarification">
+      {node.paragraphs.map((p) => (
+        <Body key={p.slice(0, 48)} className="case01-body--scope">
+          {p}
+        </Body>
+      ))}
+      {scopeImages.length ? (
+        <div className="case01-scope-evidence">
+          {scopeImages.map((item) => (
+            <EvidenceImage key={item.id} item={item} />
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ProjectPills({ names }) {
+  if (!names?.length) return null;
+  return (
+    <div className="case01-project-pills" role="list" aria-label="Projects">
+      {names.map((name) => (
+        <span key={name} className="case01-project-pill" role="listitem">
+          {name}
+        </span>
       ))}
     </div>
+  );
+}
+
+function ProjectMap({ node }) {
+  if (!node?.rows?.length) return null;
+  return (
+    <section className="case01-chapter case01-chapter--project-map" aria-label="Project to decision map">
+      {node.intro ? <p className="case01-project-map__intro">{node.intro}</p> : null}
+      <div className="case01-project-map">
+        {node.rows.map((row) => (
+          <div key={row.name} className="case01-project-map__row">
+            <p className="case01-project-map__name">{row.name}</p>
+            <div className="case01-project-map__connector" aria-hidden="true" />
+            <div className="case01-project-map__decisions">
+              {row.decisions.map((d) => (
+                <span key={`${row.name}-${d}`} className="case01-project-map__pill">
+                  {d}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function decisionProjectNames(node) {
+  const cases = node.appliedInCases ?? node.appliedInTabs;
+  if (cases?.length) return cases.map((item) => item.label).filter(Boolean);
+  if (node.appliedIn?.length) return node.appliedIn.map((item) => item.project).filter(Boolean);
+  return [];
+}
+
+function StagedHierarchyEvidence({ item }) {
+  if (!item?.before || !item?.after) return null;
+  return (
+    <figure className="case01-staged-evidence case01-staged-evidence--hierarchy">
+      {item.title ? <p className="case01-staged-evidence__title">{item.title}</p> : null}
+      <div className="case01-hierarchy-shift" role="group" aria-label="Feature hierarchy before and after">
+        <div className="case01-hierarchy-shift__col">
+          <p className="case01-hierarchy-shift__label">Before</p>
+          <p className="case01-hierarchy-shift__row">
+            <span className="case01-hierarchy-shift__key">Core</span>
+            <span className="case01-hierarchy-shift__val">{item.before.core}</span>
+          </p>
+          <p className="case01-hierarchy-shift__row">
+            <span className="case01-hierarchy-shift__key">Supporting</span>
+            <span className="case01-hierarchy-shift__val">{item.before.supporting}</span>
+          </p>
+        </div>
+        <div className="case01-hierarchy-shift__col case01-hierarchy-shift__col--after">
+          <p className="case01-hierarchy-shift__label">After</p>
+          <p className="case01-hierarchy-shift__row">
+            <span className="case01-hierarchy-shift__key">Core</span>
+            <span className="case01-hierarchy-shift__val">{item.after.core}</span>
+          </p>
+          <p className="case01-hierarchy-shift__row">
+            <span className="case01-hierarchy-shift__key">Supporting</span>
+            <span className="case01-hierarchy-shift__val">{item.after.supporting}</span>
+          </p>
+        </div>
+      </div>
+      {item.caption ? (
+        <figcaption className="case01-artifact__caption">{item.caption}</figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+function StagedTextEvidence({ item }) {
+  if (!item) return null;
+  return (
+    <figure className="case01-staged-evidence case01-staged-evidence--text">
+      {item.title ? <p className="case01-staged-evidence__title">{item.title}</p> : null}
+      {item.whatToShow ? <p className="case01-staged-evidence__what">{item.whatToShow}</p> : null}
+      {item.caption ? (
+        <figcaption className="case01-artifact__caption">{item.caption}</figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+function StagedEvidenceList({ items, outcome }) {
+  if (!items?.length && !outcome) return null;
+  return (
+    <div className="case01-decision-evidence case01-decision-evidence--staged">
+      <div className="case01-staged-evidence__list">
+        {items.map((item) =>
+          item.before && item.after ? (
+            <StagedHierarchyEvidence key={item.title} item={item} />
+          ) : (
+            <StagedTextEvidence key={item.title} item={item} />
+          ),
+        )}
+      </div>
+      <DecisionOutcomeLine>{outcome}</DecisionOutcomeLine>
+    </div>
+  );
+}
+
+function ResultingValueBlock({ node }) {
+  if (!node?.outcome) return null;
+  return (
+    <section className="case01-chapter case01-chapter--resulting-value">
+      <DecisionOutcomeLine>{node.outcome}</DecisionOutcomeLine>
+    </section>
+  );
+}
+
+function StagedEvidenceTable({ table }) {
+  if (!table?.headers?.length) return null;
+  return (
+    <figure className="case01-staged-table">
+      {table.title ? <p className="case01-decision-artifacts__label">{table.title}</p> : null}
+      <div className="work-case-detail__table-wrap">
+        <table className="work-case-detail__table">
+          <thead>
+            <tr>
+              {table.headers.map((h) => (
+                <th key={h} scope="col">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row) => (
+              <tr key={row.join('-')}>
+                {row.map((cell) => (
+                  <td key={cell}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {table.caption ? (
+        <figcaption className="case01-artifact__caption">{table.caption}</figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+function StagedImageArtifact({ item }) {
+  if (!item?.src) return null;
+  const sizeClass =
+    item.size === 'medium'
+      ? ' case01-artifact--size-medium'
+      : item.size === 'large'
+        ? ' case01-artifact--size-large'
+        : '';
+  return (
+    <figure
+      className={`case01-artifact case01-artifact--compact${
+        item.featured ? ' case01-artifact--featured-shot' : ''
+      }${sizeClass}`}
+    >
+      {item.title ? <p className="case01-artifact__panel-title">{item.title}</p> : null}
+      <img
+        src={item.src}
+        alt={item.alt ?? item.title}
+        className="case01-artifact__img case01-artifact__img--staged"
+        loading="lazy"
+        decoding="async"
+      />
+      {item.caption ? (
+        <figcaption className="case01-artifact__caption">{item.caption}</figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+function StagedEvidenceNotes({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div className="case01-context-details case01-context-details--evidence">
+      <p className="case01-context-details__label">Supporting evidence</p>
+      <ul className="case01-evidence-notes">
+        {items.map((note) => (
+          <li key={note}>{note}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function StagedImageArtifacts({ artifacts, node }) {
+  if (!artifacts?.length) return null;
+  const resolved = artifacts
+    .map((item) => {
+      if (!item) return null;
+      if (item.src) return item;
+      if (item.type === 'artifact-image' && item.artifactId) {
+        const panel = resolveArtifactPanel(item, node?.uxArtifact, node?.knowledgeArtifact, node?.flowArtifact);
+        if (!panel) return null;
+        return {
+          ...panel,
+          size: item.size ?? panel.size,
+          featured: item.featured ?? panel.featured,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+  if (!resolved.length) return null;
+  return (
+    <>
+      {resolved.map((item) => (
+        <StagedImageArtifact key={item.id ?? item.src ?? item.title ?? item.alt ?? item.caption} item={item} />
+      ))}
+    </>
+  );
+}
+
+function StagedSimpleEvidence({ node, showOutcome = true }) {
+  return (
+    <div
+      className={`case01-decision-evidence case01-decision-evidence--staged${
+        node.layout === 'coreMove-full-width-then-images'
+          ? ' case01-decision-evidence--layout-stack'
+          : ''
+      }`}
+    >
+      {node.heroEvidence ? (
+        <div className="case01-hero-evidence-wrap">
+          <HeroAnswerStateModel hero={node.heroEvidence} />
+        </div>
+      ) : null}
+      <StagedImageArtifacts artifacts={node.artifacts} node={node} />
+      {node.table ? <StagedEvidenceTable table={node.table} /> : null}
+      <StagedEvidenceNotes items={node.evidenceNotes} />
+      {showOutcome ? <DecisionOutcomeLine>{node.outcome}</DecisionOutcomeLine> : null}
+    </div>
+  );
+}
+
+function RegistryEvidenceGroup({ sectionPrefix, slug }) {
+  const images = getDecisionEvidenceImages(sectionPrefix, slug);
+  if (!images.length) return null;
+  return (
+    <div className="case01-registry-evidence">
+      {images.map((item) => (
+        <EvidenceImage key={item.id} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function JudgmentPair({ gap, move }) {
+  if (!gap && !move) return null;
+  return (
+    <div className="case01-judgment-pair">
+      {gap ? (
+        <div className="case01-judgment-card">
+          <p className="case01-judgment-card__label">The gap</p>
+          <p className="case01-judgment-card__text">{gap}</p>
+        </div>
+      ) : null}
+      {move ? (
+        <div className="case01-judgment-card">
+          <p className="case01-judgment-card__label">The move</p>
+          <p className="case01-judgment-card__text">{move}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ContextMetaDetails({ grid }) {
+  if (!grid) return null;
+  const rows = [
+    ['Context', grid.challenge],
+    ['Focus', grid.focus],
+    ['Role', grid.role],
+  ].filter(([, value]) => value);
+
+  if (!rows.length) return null;
+
+  return (
+    <div className="case01-context-details">
+      <p className="case01-context-details__label">Context details</p>
+      <ul className="case01-meta-rows case01-meta-rows--compact">
+        {rows.map(([label, value]) => (
+          <li key={label}>
+            <span className="case01-meta-rows__key">{label}</span>
+            <span className="case01-meta-rows__val">{value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DecisionOutcomeLine({ children }) {
+  if (!children) return null;
+  return (
+    <p className="case01-outcome-line">
+      <span className="case01-outcome-line__arrow" aria-hidden="true">
+        →
+      </span>
+      {children}
+    </p>
   );
 }
 
@@ -443,15 +867,13 @@ function ArtifactInsetPanel({ artifact }) {
   if (!inset?.src) return null;
   return (
     <figure className="case01-artifact case01-artifact--compact">
-      <div className="case01-artifact__frame case01-artifact__frame--inset">
-        <img
-          src={inset.src}
-          alt={inset.alt ?? inset.title}
-          className="case01-artifact__img"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
+      <img
+        src={inset.src}
+        alt={inset.alt ?? inset.title}
+        className="case01-artifact__img case01-artifact__img--staged"
+        loading="lazy"
+        decoding="async"
+      />
       {inset.title ? <p className="case01-artifact__panel-title">{inset.title}</p> : null}
       {inset.caption ? (
         <figcaption className="case01-artifact__caption">{inset.caption}</figcaption>
@@ -465,7 +887,7 @@ function ArtifactJourneyPanel({ artifact }) {
   if (!crop) return null;
   return (
     <figure className="case01-artifact case01-artifact--compact">
-      <div className="case01-artifact__frame case01-artifact__frame--panel">
+      <div className="case01-artifact__crop case01-artifact__crop--staged">
         <ArtifactBoardCrop src={crop.src} alt={crop.alt ?? crop.title} />
       </div>
       {crop.title ? <p className="case01-artifact__panel-title">{crop.title}</p> : null}
@@ -480,15 +902,13 @@ function ArtifactImagePanel({ panel }) {
   if (!panel?.src) return null;
   return (
     <figure className="case01-artifact case01-artifact--compact">
-      <div className="case01-artifact__frame case01-artifact__frame--panel">
-        <img
-          src={panel.src}
-          alt={panel.alt ?? panel.title}
-          className="case01-artifact__img"
-          loading="lazy"
-          decoding="async"
-        />
-      </div>
+      <img
+        src={panel.src}
+        alt={panel.alt ?? panel.title}
+        className="case01-artifact__img case01-artifact__img--staged"
+        loading="lazy"
+        decoding="async"
+      />
       {panel.title ? <p className="case01-artifact__panel-title">{panel.title}</p> : null}
       {panel.caption ? (
         <figcaption className="case01-artifact__caption">{panel.caption}</figcaption>
@@ -497,25 +917,10 @@ function ArtifactImagePanel({ panel }) {
   );
 }
 
-function ProjectInputStrips({ items }) {
-  if (!items?.length) return null;
-  return (
-    <div className="case01-inputs" role="list" aria-label="Project inputs">
-      {items.map((item) => (
-        <div key={item.tag} className="case01-inputs__strip" role="listitem">
-          <p className="case01-inputs__tag">{item.tag}</p>
-          <p className="case01-inputs__body">{item.body}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DesignDecisionRoadmap({ lead, columns }) {
+function DesignDecisionRoadmap({ columns }) {
   if (!columns?.length) return null;
   return (
     <div className="case01-scope-decisions">
-      {lead ? <p className="case01-body case01-scope-decisions__lead">{lead}</p> : null}
       <div className="case01-scope-decisions__list" role="list">
         {columns.map((col) => (
           <div key={col.num} className="case01-scope-decisions__item" role="listitem">
@@ -531,110 +936,76 @@ function DesignDecisionRoadmap({ lead, columns }) {
   );
 }
 
-function DecisionAppliedIn({ items }) {
-  if (!items?.length) return null;
+function AppliedInCasePanel({
+  item,
+  uxArtifact,
+  knowledgeArtifact,
+  flowArtifact,
+  hideArtifacts = false,
+  hideOutcome = false,
+}) {
+  if (!item) return null;
   return (
-    <div className="case01-decision-block case01-decision-applied">
-      <p className="case01-decision-block__heading">Applied in</p>
-      <ul className="case01-decision-applied__list">
-        {items.map((item) => (
-          <li key={item.project} className="case01-decision-applied__item">
-            <span className="case01-decision-applied__project">{item.project}</span>
-            <span className="case01-decision-applied__sep" aria-hidden="true">
-              —
-            </span>
-            <span className="case01-decision-applied__text">{item.text}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function AppliedInTabPanel({ tab, uxArtifact, knowledgeArtifact, flowArtifact }) {
-  if (!tab) return null;
-  return (
-    <div
-      className="case01-applied-panel"
-      role="tabpanel"
-      id={`applied-panel-${tab.id}`}
-      aria-labelledby={`applied-tab-${tab.id}`}
-    >
-      {tab.question ? (
+    <article className="case01-applied-case" aria-labelledby={`applied-case-${item.id}`}>
+      {item.question ? (
         <div className="case01-applied-question">
-          <p className="case01-applied-question__label">Question</p>
-          <p className="case01-applied-question__text">{tab.question}</p>
+          <p className="case01-applied-question__text">{item.question}</p>
         </div>
       ) : null}
-      <DecisionGrid grid={tab.grid} />
-      <DecisionArtifacts
-        items={tab.artifacts}
-        uxArtifact={uxArtifact}
-        knowledgeArtifact={knowledgeArtifact}
-        flowArtifact={flowArtifact}
-      />
-      {tab.outcome ? (
-        <div className="case01-decision-outcome">
-          <p className="case01-decision-outcome__label">Outcome</p>
-          <p className="case01-decision-outcome__text">{tab.outcome}</p>
-        </div>
+      <ContextMetaDetails grid={item.grid} />
+      {!hideArtifacts ? (
+        <DecisionArtifacts
+          items={item.artifacts}
+          uxArtifact={uxArtifact}
+          knowledgeArtifact={knowledgeArtifact}
+          flowArtifact={flowArtifact}
+        />
       ) : null}
-    </div>
+      {!hideOutcome ? <DecisionOutcomeLine>{item.outcome}</DecisionOutcomeLine> : null}
+    </article>
   );
 }
 
-function AppliedInTabs({ tabs, uxArtifact, knowledgeArtifact, flowArtifact }) {
-  const [activeId, setActiveId] = useState(tabs[0]?.id ?? '');
-  if (!tabs?.length) return null;
-
-  const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
-
+function AppliedInCases({
+  cases,
+  uxArtifact,
+  knowledgeArtifact,
+  flowArtifact,
+  hideArtifacts = false,
+  hideOutcome = false,
+}) {
+  if (!cases?.length) return null;
+  const projectNames = cases.map((item) => item.label).filter(Boolean);
   return (
-    <div className="case01-applied-tabs">
-      <p className="case01-decision-block__heading">Applied in</p>
-      <div
-        className="case01-applied-tabs__bar"
-        role="tablist"
-        aria-label="Applied in project contexts"
-      >
-        {tabs.map((tab) => {
-          const isActive = tab.id === activeTab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              id={`applied-tab-${tab.id}`}
-              aria-selected={isActive}
-              aria-controls={`applied-panel-${tab.id}`}
-              tabIndex={isActive ? 0 : -1}
-              className={`case01-applied-tabs__tab${isActive ? ' case01-applied-tabs__tab--active' : ''}`}
-              onClick={() => setActiveId(tab.id)}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-      <AppliedInTabPanel
-        tab={activeTab}
-        uxArtifact={uxArtifact}
-        knowledgeArtifact={knowledgeArtifact}
-        flowArtifact={flowArtifact}
-      />
+    <div className="case01-applied-cases">
+      <ProjectPills names={projectNames} />
+      {cases.map((item, index) => (
+        <AppliedInCasePanel
+          key={item.id ?? `case-${index}`}
+          item={item}
+          uxArtifact={uxArtifact}
+          knowledgeArtifact={knowledgeArtifact}
+          flowArtifact={flowArtifact}
+          hideArtifacts={hideArtifacts}
+          hideOutcome={hideOutcome}
+        />
+      ))}
     </div>
   );
 }
 
-function resolveArtifactPanel(item, knowledgeArtifact, flowArtifact) {
-  const bundle = knowledgeArtifact ?? flowArtifact;
-  return bundle?.panels?.find((p) => p.id === item.artifactId);
+function resolveArtifactPanel(item, uxArtifact, knowledgeArtifact, flowArtifact) {
+  for (const bundle of [uxArtifact, knowledgeArtifact, flowArtifact]) {
+    const panel = bundle?.panels?.find((p) => p.id === item.artifactId);
+    if (panel) return panel;
+  }
+  return null;
 }
 
 function DecisionArtifactItem({ item, uxArtifact, knowledgeArtifact, flowArtifact }) {
   if (!item) return null;
   if (item.type === 'artifact-image') {
-    const panel = resolveArtifactPanel(item, knowledgeArtifact, flowArtifact);
+    const panel = resolveArtifactPanel(item, uxArtifact, knowledgeArtifact, flowArtifact);
     if (!panel) return null;
     return (
       <figure className="case01-decision-artifacts__item">
@@ -646,7 +1017,6 @@ function DecisionArtifactItem({ item, uxArtifact, knowledgeArtifact, flowArtifac
   if (item.type === 'artifact-inset') {
     return (
       <figure className="case01-decision-artifacts__item">
-        {item.label ? <p className="case01-decision-artifacts__label">{item.label}</p> : null}
         <ArtifactInsetPanel artifact={uxArtifact} />
       </figure>
     );
@@ -675,8 +1045,7 @@ function DecisionArtifactItem({ item, uxArtifact, knowledgeArtifact, flowArtifac
 function DecisionArtifacts({ items, uxArtifact, knowledgeArtifact, flowArtifact }) {
   if (!items?.length) return null;
   return (
-    <div className="case01-decision-block case01-decision-artifacts">
-      <p className="case01-decision-block__heading">Design artifacts</p>
+    <div className="case01-decision-evidence case01-decision-artifacts">
       <div className="case01-decision-artifacts__items">
         {items.map((item) => (
           <DecisionArtifactItem
@@ -692,51 +1061,137 @@ function DecisionArtifacts({ items, uxArtifact, knowledgeArtifact, flowArtifact 
   );
 }
 
-function DecisionModule({ node }) {
-  const hasAppliedTabs = Boolean(node.appliedInTabs?.length);
-
+function DecisionJudgmentHeader({ node }) {
   return (
-    <div className="case01-decision-module">
+    <header className="case01-decision-module__layer case01-decision-module__layer--judgment">
+      <p className="case01-decision-module__d">{node.d}</p>
+      <h3 className="case01-decision-module__title">{node.title}</h3>
+      {node.coreMove ? <p className="case01-decision-module__core-move">{node.coreMove}</p> : null}
       {node.subtitle ? <p className="case01-decision-module__subtitle">{node.subtitle}</p> : null}
-      {node.aiProblem ? (
-        <div className="case01-decision-problem">
-          <p className="case01-decision-problem__label">AI Problem</p>
-          <p className="case01-decision-problem__text">{node.aiProblem}</p>
-        </div>
-      ) : null}
-      {node.coreMove ? (
-        <div className="case01-decision-move">
-          <p className="case01-decision-move__label">Core Move</p>
-          <p className="case01-decision-move__text">{node.coreMove}</p>
-        </div>
-      ) : null}
+    </header>
+  );
+}
 
-      {hasAppliedTabs ? (
-        <AppliedInTabs
-          tabs={node.appliedInTabs}
+function DecisionEvidenceLayer({
+  node,
+  hasAppliedCases,
+  sectionPrefix,
+}) {
+  const hasStagedEvidence =
+    node.heroEvidence || node.artifacts?.length || node.table || node.evidenceNotes?.length;
+  const hasEvidenceList = Boolean(node.evidence?.length);
+  const registryImages = getDecisionEvidenceImages(sectionPrefix, node.slug);
+  const hasRegistryImages = registryImages.length > 0;
+
+  if (hasAppliedCases) {
+    return (
+      <>
+        <AppliedInCases
+          cases={node.appliedInCases ?? node.appliedInTabs}
           uxArtifact={node.uxArtifact}
           knowledgeArtifact={node.knowledgeArtifact}
+          flowArtifact={node.flowArtifact}
+          hideArtifacts={hasRegistryImages}
+          hideOutcome={hasRegistryImages}
         />
-      ) : (
-        <>
-          {node.grid ? <DecisionGrid grid={node.grid} /> : null}
-          <DecisionAppliedIn items={node.appliedIn} />
-          <DecisionArtifacts
-            items={node.artifacts}
-            uxArtifact={node.uxArtifact}
-            knowledgeArtifact={node.knowledgeArtifact}
-            flowArtifact={node.flowArtifact}
-          />
-          {node.outcome ? (
-            <div className="case01-decision-outcome">
-              <p className="case01-decision-outcome__label">Outcome</p>
-              <p className="case01-decision-outcome__text">{node.outcome}</p>
-            </div>
-          ) : null}
-        </>
-      )}
+        {hasRegistryImages ? <RegistryEvidenceGroup sectionPrefix={sectionPrefix} slug={node.slug} /> : null}
+        {hasRegistryImages ? <DecisionOutcomeLine>{node.outcome}</DecisionOutcomeLine> : null}
+      </>
+    );
+  }
+  if (hasRegistryImages) {
+    const projectNames = decisionProjectNames(node);
+    return (
+      <>
+        <ProjectPills names={projectNames} />
+        <ContextMetaDetails grid={node.grid} />
+        <RegistryEvidenceGroup sectionPrefix={sectionPrefix} slug={node.slug} />
+        {node.implementationNote ? <p className="case01-decision-note">{node.implementationNote}</p> : null}
+        <DecisionOutcomeLine>{node.outcome}</DecisionOutcomeLine>
+      </>
+    );
+  }
+  if (hasEvidenceList) {
+    return <StagedEvidenceList items={node.evidence} outcome={node.outcome} />;
+  }
+  if (hasStagedEvidence) {
+    return <StagedSimpleEvidence node={node} showOutcome={node.layout !== 'text-left-image-right'} />;
+  }
+  const projectNames = decisionProjectNames(node);
 
+  return (
+    <>
+      <ProjectPills names={projectNames} />
+      <ContextMetaDetails grid={node.grid} />
+      <DecisionArtifacts
+        items={node.artifacts}
+        uxArtifact={node.uxArtifact}
+        knowledgeArtifact={node.knowledgeArtifact}
+        flowArtifact={node.flowArtifact}
+      />
       {node.implementationNote ? <p className="case01-decision-note">{node.implementationNote}</p> : null}
+      {node.layout !== 'text-left-image-right' ? <DecisionOutcomeLine>{node.outcome}</DecisionOutcomeLine> : null}
+    </>
+  );
+}
+
+function DecisionModule({ node, sectionPrefix }) {
+  const appliedCases = node.appliedInCases ?? node.appliedInTabs;
+  const hasAppliedCases = Boolean(appliedCases?.length);
+  const moveText = hasAppliedCases
+    ? node.coreMove ?? node.solution ?? node.grid?.solution
+    : (node.solution ?? node.grid?.solution);
+
+  const judgmentGap = node.gap ?? node.aiProblem;
+  const judgmentMove = node.move ?? moveText;
+  const isSplitLayout = node.layout === 'text-left-image-right';
+
+  if (isSplitLayout) {
+    return (
+      <div
+        className={`case01-decision-module${
+          node.featured || node.visualWeight === 'highest' ? ' case01-decision-module--featured' : ''
+        }`}
+      >
+        <div className="case01-decision-layout case01-decision-layout--split">
+          <div className="case01-decision-layout__text">
+            <DecisionJudgmentHeader node={node} />
+            <JudgmentPair gap={judgmentGap} move={judgmentMove} />
+          </div>
+          <div className="case01-decision-layout__media case01-decision-module__layer case01-decision-module__layer--evidence">
+            <DecisionEvidenceLayer
+              node={node}
+              judgmentGap={judgmentGap}
+              judgmentMove={judgmentMove}
+              hasAppliedCases={hasAppliedCases}
+              moveText={moveText}
+              sectionPrefix={sectionPrefix}
+            />
+          </div>
+        </div>
+        <DecisionOutcomeLine>{node.outcome}</DecisionOutcomeLine>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`case01-decision-module${
+        node.featured || node.visualWeight === 'highest' ? ' case01-decision-module--featured' : ''
+      }`}
+    >
+      <DecisionJudgmentHeader node={node} />
+      <JudgmentPair gap={judgmentGap} move={judgmentMove} />
+      <div className="case01-decision-module__layer case01-decision-module__layer--evidence">
+        <DecisionEvidenceLayer
+          node={node}
+          judgmentGap={judgmentGap}
+          judgmentMove={judgmentMove}
+          hasAppliedCases={hasAppliedCases}
+          moveText={moveText}
+          sectionPrefix={sectionPrefix}
+        />
+      </div>
     </div>
   );
 }
@@ -909,44 +1364,39 @@ function Decision03Sub({ sub }) {
   );
 }
 
-function renderFlowNode(node) {
+function renderFlowNode(node, sectionPrefix) {
   switch (node.type) {
     case 'project-inputs':
-      return (
-        <section key={node.id} className="case01-chapter case01-chapter--inputs">
-          <SectionLabel>{node.title}</SectionLabel>
-          <Body className="case01-body--inputs-intro">{node.body}</Body>
-          <ProjectInputStrips items={node.projects} />
-        </section>
-      );
-
     case 'design-scope':
-      return (
-        <section key={node.id} className="case01-chapter case01-chapter--scope">
-          <SectionLabel>{node.title}</SectionLabel>
-          <MainTitle lines={node.mainTitle} />
-          {(node.bodyParagraphs ?? (node.body ? [node.body] : [])).map((p) => (
-            <Body key={p.slice(0, 48)}>{p}</Body>
-          ))}
-          <DesignDecisionRoadmap lead={node.layersLead} columns={node.columns} />
-        </section>
-      );
+    case 'intro':
+    case 'case-intro':
+    case 'scope-clarification':
+    case 'project-map':
+    case 'decision-overview':
+    case 'resulting-value':
+      return null;
 
     case 'decision':
       return (
         <section
           key={node.id}
-          id={`case01-${node.slug}`}
-          className="case01-chapter case01-chapter--decision"
+          id={`${sectionPrefix}-${node.slug}`}
+          className={`case01-chapter case01-chapter--decision${
+            node.featured || node.visualWeight === 'highest' ? ' case01-chapter--decision-featured' : ''
+          }`}
         >
-          <article className="case01-decision-card">
-            <header className="case01-decision-card__header">
-              <p className="case01-decision-card__d">
-                DECISION {node.d.slice(1).padStart(2, '0')}
-              </p>
-              <MainTitle className="case01-decision-card__title">{node.title}</MainTitle>
-            </header>
-            {node.module ? <DecisionModule node={node} /> : null}
+          {node.contextReminder ? (
+            <>
+              <div className="case01-decision-transition" aria-hidden="true" />
+              <p className="case01-decision-context-reminder">{node.contextReminder}</p>
+            </>
+          ) : null}
+          <article
+            className={`case01-decision-card${
+              node.featured || node.visualWeight === 'highest' ? ' case01-decision-card--featured' : ''
+            }`}
+          >
+            <DecisionModule node={node} sectionPrefix={sectionPrefix} />
           </article>
         </section>
       );
@@ -981,6 +1431,67 @@ function renderFlowNode(node) {
   }
 }
 
+export function StagedCaseFlow({ flow, sectionPrefix = 'case01' }) {
+  const introInputs = flow.find((n) => n.type === 'project-inputs');
+  const introScope = flow.find((n) => n.type === 'design-scope');
+  const introContract = flow.find((n) => n.type === 'intro');
+  const introCompanion = flow.find((n) => n.type === 'case-intro');
+  const scopeClarification = flow.find((n) => n.type === 'scope-clarification');
+  const projectMap = flow.find((n) => n.type === 'project-map');
+  const decisionOverview = flow.find((n) => n.type === 'decision-overview');
+  const resultingValue = flow.find((n) => n.type === 'resulting-value');
+  const isCase01 = sectionPrefix === 'case01';
+  const isCase03 = sectionPrefix === 'case03';
+  const isCase04 = sectionPrefix === 'case04';
+
+  return (
+    <div className={`case01-flow case01-flow--${sectionPrefix}`}>
+      {isCase01 ? (
+        <>
+          <Case01Intro inputs={introInputs} scope={introScope} />
+          {projectMap ? <ProjectMap node={projectMap} /> : null}
+        </>
+      ) : isCase03 ? (
+        <>
+          <Case03Intro node={introCompanion} />
+          {scopeClarification ? <ScopeClarification node={scopeClarification} sectionPrefix={sectionPrefix} /> : null}
+        </>
+      ) : isCase04 ? (
+        <>
+          <Case04Intro node={introCompanion} />
+          {scopeClarification ? <ScopeClarification node={scopeClarification} sectionPrefix={sectionPrefix} /> : null}
+          {decisionOverview?.columns ? (
+            <section className="case01-chapter case01-chapter--roadmap" aria-label="Decisions on this case">
+              <DesignDecisionRoadmap columns={decisionOverview.columns} />
+            </section>
+          ) : null}
+        </>
+      ) : (
+        <Case02Intro node={introContract} overview={decisionOverview} />
+      )}
+      {flow.map((node) => (
+        <div key={node.id}>
+          {renderFlowNode(node, sectionPrefix)}
+          {sectionPrefix === 'case01' && node.type === 'decision' && node.slug === 'd1' ? (
+            <section
+              id={`${sectionPrefix}-d1-bridge`}
+              className="case01-chapter case01-chapter--decision case01-chapter--transition-bridge"
+            >
+              <div className="case01-decision-transition" aria-hidden="true" />
+              <div className="case01-registry-evidence">
+                {getDecisionEvidenceImages(sectionPrefix, 'd1Bridge').map((item) => (
+                  <EvidenceImage key={item.id} item={item} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      ))}
+      {resultingValue ? <ResultingValueBlock node={resultingValue} /> : null}
+    </div>
+  );
+}
+
 export function Case01StagedFlow() {
-  return <div className="case01-flow">{CASE01_FLOW.map((node) => renderFlowNode(node))}</div>;
+  return <StagedCaseFlow flow={CASE01_FLOW} sectionPrefix="case01" />;
 }

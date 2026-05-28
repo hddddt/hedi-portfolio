@@ -1,0 +1,589 @@
+/* Life Archive — 3 states: browse → view → detail */
+
+.life-archive-experience {
+  position: relative;
+  width: 100%;
+}
+
+/* —— Header (centered) —— */
+.life-archive-experience__header {
+  position: relative;
+  z-index: 2;
+  max-width: 36rem;
+  margin: 0 auto clamp(24px, 3.5vh, 40px);
+  padding: 0 clamp(20px, 4.8vw, 72px);
+  text-align: center;
+}
+
+.life-archive-experience__title {
+  margin: 0 0 clamp(10px, 1.5vh, 14px);
+  font-family: var(--font-editorial);
+  font-size: clamp(1.85rem, 3.8vw, 2.65rem);
+  font-weight: 400;
+  letter-spacing: -0.032em;
+  line-height: 1.1;
+  color: rgba(250, 248, 243, 0.95);
+}
+
+.life-archive-experience__subtitle {
+  margin: 0 auto clamp(10px, 1.2vh, 14px);
+  font-family: var(--font-editorial);
+  font-size: clamp(0.95rem, 1.35vw, 1.08rem);
+  line-height: 1.55;
+  color: rgba(250, 248, 243, 0.52);
+  max-width: 38ch;
+}
+
+.life-archive-experience__meta {
+  margin: 0;
+  font-family: var(--font-interface-metric);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.32);
+}
+
+/* —— Stage shell —— */
+.life-archive-experience__stage {
+  position: relative;
+  width: 100%;
+  min-height: clamp(360px, 50vh, 480px);
+}
+
+/* ═══ State A — Archive Browse ═══ */
+.life-archive-experience--browse .life-archive-experience__stage {
+  overflow: visible;
+}
+
+.life-archive-experience__browse {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(28px, 4.5vh, 44px);
+  width: 100%;
+  margin: 0 calc(-1 * clamp(20px, 4.8vw, 72px));
+}
+
+.life-archive-experience__stream-scroller {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding: clamp(12px, 2vh, 20px) 0 clamp(8px, 1.2vh, 12px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(250, 248, 243, 0.22) transparent;
+}
+
+.life-archive-experience__stream-scroller::-webkit-scrollbar {
+  height: 6px;
+}
+
+.life-archive-experience__stream-scroller::-webkit-scrollbar-thumb {
+  background: rgba(250, 248, 243, 0.2);
+  border-radius: 3px;
+}
+
+.life-archive-experience__stream {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  width: max-content;
+  min-width: 100%;
+  min-height: clamp(220px, 32vh, 300px);
+  padding: 0 clamp(32px, 6vw, 80px);
+  box-sizing: border-box;
+}
+
+.life-archive-card--stream {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(120px, 12.5vw, 168px);
+  margin: 0 0 0 clamp(-44px, -4vw, -28px);
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  z-index: var(--card-z, 1);
+  transform: translateY(var(--card-y, 0)) rotate(var(--card-r, 0deg)) scale(var(--card-s, 1));
+  transform-origin: center bottom;
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.38),
+    0 1px 0 rgba(250, 248, 243, 0.08);
+  pointer-events: none;
+  animation: life-archive-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(min(var(--card-z, 1), 14) * 28ms);
+}
+
+.life-archive-experience__stream .life-archive-card--stream:first-child {
+  margin-left: 0;
+}
+
+@keyframes life-archive-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--card-y, 0px) + 12px)) rotate(calc(var(--card-r, 0deg) - 2deg))
+      scale(calc(var(--card-s, 1) * 0.92));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(var(--card-y, 0)) rotate(var(--card-r, 0deg)) scale(var(--card-s, 1));
+  }
+}
+
+.life-archive-card__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center 42%;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* Browse — guide sits below the stream (no overlap) */
+.life-archive-guide--browse {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2vh, 20px);
+  width: 100%;
+  max-width: min(56rem, 96vw);
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 32px) clamp(8px, 1.5vh, 16px);
+  text-align: center;
+}
+
+.life-archive-guide__orb {
+  display: flex;
+  justify-content: center;
+}
+
+.life-archive-guide__prompt {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--font-editorial);
+  font-size: clamp(0.88rem, 1.2vw, 1rem);
+  line-height: 1.5;
+  color: rgba(250, 248, 243, 0.72);
+}
+
+.life-archive-guide__prompt-line {
+  display: block;
+}
+
+.life-archive-guide__views {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: clamp(8px, 1.2vw, 10px);
+  width: 100%;
+}
+
+.life-archive-guide__view-btn {
+  flex: 1 1 calc(50% - 6px);
+  min-width: min(9.5rem, 42vw);
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(250, 248, 243, 0.14);
+  border-radius: 999px;
+  background: rgba(250, 248, 243, 0.05);
+  color: rgba(250, 248, 243, 0.82);
+  font-family: var(--font-editorial);
+  font-size: clamp(0.75rem, 0.95vw, 0.86rem);
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.life-archive-guide__view-btn:hover {
+  background: rgba(250, 248, 243, 0.12);
+  border-color: rgba(250, 248, 243, 0.28);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ═══ State B — Selected View ═══ */
+.life-archive-experience__view {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vh, 28px);
+  padding: 0 clamp(4px, 1vw, 12px);
+  animation: life-archive-state-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.life-archive-view-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(16px, 2.5vw, 24px);
+  align-items: start;
+  max-width: min(52rem, 100%);
+  margin: 0 auto;
+  padding: clamp(16px, 2.5vh, 22px) clamp(18px, 2.5vw, 24px);
+  border: 1px solid rgba(250, 248, 243, 0.1);
+  border-radius: 6px;
+  background: rgba(250, 248, 243, 0.03);
+}
+
+.life-archive-view-header--compact {
+  padding: clamp(12px, 1.8vh, 16px) clamp(14px, 2vw, 18px);
+}
+
+.life-archive-view-header__orb {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.life-archive-view-header__fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.4vh, 14px);
+}
+
+.life-archive-view-header__field {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 7rem) 1fr;
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.life-archive-view-header__field dt {
+  margin: 0;
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.38);
+}
+
+.life-archive-view-header__field dd {
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(0.82rem, 1.05vw, 0.92rem);
+  line-height: 1.48;
+  color: rgba(250, 248, 243, 0.68);
+}
+
+.life-archive-view-header__field:first-child dd {
+  font-size: clamp(0.95rem, 1.15vw, 1.05rem);
+  font-weight: 500;
+  color: rgba(250, 248, 243, 0.9);
+}
+
+.life-archive-view-header__field--echo dd {
+  color: rgba(42, 90, 82, 0.88);
+  font-size: 0.8rem;
+}
+
+.life-archive-view-header__back {
+  margin-top: clamp(12px, 1.6vh, 16px);
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-interface-metric);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.42);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.life-archive-view-header__back:hover {
+  color: rgba(250, 248, 243, 0.78);
+}
+
+/* View photo row — single horizontal container */
+.life-archive-view-photos {
+  width: 100%;
+  margin: 0 calc(-1 * clamp(20px, 4.8vw, 72px));
+}
+
+.life-archive-view-photos__scroller {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  padding: clamp(16px, 2.5vh, 24px) clamp(24px, 5vw, 64px) clamp(24px, 4vh, 36px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(250, 248, 243, 0.2) transparent;
+}
+
+.life-archive-view-photos--secondary .life-archive-view-photos__scroller {
+  padding-top: 8px;
+  padding-bottom: 12px;
+  opacity: 0.72;
+}
+
+.life-archive-card--view {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(108px, 11vw, 148px);
+  margin: 0 0 0 clamp(-36px, -3.5vw, -22px);
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  z-index: var(--card-z, 1);
+  transform-origin: center bottom;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease,
+    opacity 0.3s ease;
+  animation: life-archive-card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(min(var(--card-z, 1), 10) * 30ms);
+}
+
+.life-archive-view-photos__scroller .life-archive-card--view:first-child {
+  margin-left: 0;
+}
+
+.life-archive-card--view:hover {
+  transform: translateY(-6px) scale(1.03);
+  z-index: 50;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.life-archive-card--view.is-active {
+  outline: 1px solid rgba(42, 90, 82, 0.6);
+  outline-offset: 3px;
+  opacity: 1;
+}
+
+.life-archive-view-photos--secondary .life-archive-card--view:not(.is-active) {
+  opacity: 0.55;
+}
+
+/* ═══ State C — Fragment Detail (embedded) ═══ */
+.life-archive-experience__detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 36%);
+  gap: clamp(16px, 2.5vw, 28px);
+  align-items: start;
+  animation: life-archive-state-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.life-archive-experience__detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vh, 18px);
+  min-width: 0;
+}
+
+@keyframes life-archive-state-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.life-archive-fragment--embedded {
+  position: sticky;
+  top: clamp(12px, 2vh, 20px);
+  align-self: start;
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.life-archive-fragment {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vh, 18px);
+  padding: clamp(16px, 2.2vw, 22px);
+  border: 1px solid rgba(250, 248, 243, 0.12);
+  border-radius: 4px;
+  background: rgba(12, 12, 12, 0.92);
+  animation: life-archive-fragment-in 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes life-archive-fragment-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.life-archive-fragment__back {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-interface-metric);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.45);
+  cursor: pointer;
+}
+
+.life-archive-fragment__back:hover {
+  color: rgba(250, 248, 243, 0.82);
+}
+
+.life-archive-fragment__img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.life-archive-fragment__title {
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: clamp(1rem, 1.2vw, 1.12rem);
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(250, 248, 243, 0.92);
+}
+
+.life-archive-fragment__block {
+  margin: 0;
+}
+
+.life-archive-fragment__label {
+  margin: 0 0 6px;
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.38);
+}
+
+.life-archive-fragment__text {
+  margin: 0;
+  font-family: var(--font-editorial);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(250, 248, 243, 0.62);
+}
+
+.life-archive-fragment__close {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.35);
+  cursor: pointer;
+}
+
+.life-archive-fragment__close:hover {
+  color: rgba(250, 248, 243, 0.7);
+}
+
+/* Hide portfolio guide duplicate orb while in this section */
+.portfolio-guide--life-archive {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .life-archive-experience__detail {
+    grid-template-columns: 1fr;
+  }
+
+  .life-archive-fragment--embedded {
+    position: relative;
+    top: auto;
+    max-height: none;
+  }
+
+  .life-archive-view-header {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .life-archive-view-header__orb {
+    display: flex;
+    justify-content: center;
+  }
+
+  .life-archive-view-header__field {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    text-align: left;
+  }
+}
+
+@media (min-width: 900px) {
+  .life-archive-guide__view-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .life-archive-guide__views {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .life-archive-card--stream {
+    width: 108px;
+    margin-left: -32px;
+  }
+
+  .life-archive-card--view {
+    width: 96px;
+    margin-left: -28px;
+  }
+
+  .life-archive-guide__view-btn {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .life-archive-card--stream,
+  .life-archive-card--view,
+  .life-archive-experience__view,
+  .life-archive-experience__detail,
+  .life-archive-fragment {
+    animation: none;
+    transition: none;
+  }
+}

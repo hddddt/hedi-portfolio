@@ -1,0 +1,169 @@
+/* Global readability — type size + muted text (lighter gray = higher contrast) */
+
+/* — Section ribbons — */
+.narrative-chapter__ribbon {
+  color: rgba(250, 248, 243, var(--read-ribbon-idle));
+}
+
+.narrative-chapter--active .narrative-chapter__ribbon {
+  color: rgba(250, 248, 243, var(--read-ribbon-active));
+}
+
+.cap-dial-chapter .narrative-chapter__ribbon,
+.work-narrative-chapter .narrative-chapter__ribbon,
+.home-pov .narrative-chapter__ribbon,
+.home-life-archive .narrative-chapter__ribbon {
+  color: rgba(250, 248, 243, var(--read-ribbon-idle));
+}
+
+.narrative-chapter--active.cap-dial-chapter .narrative-chapter__ribbon,
+.narrative-chapter--active.work-narrative-chapter .narrative-chapter__ribbon,
+.narrative-chapter--active.home-pov .narrative-chapter__ribbon,
+.narrative-chapter--active.home-life-archive .narrative-chapter__ribbon {
+  color: rgba(250, 248, 243, var(--read-ribbon-active));
+}
+
+.narrative-chapter__ribbon-num,
+.narrative-chapter__ribbon-label,
+.narrative-chapter__ribbon-sep {
+  font-size: var(--read-font-min);
+}
+
+.narrative-chapter__ribbon-sep {
+  opacity: var(--read-label-opacity);
+}
+
+/* — Capabilities — */
+.cap-dial__lede {
+  color: rgba(255, 255, 255, var(--read-lede-opacity));
+}
+
+.cap-dial__section-intro,
+.cap-dial__footer {
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}
+
+.cap-dial__kicker,
+.cap-dial__arc-label {
+  color: rgba(255, 255, 255, var(--read-label-opacity));
+}
+
+.cap-dial__chip {
+  font-size: var(--read-font-chip);
+  padding: 8px 16px;
+}
+
+.cap-dial__chip--secondary {
+  color: rgba(255, 255, 255, var(--read-body-opacity));
+}
+
+.cap-dial__chip--secondary:hover {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* — Case study flows (all cases) — */
+.case01-flow {
+  --case1-text-secondary: rgba(250, 248, 243, 0.8);
+  --case1-text-tertiary: rgba(250, 248, 243, var(--read-body-opacity));
+  --case1-label-artifact: rgba(250, 248, 243, var(--read-label-opacity));
+  --case1-label-section: rgba(250, 248, 243, 0.65);
+}
+
+.case01-flow--case01 {
+  --case1-text-secondary: rgba(250, 248, 243, 0.8);
+  --case1-text-tertiary: rgba(250, 248, 243, var(--read-body-opacity));
+  --case1-label-artifact: rgba(250, 248, 243, var(--read-label-opacity));
+  --case1-label-section: rgba(250, 248, 243, 0.65);
+}
+
+.case01-label,
+.case01-block > .case01-label,
+.case01-context-details__label {
+  color: var(--case1-label-section);
+}
+
+.case01-body--muted,
+.case01-meta,
+.case01-outcome-line {
+  color: var(--case1-text-tertiary);
+}
+
+.case01-applied-tags__tag,
+.case01-scope-decisions__pill,
+.case01-project-map__pill,
+.case01-evidence-notes,
+.case01-staged-table th,
+.case01-staged-table td {
+  font-size: var(--read-font-min);
+}
+
+/* — Primary header nav — */
+.home-header__link {
+  font-size: clamp(var(--read-font-min), 0.9vw, 14px);
+  opacity: 0.88;
+}
+
+.home-header__mark {
+  font-size: clamp(var(--read-font-min), 0.95vw, 14px);
+}
+
+/* — Point of View & Work — */
+.home-pov__kicker,
+.home-pov__source-kicker,
+.work-narrative__meta,
+.work-narrative__case-label,
+.work-narrative__visual-placeholder-label {
+  font-size: var(--read-font-min);
+  color: rgba(250, 248, 243, var(--read-label-opacity));
+}
+
+.home-pov__lede,
+.home-pov__body,
+.work-narrative__lede,
+.work-narrative__intro,
+.work-narrative__intro--muted {
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}
+
+.home-transition-line {
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}
+
+/* — Section 05 Path — */
+.home-me-path__kicker {
+  color: rgba(250, 248, 243, var(--read-label-opacity));
+  font-size: var(--read-font-min);
+}
+
+.home-me-path__p {
+  color: rgba(250, 248, 243, 0.84);
+}
+
+.home-me-path__pull .home-me-path__p {
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}
+
+/* — Life archive — */
+.life-archive-intent__subtitle,
+.life-archive-intent__instruction,
+.life-archive__framing-line {
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}
+
+.life-archive-intent__title {
+  color: rgba(250, 248, 243, 0.92);
+}
+
+/* — Evidence panels — */
+.evidence-image__caption,
+.evidence-image__label {
+  font-size: var(--read-font-min);
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}
+
+/* — Project access modal — */
+.project-access__hint,
+.project-access__error {
+  font-size: var(--read-font-min);
+  color: rgba(250, 248, 243, var(--read-body-opacity));
+}

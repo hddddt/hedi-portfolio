@@ -112,67 +112,105 @@ export const homeScrollChapters = cases.map((c) => {
   };
 });
 
-/** Capability dial — scroll-driven active state (home narrative) */
+/** Capability section — static copy + scroll-driven panels (home narrative) */
+export const capabilitySectionCopy = {
+  headline: 'I bring structure to complex products.',
+  intro:
+    'Where AI, workflows, decisions, and ownership need to become usable in real operations.',
+  footer: '',
+};
+
 export const homeCapabilities = [
   {
-    id: 'ai-systems',
+    id: 'product-framing',
     code: '01',
-    label: 'AI Systems',
-    headline: 'AI Systems',
-    description:
-      'Defining how AI enters real workflows: what it should support, automate, validate, escalate, or hand off.',
-    pills: [
-      'AI role definition',
-      'workflow integration',
-      'uncertainty handling',
-      'fallback logic',
-      'escalation paths',
+    label: 'Product Framing',
+    headline: 'Product Framing',
+    headlineLines: ['Product Framing'],
+    railLabelLines: ['Product Framing'],
+    description: 'What problem should the product solve — and why now?',
+    pillsPrimary: [
+      'Problem definition',
+      'User needs',
+      'Business goals',
+      'Use cases',
+      'Product requirements',
+      'Stakeholder alignment',
+    ],
+    pillsSecondary: [
+      'Product discovery',
+      'User journeys',
+      'Jobs-to-be-done',
+      'Scope definition',
     ],
   },
   {
-    id: 'product-structure',
+    id: 'product-experience',
     code: '02',
-    label: 'Product Structure',
-    headline: 'Product Structure',
-    description: 'Making complex enterprise products easier to understand, operate, and scale.',
-    pills: [
-      'Information architecture',
-      'Product logic',
-      'Workflow mapping',
-      'System mapping',
+    label: 'Product Experience Design',
+    headline: 'Product Experience Design',
+    headlineLines: ['Product Experience', 'Design'],
+    railLabelLines: ['Product Experience', 'Design'],
+    description: 'How does the product become clear, usable, and buildable?',
+    pillsPrimary: [
       'User flows',
+      'Information architecture',
+      'Wireframes',
+      'Prototypes',
+      'Interaction patterns',
+      'Design systems',
+    ],
+    pillsSecondary: [
+      'Usability testing',
+      'Edge cases',
+      'Accessibility',
+      'Developer handoff',
     ],
   },
   {
-    id: 'decision-design',
+    id: 'ai-workflow-architecture',
     code: '03',
-    label: 'Decision Design',
-    headline: 'Decision Design',
-    description:
-      'Turning AI outputs into reviewable decisions with states, ownership, provenance, and traceability.',
-    pills: ['answer states', 'review logic', 'provenance', 'decision ownership', 'auditability'],
-  },
-  {
-    id: 'human-ai',
-    code: '04',
-    label: 'Human-AI Collaboration',
-    headline: 'Human–AI Collaboration',
-    description: 'Defining when AI acts, when humans intervene, and how control moves between them.',
-    pills: [
-      'control boundaries',
-      'intervention points',
-      'handoff logic',
-      'trust calibration',
-      'escalation model',
+    label: 'AI Workflow & Service Architecture',
+    headline: 'AI Workflow & Service Architecture',
+    headlineLines: ['AI Workflow &', 'Service Architecture'],
+    railLabelLines: ['AI Workflow &', 'Service Architecture'],
+    description: 'How should AI, users, tools, and systems move work toward completion?',
+    pillsPrimary: [
+      'Human-AI workflows',
+      'Agentic workflows',
+      'Conversation flows',
+      'Service flows',
+      'System states',
+      'Tool integrations',
+    ],
+    pillsSecondary: [
+      'Backend integration',
+      'Task automation',
+      'Knowledge base integration',
+      'Workflow orchestration',
     ],
   },
   {
-    id: 'product-strategy',
-    code: '05',
-    label: 'Product Strategy',
-    headline: 'Product Strategy',
-    description:
-      'Translating ambiguous AI opportunities into product direction, value logic, and operating structure.',
-    pills: ['problem framing', 'value translation', 'prioritization', 'roadmap logic', 'system positioning'],
+    id: 'decision-trust-control',
+    code: '04',
+    label: 'Decision, Trust & Control',
+    headline: 'Decision, Trust & Control',
+    headlineLines: ['Decision,', 'Trust & Control'],
+    railLabelLines: ['Decision,', 'Trust & Control'],
+    description: 'How do people verify, intervene, and stay responsible when AI is involved?',
+    pillsPrimary: [
+      'Human-in-the-loop',
+      'Traceability',
+      'Explainability',
+      'Source attribution',
+      'Escalation paths',
+      'Approval flows',
+    ],
+    pillsSecondary: [
+      'Audit trails',
+      'Confidence signals',
+      'Risk controls',
+      'Governance workflows',
+    ],
   },
 ];

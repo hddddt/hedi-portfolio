@@ -1,0 +1,29 @@
+/* Landing: .opening-card__field-slot. Scroll: .organic-field-host--viewport */
+
+.organic-field{
+  pointer-events:none;
+  overflow:hidden;
+  background:transparent;
+}
+
+.organic-field--viewport{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+
+.opening-card__field-slot .organic-field--in-card{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  width:100%;
+  height:100%;
+}
+
+.organic-field__canvas{
+  display:block;
+  width:100%;
+  height:100%;
+  vertical-align:top;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useProjectAccess } from '../../context/ProjectAccessContext.jsx';
 import { WorkCaseDetail } from './WorkCaseDetail.jsx';
 
 function visualRole(i, activeIdx) {
@@ -19,6 +20,7 @@ function caseOpenLabel(item) {
 }
 
 export function WorkNarrativeSection({ cases = [] }) {
+  const { unlocked, requestAccess, pendingCaseId, clearPendingCase } = useProjectAccess();
   const wrapRef = useRef(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [openCaseId, setOpenCaseId] = useState(null);
@@ -53,6 +55,12 @@ export function WorkNarrativeSection({ cases = [] }) {
   }, [n, openCaseId]);
 
   useEffect(() => {
+    if (!unlocked || !pendingCaseId) return;
+    setOpenCaseId(pendingCaseId);
+    clearPendingCase();
+  }, [unlocked, pendingCaseId, clearPendingCase]);
+
+  useEffect(() => {
     if (!openCaseId) return undefined;
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -63,6 +71,20 @@ export function WorkNarrativeSection({ cases = [] }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [openCaseId]);
+
+  useEffect(() => {
+    const onGuideOpenCase = (e) => {
+      const caseId = e?.detail?.caseId;
+      if (!caseId) return;
+      if (!unlocked) {
+        requestAccess(caseId);
+        return;
+      }
+      setOpenCaseId(caseId);
+    };
+    window.addEventListener('portfolio-guide-open-case', onGuideOpenCase);
+    return () => window.removeEventListener('portfolio-guide-open-case', onGuideOpenCase);
+  }, [unlocked, requestAccess]);
 
   if (!n || !c) {
     return (
@@ -78,6 +100,7 @@ export function WorkNarrativeSection({ cases = [] }) {
   return (
     <>
     <section
+      id="home-work-strongest"
       ref={wrapRef}
       className={`work-scroll${openItem ? ' work-scroll--detail-open' : ''}`}
       aria-hidden={openItem ? true : undefined}
@@ -114,20 +137,28 @@ export function WorkNarrativeSection({ cases = [] }) {
               const offset = i - idx;
               if (Math.abs(offset) > 1) return null;
               const role = visualRole(i, idx);
+              const locked = !unlocked;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`work-narrative__visual ${role}`}
+                  className={`work-narrative__visual ${role}${locked ? ' work-narrative__visual--locked' : ''}`}
                   style={{
                     '--slide-offset': offset,
                     zIndex: offset === 0 ? 10 : 8 - Math.abs(offset),
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!unlocked) {
+                      requestAccess(item.id);
+                      return;
+                    }
                     setOpenCaseId(item.id);
                   }}
-                  aria-label={caseOpenLabel(item)}
+                  aria-label={
+                    locked ? `${caseOpenLabel(item)} — password required` : caseOpenLabel(item)
+                  }
+                  aria-disabled={locked || undefined}
                 >
                   <span className="work-narrative__visual-inner">
                     {item.coverSrc ? (
@@ -139,7 +170,21 @@ export function WorkNarrativeSection({ cases = [] }) {
                         decoding="async"
                       />
                     ) : null}
-                    <span className="work-narrative__visual-hint">View case</span>
+                    <span className="work-narrative__visual-hint">
+                      {locked ? 'Password required' : 'View case'}
+                    </span>
+                    {locked ? (
+                      <span className="work-narrative__lock" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v10H6V11z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    ) : null}
                   </span>
                 </button>
               );

@@ -1,0 +1,325 @@
+/* Handmade blob guide character: no gradients, no shadows, no 3D effects */
+
+.guide-orb{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  pointer-events:none;
+  transform-origin:50% 70%;
+  --guide-orb-fill:#c8f000;
+}
+
+.guide-orb__svg{
+  width:100%;
+  height:100%;
+  overflow:visible;
+  display:block;
+}
+
+.guide-orb.is-alive{
+  transform:translate(var(--guide-drift-x, 0), var(--guide-drift-y, 0));
+  transition:transform 120ms ease-out;
+}
+
+.guide-orb__float{
+  transform-origin:50% 70%;
+  animation:guide-blob-float 3.5s ease-in-out infinite;
+}
+
+.guide-orb.is-alive .guide-orb__float{
+  animation:
+    guide-blob-float 3.2s ease-in-out infinite,
+    guide-blob-sway 7.5s ease-in-out infinite;
+}
+
+.guide-orb__body-wrap{
+  transform-origin:50% 68%;
+  transform-box:fill-box;
+}
+
+.guide-orb.is-alive .guide-orb__body-wrap{
+  animation:guide-blob-morph 5.8s ease-in-out infinite;
+}
+
+@keyframes guide-blob-float{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-4px); }
+}
+
+@keyframes guide-blob-sway{
+  0%,100%{ transform:translateX(0) rotate(0deg); }
+  35%{ transform:translateX(1.5px) rotate(-1.2deg); }
+  68%{ transform:translateX(-1.2px) rotate(1deg); }
+}
+
+@keyframes guide-blob-morph{
+  0%,100%{ transform:scale(1, 1) rotate(0deg); }
+  28%{ transform:scale(1.05, 0.94) rotate(-2deg); }
+  52%{ transform:scale(0.96, 1.04) rotate(1.5deg); }
+  76%{ transform:scale(1.03, 0.97) rotate(-0.8deg); }
+}
+
+.guide-orb__body{
+  fill:var(--guide-orb-fill);
+  transition:
+    fill 900ms ease-in-out,
+    transform 700ms ease;
+}
+
+.guide-orb__texture,
+.guide-orb__freckles,
+.guide-orb__spark{
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 800ms ease-in-out;
+}
+
+.guide-orb__texture path{
+  fill:none;
+  stroke:rgba(0,0,0,.08);
+  stroke-width:1px;
+  stroke-linecap:round;
+}
+
+.guide-orb__mouth{
+  opacity:0;
+  transition:opacity 400ms ease-in-out;
+}
+
+.guide-orb__eyes-move{
+  transform-origin:50% 30%;
+  transition:transform 600ms ease;
+}
+
+.guide-orb__eyes-blink{
+  transform-origin:50% 30%;
+  transform-box:fill-box;
+  transition:transform 250ms ease;
+}
+
+.guide-orb.is-blinking .guide-orb__eyes-blink{
+  transform:scaleY(.1);
+}
+
+.guide-orb__eyes-look{
+  transform-origin:50% 30%;
+  transition:transform 600ms ease;
+}
+
+.guide-orb.is-alive:not(.is-thinking):not(.is-following) .guide-orb__eyes-look{
+  animation:guide-blob-eye-wander 4.2s ease-in-out infinite;
+}
+
+@keyframes guide-blob-eye-wander{
+  0%,100%{ transform:translate(0, 0); }
+  22%{ transform:translate(0.8px, -0.4px); }
+  48%{ transform:translate(-0.6px, 0.5px); }
+  74%{ transform:translate(0.5px, 0.3px); }
+}
+
+.guide-orb__eye{
+  fill:#0a0a0a;
+}
+
+/* —— Mood: default / neutral —— */
+.guide-orb--mood-neutral{
+  --guide-orb-fill:#c8f000;
+}
+.guide-orb--mood-neutral .guide-orb__mouth--neutral{
+  opacity:1;
+}
+
+/* —— Mood: warm —— */
+.guide-orb--mood-warm{
+  --guide-orb-fill:#f5a623;
+}
+.guide-orb--mood-warm .guide-orb__body{
+  transform:scale(1.02,.98);
+}
+.guide-orb--mood-warm .guide-orb__mouth--warm{
+  opacity:1;
+}
+
+/* —— Mood: playful —— */
+.guide-orb--mood-playful{
+  --guide-orb-fill:#ff6b6b;
+}
+.guide-orb--mood-playful .guide-orb__body{
+  transform:scale(1.03,1.01) rotate(-1deg);
+}
+.guide-orb--mood-playful .guide-orb__mouth--playful{
+  opacity:1;
+}
+.guide-orb--mood-playful .guide-orb__freckles{
+  opacity:1;
+}
+
+/* —— Mood: calm —— */
+.guide-orb--mood-calm{
+  --guide-orb-fill:#a8d8ea;
+}
+.guide-orb--mood-calm .guide-orb__body{
+  transform:scale(.99,1.01);
+}
+.guide-orb--mood-calm .guide-orb__mouth--calm{
+  opacity:1;
+}
+.guide-orb--mood-calm .guide-orb__eyes-look{
+  transform:translateY(1.5px);
+}
+
+/* —— Mood: uncanny —— */
+.guide-orb--mood-uncanny{
+  --guide-orb-fill:#9b59b6;
+}
+.guide-orb--mood-uncanny .guide-orb__body{
+  transform:scale(1.01,.99) rotate(1deg);
+}
+.guide-orb--mood-uncanny .guide-orb__mouth--uncanny{
+  opacity:1;
+}
+.guide-orb--mood-uncanny .guide-orb__texture{
+  opacity:1;
+}
+
+/* —— Mood: experimental —— */
+.guide-orb--mood-experimental{
+  --guide-orb-fill:#c8f000;
+}
+.guide-orb--mood-experimental .guide-orb__body{
+  transform:scale(1.02,1.02);
+}
+.guide-orb--mood-experimental .guide-orb__mouth--experimental{
+  opacity:1;
+}
+.guide-orb--mood-experimental .guide-orb__spark{
+  opacity:1;
+}
+
+/* —— Mood: wonder (idle beat) —— */
+.guide-orb--mood-wonder{
+  --guide-orb-fill:#c8f000;
+}
+.guide-orb--mood-wonder .guide-orb__body{
+  transform:scale(1.01,.99);
+}
+.guide-orb--mood-wonder .guide-orb__mouth--wonder{
+  opacity:1;
+}
+.guide-orb--mood-wonder .guide-orb__eyes-look{
+  transform:translateY(-0.5px);
+}
+
+/* —— Mood: stark —— */
+.guide-orb--mood-stark{
+  --guide-orb-fill:#6c757d;
+}
+.guide-orb--mood-stark .guide-orb__body{
+  transform:scale(.98,.99);
+}
+.guide-orb--mood-stark .guide-orb__mouth--stark{
+  opacity:1;
+}
+.guide-orb--mood-stark .guide-orb__eyes-look{
+  transform:translateY(2px);
+}
+
+/* —— Mood: sensory —— */
+.guide-orb--mood-sensory{
+  --guide-orb-fill:#ff4500;
+}
+.guide-orb--mood-sensory .guide-orb__mouth--neutral{
+  opacity:1;
+}
+.guide-orb--mood-sensory .guide-orb__float{
+  animation:
+    guide-blob-float 3.5s ease-in-out infinite,
+    guide-blob-sensory-pulse 1s ease-in-out infinite;
+}
+
+@keyframes guide-blob-sensory-pulse{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.06); }
+}
+
+/* Hover smile — neutral only, when not expressing a photo mood */
+.guide-orb--mood-neutral.is-hovered{
+  transform:translate(var(--guide-drift-x, 0), var(--guide-drift-y, 0)) scale(1.08);
+  transition:transform 200ms ease;
+}
+.guide-orb--mood-neutral.is-hovered .guide-orb__mouth--neutral{
+  opacity:0;
+}
+.guide-orb--mood-neutral.is-hovered .guide-orb__mouth--hover{
+  opacity:1;
+}
+
+.guide-orb:not(.guide-orb--mood-neutral).is-hovered{
+  transform:scale(1.06);
+  transition:transform 200ms ease;
+}
+
+/* Thinking */
+.guide-orb.is-thinking .guide-orb__float{
+  animation:guide-blob-thinking 700ms ease-in-out 1;
+}
+
+@keyframes guide-blob-thinking{
+  0%{ transform:translateY(0) rotate(-2deg); }
+  50%{ transform:translateY(0) rotate(2deg); }
+  100%{ transform:translateY(0) rotate(0deg); }
+}
+
+.guide-orb.is-thinking .guide-orb__eyes-look{
+  animation:guide-blob-eye-look 500ms ease-in-out 1;
+}
+
+@keyframes guide-blob-eye-look{
+  0%{ transform:translateX(0); }
+  50%{ transform:translateX(-1.5px); }
+  100%{ transform:translateX(0); }
+}
+
+/* Speaking while typing */
+.guide-orb.is-speaking:not(.guide-orb--mood-sensory) .guide-orb__float{
+  animation:guide-blob-float 3.5s ease-in-out infinite, guide-blob-speaking 1.4s ease-in-out infinite;
+}
+
+@keyframes guide-blob-speaking{
+  0%,100%{ transform:scale(1); }
+  50%{ transform:scale(1.05); }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .guide-orb.is-alive,
+  .guide-orb.is-alive:not(.is-hovered){
+    animation:none !important;
+    transform:none !important;
+  }
+  .guide-orb__float,
+  .guide-orb.is-alive .guide-orb__float,
+  .guide-orb.is-alive .guide-orb__body-wrap,
+  .guide-orb--mood-sensory .guide-orb__float,
+  .guide-orb.is-speaking:not(.guide-orb--mood-sensory) .guide-orb__float{
+    animation:none !important;
+  }
+  .guide-orb.is-thinking .guide-orb__float{
+    animation:none !important;
+  }
+  .guide-orb.is-alive .guide-orb__eyes-look{
+    animation:none !important;
+  }
+  .guide-orb__eyes-blink,
+  .guide-orb__body,
+  .guide-orb__eyes-look,
+  .guide-orb__texture,
+  .guide-orb__freckles,
+  .guide-orb__spark,
+  .guide-orb__mouth{
+    transition:none !important;
+  }
+  .guide-orb__eyes-look{
+    animation:none !important;
+  }
+}

@@ -10,6 +10,9 @@ import stakeholderOverlap from '../assets/case01/shs/stakeholder-overlap.png';
 import personaMap from '../assets/case01/shs/persona-map.png';
 import personaJourneyMatrix from '../assets/case01/shs/persona-journey-trigger-matrix.png';
 import cognigyShipmentFlow from '../assets/case01/cognigy-shipment-support-flow.png';
+import aiRecommendationRouting from '../assets/case01/ai-recommendation-routing.png';
+import domainHandbookExamples from '../assets/case01/domain-handbook-examples.png';
+import conversationalDashboardHome from '../assets/case01/conversational-dashboard-home.png';
 
 /** Zoom into left-column JTBD / persona on the journey crop (crop 01). */
 const CROP_01_FOCUS = { scale: 2.55, x: 34, y: 4 };
@@ -64,6 +67,16 @@ export const DECISION_01_UX_ARTIFACT = {
     dedicated: true,
     alt: 'Stakeholder overlap model — aligned around a shared system',
   },
+  panels: [
+    {
+      id: 'conversational-dashboard-home',
+      title: 'Defined service dashboard',
+      src: conversationalDashboardHome,
+      alt: 'Conversational AI home with user role context, task shortcuts, recent chats, and chat entry',
+      caption:
+        'Conversation is the entry point, not the whole product—role, location, and task shortcuts (tickets, daily check, OEM process) frame support work before the user asks.',
+    },
+  ],
 };
 
 /** Knowledge-base framing for Decision 01 — Enterprise Knowledge Routing tab. */
@@ -84,6 +97,22 @@ export const DECISION_01_KNOWLEDGE_ARTIFACT = {
       alt: 'Matrix mapping compliance officer, specialist, and general employee personas to case-driven, task-driven, and reference-driven mindsets',
       caption:
         'One entry point must unify three mindsets—case-driven interpretation, task completion, and quick reference—across roles before answers are generated.',
+    },
+    {
+      id: 'ai-recommendation-routing',
+      title: 'AI recommendation routing',
+      src: aiRecommendationRouting,
+      alt: 'AI recommendation screen routing a user question to the Legal Handbook with detected topic and keywords',
+      caption:
+        'From natural-language description to routed handbook: detected topic and keyword signals stay visible before the user enters a domain.',
+    },
+    {
+      id: 'domain-handbook-examples',
+      title: 'Domain handbook examples',
+      src: domainHandbookExamples,
+      alt: 'Legal, Compliance, and ICP Export Control handbook cards with example questions by domain',
+      caption:
+        'Knowledge domains stay separated at entry—Legal, Compliance, and export-control contexts do not collapse into one generic chatbot.',
     },
   ],
 };

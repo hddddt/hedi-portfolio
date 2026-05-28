@@ -61,6 +61,26 @@ export const CASE01_FLOW = [
     ],
   },
   {
+    id: 'project-map',
+    type: 'project-map',
+    intro:
+      'Three separate projects.\nEach surfaces the same structural problem\nfrom a different angle.',
+    rows: [
+      {
+        name: 'Customer Service AI Strategy',
+        decisions: ['D1'],
+      },
+      {
+        name: 'Enterprise Knowledge Routing',
+        decisions: ['D1', 'D3'],
+      },
+      {
+        name: 'Transactional Support Flow',
+        decisions: ['D2', 'D3'],
+      },
+    ],
+  },
+  {
     id: 'decision-d1',
     type: 'decision',
     d: 'D1',
@@ -72,8 +92,9 @@ export const CASE01_FLOW = [
       'Conversational AI POCs often start from visible chat behavior before the service system is understood.',
     coreMove:
       'I reframed the starting point from chatbot behavior to service-system structure.',
-    appliedInTabs: [
+    appliedInCases: [
       {
+        caseNum: 1,
         id: 'customer-service-ai',
         label: 'Customer Service AI Strategy',
         question:
@@ -90,11 +111,17 @@ export const CASE01_FLOW = [
         artifacts: [
           { type: 'artifact-inset', label: 'Stakeholder overlap model' },
           { type: 'artifact-journey', label: 'Service journey and AI entry points' },
+          {
+            type: 'artifact-image',
+            artifactId: 'conversational-dashboard-home',
+            label: 'Defined service dashboard',
+          },
         ],
         outcome:
           'AI value became tied to service moments, not only chatbot interaction.',
       },
       {
+        caseNum: 2,
         id: 'enterprise-knowledge',
         label: 'Enterprise Knowledge Routing',
         question:
@@ -115,6 +142,16 @@ export const CASE01_FLOW = [
             artifactId: 'persona-journey-matrix',
             label: 'Persona & journey trigger matrix',
           },
+          {
+            type: 'artifact-image',
+            artifactId: 'ai-recommendation-routing',
+            label: 'AI recommendation routing',
+          },
+          {
+            type: 'artifact-image',
+            artifactId: 'domain-handbook-examples',
+            label: 'Domain handbook entry',
+          },
         ],
         outcome:
           'The chatbot direction shifted from “answer everyone” to safer knowledge access across domains and expertise levels.',
@@ -129,6 +166,7 @@ export const CASE01_FLOW = [
     d: 'D2',
     slug: 'd2',
     module: true,
+    contextReminder: 'D2 draws from Transactional Support Flow',
     title: 'Flow, Recovery & Handoff Architecture',
     subtitle: 'Design how the system continues when the happy path breaks.',
     aiProblem: 'Many conversational AI demos only work when the user gives the expected input.',
@@ -166,6 +204,7 @@ export const CASE01_FLOW = [
     d: 'D3',
     slug: 'd3',
     module: true,
+    contextReminder: 'D3 draws from Enterprise Knowledge Routing · Transactional Support Flow',
     title: 'Response, Trust & Repair Patterns',
     subtitle: 'Turn responses into guidance, source visibility, and repair mechanisms.',
     aiProblem:

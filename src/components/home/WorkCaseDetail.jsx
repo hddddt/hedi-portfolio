@@ -2,7 +2,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../../styles/case01-staged.css';
 import { WORK_CASE_DETAIL } from '../../data/workCaseDetailContent.js';
-import { Case01StagedFlow } from './Case01StagedFlow.jsx';
+import { CASE01_FLOW } from '../../data/workCaseDetailCase01.js';
+import { CASE02_FLOW } from '../../data/workCaseDetailCase02.js';
+import { CASE03_FLOW } from '../../data/workCaseDetailCase03.js';
+import { CASE04_FLOW } from '../../data/workCaseDetailCase04.js';
+import { StagedCaseFlow } from './Case01StagedFlow.jsx';
+import { HeroAnswerStateModel } from './HeroAnswerStateModel.jsx';
+
+const STAGED_CASE_FLOW = {
+  case01: CASE01_FLOW,
+  case02: CASE02_FLOW,
+  case03: CASE03_FLOW,
+  case04: CASE04_FLOW,
+};
+
+const CASE_SWITCHER_ORDER = ['case01', 'case02', 'case03', 'case04'];
+
+function isStagedCaseId(caseId, evidence) {
+  if (!evidence?.staged) return false;
+  return caseId === 'case01' || caseId === 'case02' || caseId === 'case03' || caseId === 'case04';
+}
 
 function caseDockLabel(num) {
   const digits = String(num ?? '').replace(/\D/g, '');
@@ -149,42 +168,7 @@ function DesignDecisionBlock({ decision }) {
   );
 }
 
-function HeroAnswerStateModel({ hero }) {
-  return (
-    <figure className="work-case-detail__hero-evidence">
-      <h4 className="work-case-detail__hero-evidence-title">{hero.title}</h4>
-      <div className="work-case-detail__state-model">
-        <div className="work-case-detail__state-track">
-          {hero.states.map((state, i) => (
-            <div key={state.label} className="work-case-detail__state-step">
-            <div className="work-case-detail__state-card">
-              <p className="work-case-detail__state-label">{state.label}</p>
-              {state.lines.map((line) => (
-                <p key={line} className="work-case-detail__state-line">
-                  {line}
-                </p>
-              ))}
-            </div>
-            {i < hero.states.length - 1 ? (
-              <span className="work-case-detail__state-arrow" aria-hidden="true">
-                ↓
-              </span>
-            ) : null}
-            </div>
-          ))}
-        </div>
-        <ul className="work-case-detail__state-labels" aria-label="State dimensions">
-          {hero.sideLabels.map((label) => (
-            <li key={label}>{label}</li>
-          ))}
-        </ul>
-      </div>
-      <figcaption className="work-case-detail__hero-caption">{hero.caption}</figcaption>
-    </figure>
-  );
-}
-
-function CaseMapColumn({ map, activeSection, onNavClick }) {
+function CaseMapColumn({ map, activeSection, onNavClick, sectionPrefix = 'case01' }) {
   const rail = map.railMode;
   const decisions = map.readingMap.decisions ?? [];
   const provesLabel = map.provesLabel ?? 'Why this layer matters';
@@ -215,7 +199,7 @@ function CaseMapColumn({ map, activeSection, onNavClick }) {
             return (
               <a
                 key={slug}
-                href={`#case01-${slug}`}
+                href={`#${sectionPrefix}-${slug}`}
                 className={`work-case-detail__rail-nav-item${isActive ? ' work-case-detail__rail-nav-item--active' : ''}`}
                 aria-current={isActive ? 'true' : undefined}
                 onClick={(e) => {
@@ -249,10 +233,18 @@ function CaseMapColumn({ map, activeSection, onNavClick }) {
 }
 
 function EvidenceFlowColumn({ evidence, caseId }) {
-  if (caseId === 'case01' && evidence?.staged) {
+  if (isStagedCaseId(caseId, evidence)) {
+    const flow = STAGED_CASE_FLOW[caseId];
+    if (!flow) {
+      return (
+        <div className="work-case-detail__evidence-inner work-case-detail__evidence-inner--staged">
+          <p className="work-case-detail__p">Staged flow unavailable.</p>
+        </div>
+      );
+    }
     return (
       <div className="work-case-detail__evidence-inner work-case-detail__evidence-inner--staged">
-        <Case01StagedFlow />
+        <StagedCaseFlow flow={flow} sectionPrefix={caseId} />
       </div>
     );
   }
@@ -397,45 +389,52 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
   const scrollRef = useRef(null);
   const [activeSection, setActiveSection] = useState('d1');
   const detail = WORK_CASE_DETAIL[item.id];
-  const siblings = allCases.filter((c) => c.id !== item.id);
+  const switcherCases = CASE_SWITCHER_ORDER.map((id) => allCases.find((c) => c.id === id)).filter(
+    (c) => c && WORK_CASE_DETAIL[c.id],
+  );
   const caseMap = detail?.caseMap;
   const evidence = detail?.evidence;
-  const isCase01 = item.id === 'case01';
+  const isStagedCase = isStagedCaseId(item.id, evidence);
+  const sectionPrefix = item.id;
 
-  const scrollToSection = useCallback((slug) => {
-    const root = scrollRef.current;
-    const target = document.getElementById(`case01-${slug}`);
-    if (!root || !target) return;
-    const top = target.offsetTop - root.offsetTop - 12;
-    root.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-    setActiveSection(slug);
-  }, []);
+  const scrollToSection = useCallback(
+    (slug) => {
+      const root = scrollRef.current;
+      const target = document.getElementById(`${sectionPrefix}-${slug}`);
+      if (!root || !target) return;
+      const top = target.offsetTop - root.offsetTop - 80;
+      root.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      setActiveSection(slug);
+    },
+    [sectionPrefix],
+  );
 
   useEffect(() => {
-    if (!isCase01) return undefined;
+    if (!isStagedCase) return undefined;
     const root = scrollRef.current;
     if (!root) return undefined;
 
     const sectionSlugs = ['d1', 'd2', 'd3'];
+    const prefix = `${sectionPrefix}-`;
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
         if (visible[0]?.target?.id) {
-          setActiveSection(visible[0].target.id.replace('case01-', ''));
+          setActiveSection(visible[0].target.id.replace(prefix, ''));
         }
       },
-      { root, rootMargin: '-12% 0px -52% 0px', threshold: [0.08, 0.2, 0.45] },
+      { root, threshold: 0.3 },
     );
 
     sectionSlugs.forEach((slug) => {
-      const el = document.getElementById(`case01-${slug}`);
+      const el = document.getElementById(`${sectionPrefix}-${slug}`);
       if (el) observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, [isCase01, item.id]);
+  }, [isStagedCase, sectionPrefix]);
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -449,8 +448,8 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-    if (isCase01) setActiveSection('d1');
-  }, [item.id, isCase01]);
+    if (isStagedCase) setActiveSection('d1');
+  }, [item.id, isStagedCase]);
 
   if (!caseMap || !evidence) return null;
 
@@ -461,42 +460,56 @@ export function WorkCaseDetail({ item, allCases = [], onClose, onSelectCase }) {
       aria-modal="true"
       aria-labelledby="work-case-detail-title"
     >
-      <div className="work-case-detail">
-        <div className="work-case-detail__toolbar">
-          <button type="button" className="work-case-detail__back" onClick={onClose}>
-            ← Back to work
-          </button>
-        </div>
+      <header className="work-case-detail__topbar">
+        <button type="button" className="work-case-detail__back" onClick={onClose}>
+          ← Back to Work
+        </button>
+        {switcherCases.length > 1 ? (
+          <nav className="work-case-detail__case-switcher" aria-label="Case studies">
+            {switcherCases.map((navCase, index) => {
+              const label = caseDockLabel(navCase.num);
+              const isCurrent = navCase.id === item.id;
+              return (
+                <span key={navCase.id} className="work-case-detail__case-switcher-item">
+                  {index > 0 ? (
+                    <span className="work-case-detail__case-switcher-divider" aria-hidden="true">
+                      |
+                    </span>
+                  ) : null}
+                  {isCurrent ? (
+                    <span className="work-case-detail__case-switcher-num work-case-detail__case-switcher-num--current">
+                      {label}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="work-case-detail__case-switcher-num"
+                      onClick={() => onSelectCase?.(navCase.id)}
+                      aria-label={`View case ${label}`}
+                    >
+                      {label}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </nav>
+        ) : null}
+      </header>
 
+      <div className="work-case-detail">
         <div className="work-case-detail__shell">
           <CaseMapColumn
             map={caseMap}
-            activeSection={isCase01 ? activeSection : undefined}
-            onNavClick={isCase01 ? scrollToSection : undefined}
+            sectionPrefix={sectionPrefix}
+            activeSection={isStagedCase ? activeSection : undefined}
+            onNavClick={isStagedCase ? scrollToSection : undefined}
           />
 
           <div ref={scrollRef} className="work-case-detail__scroll" tabIndex={-1}>
             <EvidenceFlowColumn evidence={evidence} caseId={item.id} />
           </div>
         </div>
-
-        {siblings.length > 0 ? (
-          <nav className="work-case-detail__dock" aria-label="Other case studies">
-            <div className="work-case-detail__dock-inner">
-              {siblings.map((sibling) => (
-                <button
-                  key={sibling.id}
-                  type="button"
-                  className="work-case-detail__dock-btn"
-                  onClick={() => onSelectCase?.(sibling.id)}
-                  aria-label={`View case ${caseDockLabel(sibling.num)}`}
-                >
-                  {caseDockLabel(sibling.num)}
-                </button>
-              ))}
-            </div>
-          </nav>
-        ) : null}
       </div>
     </div>,
     document.body,

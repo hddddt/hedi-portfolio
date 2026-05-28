@@ -3,9 +3,7 @@
  * Verbatim copy; do not paraphrase.
  */
 
-import contractReviewRiskSummary from '../assets/case02/contract-review-risk-summary.png';
-import aiRecommendationRouting from '../assets/case02/ai-recommendation-routing.png';
-import domainHandbookExamples from '../assets/case02/domain-handbook-examples.png';
+import contractExcelleratorHero from '../assets/case02/contract-excellerator-hero.png';
 import orchestratorAgentChat from '../assets/case03/orchestrator-agent-chat.png';
 import agentOrchestrationSteps from '../assets/case03/agent-orchestration-steps.png';
 import manageAgentsDashboard from '../assets/case03/manage-agents-dashboard.png';
@@ -18,7 +16,7 @@ export const WORK_CASE_DETAIL = {
       aiValueLayer: 'Service-Flow Architecture for Conversational AI',
       provesLabel: 'WHAT THIS CASE PROVES',
       whyLayerMatters:
-        'I define how conversational AI moves from a chat surface into a service system: service-system framing, recovery and handoff architecture, and response-level trust and repair.',
+        'I design the layer where conversational AI becomes service work: routing the right context, recovering from failure, handing off with continuity, and making responses trustworthy enough to continue.',
       readingMap: {
         navLabel: 'ON THIS CASE',
         decisions: [
@@ -46,17 +44,19 @@ export const WORK_CASE_DETAIL = {
   case02: {
     caseMap: {
       caseTitle: 'Contract Intelligence',
-      aiValueLayer: 'AI Decision Traceability',
+      aiValueLayer: 'Decision traceability for AI-assisted contract review',
+      provesLabel: 'WHAT THIS CASE PROVES',
       whyLayerMatters:
-        'In AI-assisted review, output is not enough. The system must preserve authorship, state, and decision meaning.',
+        'I design the layer where AI-assisted contract analysis becomes reviewable judgment: separating generated insight from human edits, preserving source provenance, and making final decisions auditable.',
       readingMap: {
-        intro: 'This case looks at three questions:',
-        questions: [
-          'What is the real review flow behind multiple AI features?',
-          'How should AI support and human judgment be separated?',
-          'How can answer states preserve traceability?',
+        navLabel: 'Navigation',
+        decisions: [
+          { d: 'D1', slug: 'd1', title: 'Review Context Framing' },
+          { d: 'D2', slug: 'd2', title: 'Decision State Architecture' },
+          { d: 'D3', slug: 'd3', title: 'Provenance & Auditability Layer' },
         ],
       },
+      railMode: true,
       keySignals: [
         'Review workflow',
         'Answer states',
@@ -67,6 +67,7 @@ export const WORK_CASE_DETAIL = {
       ],
     },
     evidence: {
+      staged: true,
       projectContext: {
         lead: 'This project focused on an AI-assisted contract review product.\n\nThe system included multiple AI capabilities:',
         bullets: [
@@ -165,25 +166,11 @@ export const WORK_CASE_DETAIL = {
       },
       evidenceModules: [
         {
-          title: 'Contract review workspace',
-          image: contractReviewRiskSummary,
-          alt: 'Contract Excellerator risk summary with topic cards, BRC classifications, and AI-generated vs. user-edited states',
+          title: 'Contract Excellerator — Risk Summary & Topics',
+          image: contractExcelleratorHero,
+          alt: 'Contract Excellerator with contract preview, overall risk summary, BRC topic counts, and topic cards showing AI-generated vs You edited states',
           caption:
-            'Risk summary and topic review: contract text, AI-generated analysis, and human edit states stay visible in one workflow.',
-        },
-        {
-          title: 'AI recommendation routing',
-          image: aiRecommendationRouting,
-          alt: 'AI recommendation screen routing a user question to the Legal Handbook with detected topic and keywords',
-          caption:
-            'Entry routing surfaces the right handbook from the user description, with transparent topic and keyword signals.',
-        },
-        {
-          title: 'Domain handbook examples',
-          image: domainHandbookExamples,
-          alt: 'Legal, Compliance, and ICP Export Control handbook cards with example questions by domain',
-          caption:
-            'Knowledge domains are separated before answers are generated—Legal, Compliance, and export-control contexts do not collapse into one generic chatbot.',
+            'The primary review surface: contract text, overall assessment, BRC-level signals, and topic cards where + AI generated and You edited stay visible in one workflow.',
         },
         {
           label: 'Supporting',
@@ -213,16 +200,19 @@ export const WORK_CASE_DETAIL = {
   case03: {
     caseMap: {
       caseTitle: 'Supply Chain Agents',
-      aiValueLayer: 'Agentic Workflow Control',
-      whyLayerMatters: 'In agentic systems, automation alone does not scale. Control must be structured.',
+      aiValueLayer: 'Human-agent control for agentic workflows',
+      provesLabel: 'WHAT THIS CASE PROVES',
+      whyLayerMatters:
+        'I design the layer where agentic workflows become controllable: defining what agents own, when humans intervene, and how execution resumes after judgment.',
       readingMap: {
-        intro: 'This case looks at three questions:',
-        questions: [
-          'Why did automation and human access conflict?',
-          'Where should human judgment still exist?',
-          'How should agents, alerts, chatbot, and humans relate?',
+        navLabel: 'ON THIS CASE',
+        decisions: [
+          { d: 'D1', slug: 'd1', title: 'Agent Ownership Boundary' },
+          { d: 'D2', slug: 'd2', title: 'Decision Gate Model' },
+          { d: 'D3', slug: 'd3', title: 'Orchestration Control Layer' },
         ],
       },
+      railMode: true,
       keySignals: [
         'Agentic workflow',
         'Decision gates',
@@ -233,6 +223,7 @@ export const WORK_CASE_DETAIL = {
       ],
     },
     evidence: {
+      staged: true,
       projectContext: {
         lead: 'This project explored a supply chain agent system combining:',
         bullets: [
@@ -371,27 +362,30 @@ export const WORK_CASE_DETAIL = {
   case04: {
     caseMap: {
       caseTitle: 'AI Companion',
-      aiValueLayer: 'Continuity-driven Engagement',
+      aiValueLayer: 'Presence continuity for AI companions',
+      provesLabel: 'WHAT THIS CASE PROVES',
       whyLayerMatters:
-        'In companion products, engagement may depend less on interaction density than on continuity and return.',
+        'I design the layer where AI companions become returnable: separating visible interaction from attachment signals, making presence persistent, and turning isolated sessions into continuity that carries forward.',
       readingMap: {
-        intro: 'This case looks at three questions:',
-        questions: [
-          'What signal challenged the original engagement assumption?',
-          'Why was reduced interaction interpreted as a hypothesis, not a loss?',
-          'How did the engagement loop shift from interaction to continuity?',
+        navLabel: 'ON THIS CASE',
+        decisions: [
+          { d: 'D1', slug: 'd1', title: 'Interaction ≠ Engagement' },
+          { d: 'D2', slug: 'd2', title: 'Presence as the Core Layer' },
+          { d: 'D3', slug: 'd3', title: 'Low-Friction Return & Continuity' },
         ],
       },
+      railMode: true,
       keySignals: [
+        'AI companion',
+        'Engagement model',
         'Presence',
         'Continuity',
-        'Return loop',
-        'Engagement model',
-        'Companion state',
-        'Low-friction re-entry',
+        'Return behavior',
+        'Session persistence',
       ],
     },
     evidence: {
+      staged: true,
       projectContext: {
         lead: 'This project explored an AI companion product where the original engagement logic relied heavily on visible interaction:',
         bullets: ['environment', 'avatar', 'chat', 'explicit user actions', 'interaction entry points'],

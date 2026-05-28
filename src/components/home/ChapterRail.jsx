@@ -7,8 +7,15 @@ export function ChapterRail() {
     return null;
   }
 
+  const railClass = [
+    'chapter-rail',
+    activeId === 'home-life-archive' ? 'chapter-rail--archive-muted' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <aside className="chapter-rail" aria-label="Chapter index">
+    <aside className={railClass} aria-label="Chapter index">
       <ol className="chapter-rail__list">
         {chapters.map((ch) => (
           <li key={ch.id} className={`chapter-rail__item ${activeId === ch.id ? 'is-active' : ''}`}>

@@ -1,13 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-
-const MAIN_LINES = [
-  'I design the structure',
-  'between AI capability',
-  'and real product use.',
-];
-
-const SUPPORT_COPY =
-  'From product framing to operational workflow — deciding where AI belongs, what it should own, and how it stays usable inside real systems.';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
+import { capabilitySectionCopy } from '../../data/homeScrollChapters.js';
+import { LandingOrganicField } from './OrganicField.jsx';
 
 /** Shared oblique system (~30°), flattened vertically in SVG group space */
 const ORBIT_AXIS_DEG = -30;
@@ -38,7 +32,16 @@ function plateauProgress(p, holdStart, holdEnd) {
  */
 export function OpeningBridgeSection() {
   const scrollRef = useRef(null);
+  const { registerOpeningScroll } = useFieldNarrative();
   const [p, setP] = useState(0);
+
+  const setScrollRef = useCallback(
+    (el) => {
+      scrollRef.current = el;
+      registerOpeningScroll(el);
+    },
+    [registerOpeningScroll],
+  );
   const reduceMotionRef = useRef(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () =>
@@ -173,7 +176,7 @@ export function OpeningBridgeSection() {
   const orbitOpacity = mix(0.88, 0.32, recede);
   const orbitTx = mix(0, -2.8, orbitDrive);
   const orbitTy = mix(0, 1.8, orbitDrive);
-  const orbitScale = mix(0.94, 1.12, orbitDrive) * mix(1, 0.97, recede) * mix(0.96, 1.05, expand);
+  const orbitScale = mix(1.08, 1.22, orbitDrive) * mix(1, 0.97, recede) * mix(0.98, 1.08, expand);
   const orbitDriftYvh = prm ? 0 : mix(0, 2.8, orbitDrive);
 
   const orbitWrapStyle = {
@@ -209,7 +212,6 @@ export function OpeningBridgeSection() {
   const fadeMain = smoothstep(0.34, 0.8, ab);
   const heroOpacity = 1 - fadeHero;
   const narrativeOpacity = fadeMain;
-  const supportOpacity = mix(0, 1, smoothstep(0.5, 0.94, open));
 
   const orbitStopMo = !prm && ab > 0.06 && ab < 0.48;
 
@@ -221,38 +223,20 @@ export function OpeningBridgeSection() {
   const breatheB = prm ? '' : 'opening-card__disc-breathe opening-card__disc-breathe--b';
   const breatheV = prm ? '' : 'opening-card__disc-breathe opening-card__disc-breathe--veil';
 
+  const headlineLines = Array.isArray(capabilitySectionCopy.headline)
+    ? capabilitySectionCopy.headline
+    : [capabilitySectionCopy.headline];
+
   return (
-    <section ref={scrollRef} className="opening-scroll" aria-label="Opening">
+    <section ref={setScrollRef} className="opening-scroll" aria-label="Opening">
       <div className="opening-sticky">
         <div className="opening-bridge__frame">
           <div className="opening-card opening-card--plate" style={openingCardStyle}>
-            <div className="opening-card__atmosphere" style={atmosphereStyle} aria-hidden="true">
-              <div className={idleClass}>
-                <div className="opening-card__field-deform" style={fieldDeformStyle}>
-                  <div className={fieldStackClass} style={fieldStackStyle}>
-                    <div className="opening-card__disc-anchor opening-card__disc-anchor--veil">
-                      <div className={`opening-card__disc-breathe-wrap ${breatheV}`.trim()}>
-                        <div
-                          className="opening-card__disc opening-card__disc--veil"
-                          style={discVeilStyle}
-                        />
-                      </div>
-                    </div>
-                    <div className="opening-card__disc-anchor opening-card__disc-anchor--b">
-                      <div className={`opening-card__disc-breathe-wrap ${breatheB}`.trim()}>
-                        <div className="opening-card__disc opening-card__disc--b" style={discBStyle} />
-                      </div>
-                    </div>
-                    <div className="opening-card__disc-anchor opening-card__disc-anchor--a">
-                      <div className={`opening-card__disc-breathe-wrap ${breatheA}`.trim()}>
-                        <div className="opening-card__disc opening-card__disc--a" style={discAStyle} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="opening-card__field-slot" aria-hidden="true">
+              <LandingOrganicField />
             </div>
 
+            <div className="opening-card__inner">
             <div className="opening-card__tonal-plane" style={tonalPlaneStyle} aria-hidden="true" />
 
             <div className="opening-card__orbit-wrap" style={orbitWrapStyle} aria-hidden="true">
@@ -261,7 +245,7 @@ export function OpeningBridgeSection() {
                   <g transform={orbitFamily}>
                     <g className={orbitStopMo ? 'opening-orbit-strobe-root' : undefined}>
                       <g transform={e3} style={{ opacity: solidOrbitGroupOpacity }}>
-                        <g transform="translate(178 214)">
+                        <g transform="translate(164 228)">
                           <g className={prm ? '' : 'opening-orbit-depth opening-orbit-depth--e3'}>
                             <g
                               className={
@@ -274,8 +258,8 @@ export function OpeningBridgeSection() {
                                 <ellipse
                                   cx="0"
                                   cy="0"
-                                  rx="198"
-                                  ry="86"
+                                  rx="242"
+                                  ry="104"
                                   fill="none"
                                   stroke="rgba(10,9,8,0.075)"
                                   strokeWidth="0.68"
@@ -284,7 +268,7 @@ export function OpeningBridgeSection() {
                               {!prm && (
                                 <circle
                                   className="opening-orbit-guide-dot"
-                                  cx="198"
+                                  cx="242"
                                   cy="0"
                                   r="2.35"
                                   fill="rgba(8,8,8,0.58)"
@@ -295,7 +279,7 @@ export function OpeningBridgeSection() {
                         </g>
                       </g>
                       <g transform={e4} style={{ opacity: solidOrbitGroupOpacity }}>
-                        <g transform="translate(222 166)">
+                        <g transform="translate(242 150)">
                           <g className={prm ? '' : 'opening-orbit-depth opening-orbit-depth--e4'}>
                             <g
                               className={
@@ -308,8 +292,8 @@ export function OpeningBridgeSection() {
                                 <ellipse
                                   cx="0"
                                   cy="0"
-                                  rx="172"
-                                  ry="74"
+                                  rx="214"
+                                  ry="92"
                                   fill="none"
                                   stroke="rgba(10,9,8,0.09)"
                                   strokeWidth="0.62"
@@ -318,7 +302,7 @@ export function OpeningBridgeSection() {
                               {!prm && (
                                 <circle
                                   className="opening-orbit-guide-dot"
-                                  cx="172"
+                                  cx="214"
                                   cy="0"
                                   r="2.2"
                                   fill="rgba(8,8,8,0.55)"
@@ -329,7 +313,7 @@ export function OpeningBridgeSection() {
                         </g>
                       </g>
                       <g transform={e1} style={{ opacity: solidOrbitGroupOpacity }}>
-                        <g transform="translate(186 174)">
+                        <g transform="translate(178 158)">
                           <g className={prm ? '' : 'opening-orbit-depth opening-orbit-depth--e1'}>
                             <g
                               className={
@@ -342,8 +326,8 @@ export function OpeningBridgeSection() {
                                 <ellipse
                                   cx="0"
                                   cy="0"
-                                  rx="276"
-                                  ry="104"
+                                  rx="318"
+                                  ry="122"
                                   fill="none"
                                   stroke="rgba(10,9,8,0.125)"
                                   strokeWidth="0.82"
@@ -352,7 +336,7 @@ export function OpeningBridgeSection() {
                               {!prm && (
                                 <circle
                                   className="opening-orbit-guide-dot"
-                                  cx="276"
+                                  cx="318"
                                   cy="0"
                                   r="2.45"
                                   fill="rgba(8,8,8,0.62)"
@@ -363,7 +347,7 @@ export function OpeningBridgeSection() {
                         </g>
                       </g>
                       <g transform={e2} style={{ opacity: dashedOrbitGroupOpacity }}>
-                        <g transform="translate(214 200)">
+                        <g transform="translate(206 202)">
                           <g className={prm ? '' : 'opening-orbit-depth opening-orbit-depth--e2'}>
                             <g
                               className={
@@ -377,8 +361,8 @@ export function OpeningBridgeSection() {
                                   className={prm ? '' : 'opening-orbit-dash-el'}
                                   cx="0"
                                   cy="0"
-                                  rx="208"
-                                  ry="88"
+                                  rx="252"
+                                  ry="108"
                                   fill="none"
                                   stroke="rgba(10,9,8,0.34)"
                                   strokeWidth={dashStrokeW}
@@ -388,7 +372,7 @@ export function OpeningBridgeSection() {
                               {!prm && (
                                 <circle
                                   className="opening-orbit-guide-dot opening-orbit-guide-dot--dash"
-                                  cx="208"
+                                  cx="252"
                                   cy="0"
                                   r="2.25"
                                   fill="rgba(8,8,8,0.72)"
@@ -430,34 +414,29 @@ export function OpeningBridgeSection() {
                     </p>
                   </div>
                   <div
-                    className="opening-card__scroll-rig__narrative"
+                    className="opening-card__scroll-rig__position opening-card__scroll-rig__narrative"
                     style={{
                       opacity: narrativeOpacity,
                       visibility: narrativeOpacity < 0.03 ? 'hidden' : 'visible',
                     }}
                   >
-                    <div className="opening-card__narrative-backdrop" aria-hidden="true">
-                      <div className="opening-card__narrative-glow" />
-                      <div className="opening-card__narrative-quiet" />
-                    </div>
                     <div className="opening-card__narrative-bundle opening-card__narrative-bundle--poster">
                       <div className="opening-card__poster">
-                        <h2 id="home-identity-title" className="opening-card__title">
-                          {MAIN_LINES.map((line, i) => (
+                        <h2 id="home-position-title" className="opening-card__title">
+                          {headlineLines.map((line) => (
                             <span key={line} className="opening-card__title-line">
                               {line}
-                              {i < MAIN_LINES.length - 1 ? <br /> : null}
+                              <br />
                             </span>
                           ))}
                         </h2>
-                        <p className="opening-card__deck" style={{ opacity: supportOpacity }}>
-                          {SUPPORT_COPY}
-                        </p>
+                        <p className="opening-card__deck">{capabilitySectionCopy.intro}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>

@@ -178,7 +178,7 @@ export const contactSection = {
   closingLine:
     "I'm interested in AI and enterprise systems where product design has to define how work actually continues.",
   links: [
-    { id: 'email', label: 'Email', href: 'mailto:hello@example.com' },
+    { id: 'email', label: 'Email', href: 'mailto:hedi-de@outlook.com' },
     { id: 'linkedin', label: 'LinkedIn', href: 'https://www.linkedin.com/', external: true },
     { id: 'cv', label: 'CV', href: '#cv' },
     {

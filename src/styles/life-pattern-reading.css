@@ -1,0 +1,563 @@
+/* Life Archive — AI-assisted pattern reading */
+
+.life-pattern {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(24px, 3vw, 40px);
+  align-items: start;
+  transition: grid-template-columns 0.5s ease;
+}
+
+.life-pattern--clusters {
+  grid-template-columns: minmax(0, 1fr) minmax(248px, 300px);
+  padding-right: clamp(72px, 11vw, 148px);
+}
+
+.life-pattern--clusters .life-ai-panel.life-pattern-panel {
+  justify-self: start;
+  width: 100%;
+  max-width: 300px;
+  overflow: visible;
+}
+
+.life-pattern--panel-open .life-pattern-panel--intro {
+  display: none;
+}
+
+.life-pattern__main {
+  min-width: 0;
+}
+
+.life-pattern__header {
+  max-width: 40rem;
+  margin-bottom: clamp(28px, 4vh, 44px);
+  overflow: visible;
+}
+
+.life-pattern__title {
+  margin: 0 0 clamp(12px, 1.8vh, 18px);
+  font-family: var(--font-editorial);
+  font-size: clamp(1.85rem, 3.8vw, 2.65rem);
+  font-weight: 400;
+  letter-spacing: -0.032em;
+  line-height: 1.1;
+  color: rgba(250, 248, 243, 0.95);
+}
+
+.life-pattern__subtitle {
+  margin: 0 0 clamp(22px, 3vh, 32px);
+  font-family: var(--font-editorial);
+  font-size: clamp(0.95rem, 1.35vw, 1.08rem);
+  line-height: 1.55;
+  color: rgba(250, 248, 243, 0.5);
+  max-width: 42ch;
+}
+
+.life-pattern__ai-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: clamp(16px, 2.2vw, 24px);
+  max-width: min(44rem, 100%);
+  overflow: visible;
+}
+
+.life-pattern__ai-entry-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(14px, 2vh, 20px);
+  flex: 1;
+  min-width: 0;
+  max-width: 36ch;
+}
+
+.life-pattern__ai-prompt {
+  margin: 0;
+  padding: clamp(12px, 1.6vh, 16px) clamp(14px, 2vw, 18px);
+  border-left: 1px solid rgba(42, 90, 82, 0.45);
+  background: rgba(250, 248, 243, 0.02);
+  font-family: var(--font-editorial);
+  font-size: clamp(0.88rem, 1.2vw, 1rem);
+  line-height: 1.55;
+  color: rgba(250, 248, 243, 0.58);
+}
+
+.life-pattern__cta {
+  padding: 10px 18px;
+  border: 1px solid rgba(42, 90, 82, 0.5);
+  border-radius: 999px;
+  background: rgba(42, 90, 82, 0.14);
+  color: rgba(250, 248, 243, 0.9);
+  font-family: var(--font-interface-metric);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.life-pattern__cta:hover,
+.life-pattern__cta:focus-visible {
+  background: rgba(42, 90, 82, 0.24);
+  border-color: rgba(42, 90, 82, 0.65);
+  color: #fff;
+}
+
+.life-pattern__cluster-hint {
+  margin: 0 0 clamp(16px, 2vh, 22px);
+  font-family: var(--font-editorial);
+  font-size: clamp(0.9rem, 1.2vw, 1rem);
+  line-height: 1.52;
+  color: rgba(250, 248, 243, 0.48);
+  max-width: 44ch;
+}
+
+.life-pattern__back {
+  margin: 0 0 clamp(20px, 2.5vh, 28px);
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-interface-metric);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.38);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.life-pattern__back:hover {
+  color: rgba(250, 248, 243, 0.72);
+}
+
+/* —— State 1: overlapping horizontal field —— */
+.life-pattern__field {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: clamp(8px, 2vh, 24px) 0 clamp(32px, 5vh, 48px);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.life-pattern__field::-webkit-scrollbar {
+  display: none;
+}
+
+.life-pattern__field-track {
+  position: relative;
+  width: min(1180px, 92vw);
+  min-width: min(1180px, 92vw);
+  height: clamp(220px, 32vh, 320px);
+  margin: 0 auto;
+}
+
+.life-pattern__card {
+  position: absolute;
+  left: calc(var(--lp-x, 0) * 1);
+  top: calc(50% + var(--lp-y, 0) * 1%);
+  z-index: var(--lp-z, 1);
+  width: clamp(140px, 16vw, 200px);
+  margin: 0;
+  transform: translateY(-50%) rotate(var(--lp-r, 0deg));
+  transform-origin: center bottom;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 2px 0 rgba(250, 248, 243, 0.06);
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease;
+  animation: life-pattern-card-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--lp-z, 1) * 45ms);
+}
+
+.life-pattern__card:hover {
+  transform: translateY(-52%) rotate(var(--lp-r, 0deg)) scale(1.02);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.42),
+    0 2px 0 rgba(250, 248, 243, 0.1);
+  z-index: 20;
+}
+
+@keyframes life-pattern-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-42%) rotate(calc(var(--lp-r, 0deg) - 4deg)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) rotate(var(--lp-r, 0deg)) scale(1);
+  }
+}
+
+.life-pattern__card-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center 42%;
+}
+
+/* —— State 2: five clusters —— */
+.life-pattern__clusters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(10px, 1.4vw, 16px);
+  width: 100%;
+  animation: life-pattern-clusters-in 0.55s ease;
+}
+
+@keyframes life-pattern-clusters-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.life-pattern__cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(10px, 1.2vh, 14px);
+  padding: clamp(14px, 1.6vw, 18px);
+  border: 1px solid rgba(250, 248, 243, 0.1);
+  border-radius: 2px;
+  background: rgba(250, 248, 243, 0.02);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.28s ease,
+    background 0.28s ease,
+    transform 0.28s ease;
+}
+
+.life-pattern__cluster:hover {
+  border-color: rgba(250, 248, 243, 0.2);
+  background: rgba(250, 248, 243, 0.04);
+}
+
+.life-pattern__cluster.is-active {
+  border-color: rgba(42, 90, 82, 0.5);
+  background: rgba(42, 90, 82, 0.1);
+  transform: translateY(-2px);
+}
+
+.life-pattern__cluster-index {
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgba(42, 90, 82, 0.7);
+}
+
+.life-pattern__cluster-label {
+  font-family: var(--font-editorial);
+  font-size: clamp(0.82rem, 1.1vw, 0.95rem);
+  line-height: 1.35;
+  font-weight: 500;
+  color: rgba(250, 248, 243, 0.88);
+}
+
+.life-pattern__cluster-thumbs {
+  position: relative;
+  width: 100%;
+  height: clamp(72px, 10vh, 96px);
+  margin-top: 4px;
+}
+
+.life-pattern__cluster-thumb {
+  position: absolute;
+  width: 46%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid rgba(250, 248, 243, 0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  left: calc(var(--thumb-i, 0) * 22%);
+  top: calc(var(--thumb-i, 0) * 8%);
+  transform: rotate(calc((var(--thumb-i, 0) - 1) * 4deg));
+  z-index: calc(3 - var(--thumb-i, 0));
+}
+
+.life-pattern__cluster-count {
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.32);
+}
+
+/* —— AI presence (orb + red hat + Hi) —— */
+.life-ai-presence {
+  position: relative;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateY(8px) scale(0.88);
+  transition:
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.life-ai-presence.is-entered {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.life-ai-presence .guide-orb-hat-wrap__hat {
+  animation: life-ai-hat-settle 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+@keyframes life-ai-hat-settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.life-ai-presence__hi {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  z-index: 3;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(250, 248, 243, 0.96);
+  border: 1px solid rgba(20, 20, 20, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  font-family: var(--font-editorial);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1;
+  color: rgba(20, 20, 18, 0.88);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: life-ai-hi-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.life-ai-presence__hi::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: rgba(250, 248, 243, 0.96);
+  border-right: 1px solid rgba(20, 20, 20, 0.06);
+  border-bottom: 1px solid rgba(20, 20, 20, 0.06);
+  transform: rotate(45deg);
+}
+
+@keyframes life-ai-hi-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px) scale(0.82);
+  }
+  70% {
+    transform: translateX(-50%) translateY(-2px) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.life-ai-presence--inline {
+  margin-top: 4px;
+}
+
+.life-ai-presence--panel {
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.life-pattern-panel__intro-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+  overflow: visible;
+}
+
+.life-pattern-panel__intro-head .life-ai-panel__title {
+  margin: 0;
+  padding-top: 10px;
+}
+
+.life-pattern-panel__head-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.life-pattern-panel__head-main .life-ai-panel__title {
+  margin: 0;
+  padding-top: 8px;
+}
+
+/* —— Insight panel (extends .life-ai-panel) —— */
+.life-pattern-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.life-pattern-panel__close {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.4);
+  cursor: pointer;
+}
+
+.life-pattern-panel__close:hover {
+  color: rgba(250, 248, 243, 0.8);
+}
+
+.life-pattern-panel__cluster-intro {
+  margin: 0 0 16px;
+  font-family: var(--font-editorial);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(250, 248, 243, 0.52);
+}
+
+.life-pattern-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.life-pattern-panel__block {
+  margin-bottom: 16px;
+}
+
+.life-pattern-panel__label {
+  margin: 0 0 6px;
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(42, 90, 82, 0.75);
+}
+
+.life-pattern-panel__followup-heading {
+  margin: 0 0 8px;
+  font-family: var(--font-interface-metric);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(250, 248, 243, 0.35);
+}
+
+.life-pattern-panel__followup-result {
+  margin-bottom: 14px;
+}
+
+.life-pattern-panel__followup-q {
+  margin: 0 0 8px;
+  font-family: var(--font-editorial);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: rgba(250, 248, 243, 0.72);
+}
+
+.life-pattern-panel--intro {
+  opacity: 0.92;
+}
+
+.life-pattern-panel__hint {
+  margin-top: -8px;
+  font-size: 0.75rem;
+  color: rgba(250, 248, 243, 0.35);
+}
+
+@media (max-width: 1100px) {
+  .life-pattern--clusters {
+    grid-template-columns: 1fr;
+  }
+
+  .life-pattern-panel,
+  .life-pattern-panel--intro {
+    position: static;
+    max-height: none;
+    order: -1;
+  }
+
+  .life-pattern__clusters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .life-pattern__ai-entry {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .life-pattern__clusters {
+    grid-template-columns: 1fr;
+  }
+
+  .life-pattern__field-track {
+    min-width: 720px;
+    width: 720px;
+  }
+
+  .life-pattern__card {
+    width: 120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .life-pattern__card,
+  .life-pattern__clusters,
+  .life-pattern__cluster,
+  .life-ai-panel__result,
+  .life-ai-presence .guide-orb-hat-wrap__hat,
+  .life-ai-presence__hi {
+    animation: none;
+  }
+
+  .life-pattern__card,
+  .life-pattern__clusters,
+  .life-pattern__cluster,
+  .life-ai-panel__result,
+  .life-ai-presence {
+    transition: none;
+  }
+
+  .life-ai-presence {
+    opacity: 1;
+    transform: none;
+  }
+}
