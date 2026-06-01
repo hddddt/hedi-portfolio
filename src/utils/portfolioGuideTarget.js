@@ -1,5 +1,7 @@
 /** @typedef {{ type: 'section' | 'case', id: string }} GuideDestination */
 
+import { WORK_TRACK_LEAD_IN_VH } from './workChoreography.js';
+
 const ACTIVE_HIGHLIGHT_MS = 1800;
 
 /** Logical guide target → DOM element id (1:1 on scroll-home prototype). */
@@ -94,18 +96,20 @@ function scrollPinnedTrackNMinusOne(trackEl, panelIndex, panelCount) {
 }
 
 /**
- * Scroll work carousel — matches WorkNarrativeSection floor(traveled / (total / n)).
+ * Scroll work carousel — matches WorkNarrativeSection lead-in + n-panel track.
  * @param {HTMLElement} trackEl
  * @param {number} panelIndex
  * @param {number} panelCount
  */
-function scrollPinnedTrackN(trackEl, panelIndex, panelCount) {
-  const rect = trackEl.getBoundingClientRect();
-  const total = Math.max(1, rect.height - window.innerHeight);
+function scrollWorkTrackN(trackEl, panelIndex, panelCount) {
+  const vh = window.innerHeight;
+  const total = Math.max(1, trackEl.offsetHeight - vh);
+  const leadIn = (WORK_TRACK_LEAD_IN_VH / 100) * vh;
+  const caseTravel = Math.max(1, total - leadIn);
+  const step = caseTravel / panelCount;
   const idx = Math.min(panelCount - 1, Math.max(0, panelIndex));
-  const step = total / panelCount;
-  const traveled = idx * step;
-  const y = window.scrollY + rect.top + traveled;
+  const traveled = idx === 0 ? 0 : leadIn + idx * step;
+  const y = window.scrollY + trackEl.getBoundingClientRect().top + traveled;
   window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
 }
 
@@ -126,7 +130,7 @@ function scrollWorkToPanel(panelIndex = 0) {
     return;
   }
   const panelCount = document.querySelectorAll(SELECTORS.workPanelCount).length;
-  scrollPinnedTrackN(track, panelIndex, Math.max(1, panelCount));
+  scrollWorkTrackN(track, panelIndex, Math.max(1, panelCount));
 }
 
 function scrollPovToPanel(panelIndex = 0) {

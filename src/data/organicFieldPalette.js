@@ -1,7 +1,70 @@
 /**
- * Single palette for opening discs (landing) + OrganicField canvas.
- * Reference: lime–cream left, cyan–grey right, soft mix on white.
+ * Opening disc CSS + motion anchors.
+ *
+ * COLOR AUTHORITY: organicFieldGl.js shaders — NOT this file.
+ * Presence targets: fieldVisualGovernance.js FIELD_SCENE_TARGETS
+ * HERO_OPENING_PALETTE below is reference / docs only.
  */
+
+/**
+ * Reference RGBA (docs / CSS). Landing WebGL colors: organicFieldGl.js mesh*Hero.
+ * @type {{ green: { r: number, g: number, b: number, a: number }, blue: { r: number, g: number, b: number, a: number }, amber: { r: number, g: number, b: number, a: number } }}
+ */
+export const HERO_OPENING_PALETTE = {
+  green: { r: 126, g: 174, b: 151, a: 0.36 },
+  blue: { r: 112, g: 128, b: 178, a: 0.38 },
+  amber: { r: 207, g: 164, b: 112, a: 0.26 },
+};
+
+/** Landing orb weights — authoritative final opacities (not multiplied with layout) */
+export const HERO_LANDING_ORBS = {
+  green: { tier: 'dominant', opacity: 0.92, scale: 1.14, stretchX: 1.02, stretchY: 0.98 },
+  blue: { tier: 'supporting', opacity: 0.78, scale: 1.04, stretchX: 1.1, stretchY: 0.84 },
+  yellow: { tier: 'latent', opacity: 0.58, scale: 0.92, stretchX: 1, stretchY: 1.02 },
+};
+
+/** Rest positions + layout multipliers for warm / landing motion */
+export const HERO_LANDING_FIELD = {
+  rest: {
+    a: { x: 0.37, y: 0.48 },
+    b: { x: 0.7, y: 0.39 },
+    c: { x: 0.6, y: 0.24 },
+  },
+  layout: {
+    a: { opacity: 1, scale: 1.14, dx: 0, dy: 0, stretchX: 1.02, stretchY: 0.98, rotation: -0.1 },
+    b: { opacity: 1, scale: 1.04, dx: 0, dy: 0, stretchX: 1.1, stretchY: 0.84, rotation: -0.32 },
+    c: { opacity: 1, scale: 0.92, dx: 0, dy: 0, stretchX: 1, stretchY: 1.02, rotation: 0.06 },
+  },
+};
+
+/** Scroll narrative blob anchors at hero intro */
+export const HERO_BLOB_INTRO = {
+  a: {
+    centerX: 0.38,
+    centerY: 0.49,
+    scale: 1.14,
+    opacity: 0.92,
+    stretchX: 1.06,
+    stretchY: 0.94,
+    rotation: -0.18,
+  },
+  b: {
+    centerX: 0.7,
+    centerY: 0.4,
+    scale: 1.02,
+    opacity: 0.78,
+    stretchX: 1.1,
+    stretchY: 0.84,
+    rotation: -0.32,
+  },
+  c: { centerX: 0.6, centerY: 0.24, scale: 0.92, opacity: 0.58, stretchX: 1, stretchY: 1.02 },
+};
+
+export const HERO_WARM_AMBIENT = {
+  opacityMult: 1,
+  scaleMult: 1.03,
+  extraC: 1.02,
+};
 
 export const DISC_ANCHORS = {
   a: { baseX: 0.35, baseY: 0.47 },
@@ -64,24 +127,24 @@ export const WARM_STOPS_VEIL = [
 
 /** @type {RgbaStop[]} */
 export const DARK_STOPS_A = [
-  { r: 72, g: 118, b: 88, a: 0.55 },
-  { r: 42, g: 82, b: 58, a: 0.38 },
-  { r: 18, g: 48, b: 32, a: 0.16 },
+  { r: 48, g: 168, b: 128, a: 0.62 },
+  { r: 28, g: 128, b: 98, a: 0.44 },
+  { r: 12, g: 72, b: 58, a: 0.18 },
   { r: 0, g: 0, b: 0, a: 0 },
 ];
 
 /** @type {RgbaStop[]} */
 export const DARK_STOPS_B = [
-  { r: 88, g: 108, b: 138, a: 0.52 },
-  { r: 52, g: 72, b: 108, a: 0.36 },
-  { r: 22, g: 38, b: 72, a: 0.14 },
+  { r: 108, g: 148, b: 228, a: 0.58 },
+  { r: 68, g: 108, b: 198, a: 0.4 },
+  { r: 32, g: 58, b: 128, a: 0.16 },
   { r: 0, g: 0, b: 0, a: 0 },
 ];
 
 /** @type {RgbaStop[]} */
 export const DARK_STOPS_VEIL = [
-  { r: 168, g: 118, b: 42, a: 0.28 },
-  { r: 128, g: 82, b: 28, a: 0.14 },
+  { r: 228, g: 168, b: 72, a: 0.32 },
+  { r: 188, g: 128, b: 48, a: 0.16 },
   { r: 0, g: 0, b: 0, a: 0 },
 ];
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SCROLL_HOME_PROTOTYPE } from './config/scrollHomeMode.js';
+import { CapabilityBlurTunePage } from './pages/CapabilityBlurTunePage.jsx';
 import { HomeScrollExperience } from './components/home/HomeScrollExperience.jsx';
 import { PortfolioPage } from './components/portfolio/PortfolioPage.jsx';
 import { Nav } from './components/portfolio/Nav.jsx';
@@ -8,11 +9,33 @@ import { CaseBar } from './components/CaseBar.jsx';
 import { cases } from './data/cases.js';
 import { navLinks } from './data/portfolio.js';
 
+function isCapBlurTuneDev() {
+  if (!import.meta.env.DEV) return false;
+  const { pathname, hash, search } = window.location;
+  return (
+    pathname === '/dev/cap-blur' ||
+    hash === '#/dev/cap-blur' ||
+    new URLSearchParams(search).get('dev') === 'cap-blur'
+  );
+}
+
 export default function App() {
   const progressRef = useRef(null);
   const lastScrollYRef = useRef(0);
   const [openCaseId, setOpenCaseId] = useState(null);
   const [navHidden, setNavHidden] = useState(false);
+  const [capBlurTuneDev, setCapBlurTuneDev] = useState(isCapBlurTuneDev);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    const sync = () => setCapBlurTuneDev(isCapBlurTuneDev());
+    window.addEventListener('hashchange', sync);
+    window.addEventListener('popstate', sync);
+    return () => {
+      window.removeEventListener('hashchange', sync);
+      window.removeEventListener('popstate', sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (SCROLL_HOME_PROTOTYPE) {
@@ -112,6 +135,10 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [openCaseId, closeCase]);
+
+  if (import.meta.env.DEV && capBlurTuneDev) {
+    return <CapabilityBlurTunePage />;
+  }
 
   if (SCROLL_HOME_PROTOTYPE) {
     return (

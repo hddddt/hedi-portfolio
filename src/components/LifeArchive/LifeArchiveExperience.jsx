@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
 import { lifePhotoMetadata } from '../../data/lifePhotoMetadata.js';
 import { LIFE_ARCHIVE_COPY } from '../../data/lifeArchiveViews.js';
 import { rotationFromId, scaleFromId } from '../../utils/lifeArchiveInteraction.js';
+import {
+  archiveFragmentSettleStyle,
+  archiveFragmentStyle,
+  beyondWorkEntranceLayers,
+} from '../../utils/povArchiveHandoff.js';
 import { LifeArchiveConnectionView } from './LifeArchiveConnectionView.jsx';
 
 import { GuideOrb } from '../home/GuideOrb.jsx';
+
+const STAGGERED_CARD_COUNT = 5;
 
 function RedHatGuideFigure({
   thinking,
@@ -50,6 +58,11 @@ function ArchiveGuidePresence({ hovered, emotionalTone, onHoverStart, onHoverEnd
 }
 
 export function LifeArchiveExperience() {
+  const { handoff, reducedMotion } = usePovArchiveHandoff();
+  const entrance = useMemo(
+    () => beyondWorkEntranceLayers(handoff, reducedMotion),
+    [handoff, reducedMotion],
+  );
   const fieldRef = useRef(null);
   const scrollerRef = useRef(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -148,12 +161,20 @@ export function LifeArchiveExperience() {
   return (
     <div className="life-archive-intent">
       <header className="life-archive-intent__header">
-        <h2 id="life-archive-title" className="life-archive-intent__title">
+        <h2
+          id="life-archive-title"
+          className="life-archive-intent__title"
+          style={entrance.archiveTitle}
+        >
           {LIFE_ARCHIVE_COPY.title}
         </h2>
-        <p className="life-archive-intent__subtitle">{LIFE_ARCHIVE_COPY.subtitle}</p>
+        <p className="life-archive-intent__subtitle" style={entrance.archiveSubtitle}>
+          {LIFE_ARCHIVE_COPY.subtitle}
+        </p>
         {!selectedId ? (
-          <p className="life-archive-intent__instruction">Pick one. See where it connects.</p>
+          <p className="life-archive-intent__instruction" style={entrance.instruction}>
+            Pick one. See where it connects.
+          </p>
         ) : null}
       </header>
 
@@ -176,7 +197,7 @@ export function LifeArchiveExperience() {
           />
         ) : (
           <>
-            <div className="life-archive-intent__scroller-wrap">
+            <div className="life-archive-intent__scroller-wrap" style={entrance.fieldWrap}>
               <div className="life-archive-intent__edge life-archive-intent__edge--left" aria-hidden />
               <div className="life-archive-intent__edge life-archive-intent__edge--right" aria-hidden />
 
@@ -200,6 +221,19 @@ export function LifeArchiveExperience() {
                         '--intent-rot': `${rotationFromId(photo.id)}deg`,
                         '--intent-scale': scaleFromId(photo.id),
                         zIndex: index + 1,
+                        ...(index < STAGGERED_CARD_COUNT
+                          ? archiveFragmentStyle(
+                              handoff,
+                              index,
+                              STAGGERED_CARD_COUNT,
+                              reducedMotion,
+                            )
+                          : archiveFragmentSettleStyle(
+                              handoff,
+                              index - STAGGERED_CARD_COUNT,
+                              lifePhotoMetadata.length - STAGGERED_CARD_COUNT,
+                              reducedMotion,
+                            )),
                       }}
                       onClick={() => onPickPhoto(photo.id)}
                       aria-label={photo.title || 'Archive photograph'}
@@ -224,6 +258,7 @@ export function LifeArchiveExperience() {
               <p
                 className={`life-archive-intent__scroll-hint${scrollHintVisible ? ' is-visible' : ''}`}
                 aria-hidden="true"
+                style={entrance.scrollHint}
               >
                 scroll to browse
               </p>
@@ -237,11 +272,12 @@ export function LifeArchiveExperience() {
               ]
                 .filter(Boolean)
                 .join(' ')}
-              style={
-                guideStyle.anchor === 'card'
+              style={{
+                ...(guideStyle.anchor === 'card'
                   ? { left: guideStyle.left, top: guideStyle.top }
-                  : { left: guideStyle.left, bottom: guideStyle.bottom }
-              }
+                  : { left: guideStyle.left, bottom: guideStyle.bottom }),
+                ...entrance.guide,
+              }}
               aria-hidden="true"
             >
               <ArchiveGuidePresence

@@ -8,6 +8,7 @@ import '../../styles/guide-orb.css';
 import { narrativeChapters } from '../../data/narrativeChapters.js';
 import { homeScrollChapters } from '../../data/homeScrollChapters.js';
 import { FieldNarrativeProvider } from '../../context/FieldNarrativeContext.jsx';
+import { PovArchiveHandoffProvider } from '../../context/PovArchiveHandoffContext.jsx';
 import { NarrativeScrollProvider } from '../../context/NarrativeScrollContext.jsx';
 import { OrganicFieldHostProvider, useOrganicFieldHost } from '../../context/OrganicFieldHostContext.jsx';
 import { OrbSceneChapterSync, OrbSceneProvider } from '../../context/OrbSceneContext.jsx';
@@ -17,7 +18,19 @@ import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { ProjectAccessProvider } from '../../context/ProjectAccessContext.jsx';
 import { AboutContactSection } from './AboutContactSection.jsx';
 import { MeCurrentWorkSection } from './MeCurrentWorkSection.jsx';
-import { MePathSection } from './MePathSection.jsx';
+import { useMemo, useRef } from 'react';
+import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
+import { beyondWorkEntranceLayers } from '../../utils/povArchiveHandoff.js';
+import { MePathSection, MePathPortrait, MePathDivider } from './MePathSection.jsx';
+
+function BeyondWorkAtmosphere() {
+  const { handoff, reducedMotion } = usePovArchiveHandoff();
+  const layers = useMemo(
+    () => beyondWorkEntranceLayers(handoff, reducedMotion),
+    [handoff, reducedMotion],
+  );
+  return <div className="home-beyond-work__atmosphere" aria-hidden="true" style={layers.atmosphere} />;
+}
 import { LifeArchiveSection } from '../LifeArchive/LifeArchiveSection.jsx';
 import { ViewportOrganicField } from './OrganicField.jsx';
 import { PortfolioGuide } from './PortfolioGuide.jsx';
@@ -31,6 +44,8 @@ import { ProjectPasswordModal } from './ProjectPasswordModal.jsx';
 import { WorkNarrativeSection } from './WorkNarrativeSection.jsx';
 
 function HomeScrollInner() {
+  const capTrackRef = useRef(null);
+
   return (
     <div className="home-scroll">
       <Header />
@@ -54,8 +69,9 @@ function HomeScrollInner() {
         chapterLabel="Capabilities"
         ambientKey="signal"
         ariaLabel="Capabilities"
+        measureRef={capTrackRef}
       >
-        <CapabilityDialSection />
+        <CapabilityDialSection trackRef={capTrackRef} />
       </NarrativeChapter>
       <NarrativeChapter
         id="home-work-narrative"
@@ -65,6 +81,7 @@ function HomeScrollInner() {
         chapterLabel="Work"
         ambientKey="work"
         ariaLabel="Work"
+        measureSelector=".work-scroll"
       >
         <WorkNarrativeSection cases={homeScrollChapters} />
       </NarrativeChapter>
@@ -76,6 +93,7 @@ function HomeScrollInner() {
         chapterLabel="Point of View"
         ambientKey="depth"
         ariaLabel="Point of View"
+        hideRibbon
       >
         <ApproachSection />
       </NarrativeChapter>
@@ -88,20 +106,13 @@ function HomeScrollInner() {
         ambientKey="archive"
         ariaLabel="Beyond the Work"
       >
-        <div className="home-beyond-work">
+        <div className="home-beyond-work" data-archive-handoff-root>
+          <BeyondWorkAtmosphere />
           <div className="home-beyond-work__content">
             <section id="home-beyond-path" className="home-beyond-work__part home-beyond-work__part--path">
               <MePathSection />
-              <figure className="home-me-path__portrait">
-                <img
-                  src="/images/case1/hedi.jpg"
-                  alt="Hedi"
-                  width={480}
-                  height={640}
-                  decoding="async"
-                />
-              </figure>
-              <div className="home-me__path-divider" aria-hidden="true" />
+              <MePathPortrait />
+              <MePathDivider />
             </section>
 
             <section
@@ -152,13 +163,15 @@ export function HomeScrollExperience() {
     <NarrativeScrollProvider chapters={narrativeChapters}>
       <OrbSceneProvider>
         <FieldNarrativeProvider>
-          <ProjectAccessProvider>
-            <PerspectiveProvider>
-              <OrganicFieldHostProvider>
-                <HomeScrollRootLayout />
-              </OrganicFieldHostProvider>
-            </PerspectiveProvider>
-          </ProjectAccessProvider>
+          <PovArchiveHandoffProvider>
+            <ProjectAccessProvider>
+              <PerspectiveProvider>
+                <OrganicFieldHostProvider>
+                  <HomeScrollRootLayout />
+                </OrganicFieldHostProvider>
+              </PerspectiveProvider>
+            </ProjectAccessProvider>
+          </PovArchiveHandoffProvider>
         </FieldNarrativeProvider>
       </OrbSceneProvider>
     </NarrativeScrollProvider>

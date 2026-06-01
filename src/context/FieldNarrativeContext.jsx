@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { computeFieldNarrative, measureOpeningScrollProgress } from '../utils/fieldNarrative.js';
+import { computeFieldNarrative, measureOpeningScrollProgress, measureOpeningCapabilitiesHandoff } from '../utils/fieldNarrative.js';
 
 const FieldNarrativeContext = createContext(null);
 
@@ -24,7 +24,17 @@ export function FieldNarrativeProvider({ children }) {
   const [progress, setProgress] = useState(0);
   const [openingComplete, setOpeningComplete] = useState(false);
   const openingCompleteRef = useRef(false);
+  const [openingCapHandoff, setOpeningCapHandoff] = useState(1);
+  const openingCapHandoffRef = useRef(1);
   const [capabilityFloat, setCapabilityFloat] = useState(null);
+  const [handoffBlend, setHandoffBlendState] = useState(0);
+  const handoffBlendRef = useRef(0);
+  const setHandoffBlend = useCallback((value) => {
+    const v =
+      value == null || !Number.isFinite(value) ? 0 : Math.max(0, Math.min(1, value));
+    handoffBlendRef.current = v;
+    setHandoffBlendState(v);
+  }, []);
   const depthFloatRef = useRef(null);
   const setDepthFloat = useCallback((value) => {
     if (value == null) {
@@ -41,22 +51,22 @@ export function FieldNarrativeProvider({ children }) {
     const el = openingScrollRef.current;
     const raw = measureOpeningScrollProgress(el, reduceMotionRef.current);
     const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
-    const pastOpening =
-      el &&
-      (() => {
-        const r = el.getBoundingClientRect();
-        return r.bottom <= vh * 0.12;
-      })();
-    const openingInView =
-      el &&
-      (() => {
-        const r = el.getBoundingClientRect();
-        return r.top < vh * 0.92 && r.bottom > vh * 0.08;
-      })();
+    const r = el?.getBoundingClientRect();
+    const capEl =
+      typeof document !== 'undefined' ? document.getElementById('capabilities') : null;
+    const capRect = capEl?.getBoundingClientRect();
+    const capHandoff = measureOpeningCapabilitiesHandoff(capRect, vh);
+    openingCapHandoffRef.current = capHandoff;
+    setOpeningCapHandoff(capHandoff);
 
-    if (pastOpening || (raw >= 0.999 && !openingInView)) {
+    const pastOpening = r != null && r.bottom <= vh * 0.12;
+    const openingInView =
+      r != null && r.top < vh * 0.92 && r.bottom > vh * 0.08;
+    const capEntering = capRect != null && capRect.top < vh * 0.98;
+
+    if ((pastOpening && capEntering) || (raw >= 0.999 && !openingInView)) {
       openingCompleteRef.current = true;
-    } else if (openingInView) {
+    } else if (openingInView && capHandoff < 0.08) {
       openingCompleteRef.current = false;
     }
 
@@ -137,8 +147,13 @@ export function FieldNarrativeProvider({ children }) {
       field,
       progress,
       openingComplete,
+      openingCapHandoff,
+      openingCapHandoffRef,
       capabilityFloat,
       setCapabilityFloat,
+      handoffBlend,
+      handoffBlendRef,
+      setHandoffBlend,
       depthFloatRef,
       setDepthFloat,
       springPos,
@@ -150,7 +165,9 @@ export function FieldNarrativeProvider({ children }) {
       field,
       progress,
       openingComplete,
+      openingCapHandoff,
       capabilityFloat,
+      handoffBlend,
       springPos,
       registerOpeningScroll,
       prefersReducedMotion,
@@ -169,8 +186,13 @@ export function useFieldNarrative() {
       field: DEFAULT_FIELD,
       progress: 0,
       openingComplete: false,
+      openingCapHandoff: 1,
+      openingCapHandoffRef: { current: 1 },
       capabilityFloat: null,
       setCapabilityFloat: () => {},
+      handoffBlend: 0,
+      handoffBlendRef: { current: 0 },
+      setHandoffBlend: () => {},
       depthFloatRef: { current: null },
       setDepthFloat: () => {},
       springPos: { x: 0.5, y: 0.5 },

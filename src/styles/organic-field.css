@@ -19,6 +19,7 @@
   z-index:1;
   width:100%;
   height:100%;
+  pointer-events:none;
 }
 
 .organic-field__canvas{
@@ -45,7 +46,12 @@
   --orb-host-blur: 0px;
 }
 
-.organic-field-host--viewport[data-orb-scene='capabilities'],
+.organic-field-host--viewport[data-orb-scene='capabilities']{
+  --orb-host-opacity: 1;
+  --orb-host-blur: 0px;
+  --orb-transition: 0.95s;
+}
+
 .organic-field-host--viewport[data-orb-scene='pov']{
   --orb-host-opacity: 0.96;
 }

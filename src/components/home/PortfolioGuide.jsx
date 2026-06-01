@@ -99,12 +99,19 @@ function openPovSourcesFromGuide() {
   }, 480);
 }
 
+const GUIDE_TRIGGER_MODE =
+  typeof import.meta.env.VITE_GUIDE_TRIGGER_MODE === 'string'
+    ? import.meta.env.VITE_GUIDE_TRIGGER_MODE.toLowerCase()
+    : 'normal';
+
 export function PortfolioGuide() {
   const { activeId } = useNarrativeScroll();
   const { setGuideOpen } = useOrbScene();
   const isLanding = activeId === 'home-landing';
   const isSectionGuide = activeId === 'home-life-archive';
   const isFullMode = false;
+  const triggerHidden = GUIDE_TRIGGER_MODE === 'hidden';
+  const triggerSubtle = GUIDE_TRIGGER_MODE === 'subtle';
   const source = isSectionGuide ? 'section-guide' : 'landing-guide';
 
   useEffect(() => {
@@ -458,7 +465,7 @@ export function PortfolioGuide() {
   return (
     <div
       ref={rootRef}
-      className={`portfolio-guide${shouldShowRoot ? ' is-visible' : ''}${open ? ' is-open' : ''}${entranceAnimate ? ' is-entering' : ''}${isFullMode ? ' is-full-mode' : ''}`}
+      className={`portfolio-guide${shouldShowRoot ? ' is-visible' : ''}${open ? ' is-open' : ''}${entranceAnimate ? ' is-entering' : ''}${isFullMode ? ' is-full-mode' : ''}${triggerSubtle ? ' is-trigger-subtle' : ''}`}
     >
       <PortfolioGuideOrbSync open={open} />
       {open && !isFullMode ? <div className="portfolio-guide__backdrop" onClick={closePanel} aria-hidden="true" /> : null}
@@ -746,7 +753,7 @@ export function PortfolioGuide() {
         </div>
       </div>
 
-      {!open && !isFullMode ? (
+      {!open && !isFullMode && !triggerHidden ? (
         <div className="portfolio-guide__trigger-wrap">
           <button
             ref={triggerRef}

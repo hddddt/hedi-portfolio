@@ -56,24 +56,17 @@
   opacity:0.65;
 }
 
-/* Release sticky POV stage once chapter 04 is no longer active (avoids black void over ch 05) */
-.home-pov:not(.narrative-chapter--active) .pov-pin{
-  visibility:hidden;
+.pov-scroll__corridor{
+  width:100%;
+  flex-shrink:0;
   pointer-events:none;
-}
-
-/* Ch 05 in view — POV sticky must not cover path / life archive (400vh overlap) */
-.home-scroll-root:has(.home-life-archive.narrative-chapter--inview) .home-pov .pov-pin,
-.home-scroll-root:has(.home-life-archive.narrative-chapter--active) .home-pov .pov-pin{
-  display:none !important;
-  visibility:hidden !important;
-  pointer-events:none !important;
+  visibility:hidden;
 }
 
 .pov-pin{
   position:sticky;
   top:0;
-  z-index:1;
+  z-index:calc(4 - var(--pov-exit, 0) * 2);
   height:100vh;
   max-height:100vh;
   display:flex;
@@ -83,6 +76,16 @@
   padding-right:clamp(120px,14vw,200px);
   box-sizing:border-box;
   overflow:visible;
+  transition:none;
+}
+
+.home-scroll-root[data-pov-exiting='true'] .pov-pin,
+.home-scroll-root[data-pov-exiting='true'] .pov-sources-dock{
+  pointer-events:none;
+}
+
+.home-scroll-root[data-archive-handoff='true'] .pov-pin{
+  z-index:1;
 }
 
 .pov-pin__stage{
@@ -312,7 +315,7 @@
   font-weight:500;
   letter-spacing:-0.035em;
   line-height:1.14;
-  color:rgba(250,248,243,.82);
+  color:rgba(250,248,243,.94);
   max-width:min(22ch,100%);
 }
 .pov-slide--design-close .pov-boundaries{
@@ -364,6 +367,8 @@
   /* Sit above portfolio guide orb (42px + ~36px inset) */
   bottom:clamp(108px,13vh,132px);
   z-index:1101;
+  opacity:calc(1 - var(--pov-exit, 0) * 0.92);
+  transform:translate3d(0, calc(var(--pov-exit, 0) * -12px), 0);
   display:flex;
   flex-direction:column;
   align-items:flex-end;

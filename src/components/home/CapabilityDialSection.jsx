@@ -1,18 +1,47 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSmoothedScrollProgress } from '../../hooks/useSmoothedScrollProgress.js';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { capabilitySectionCopy, homeCapabilities } from '../../data/homeScrollChapters.js';
+import {
+  capabilitiesEntryLayers,
+  capabilitiesFieldParallax,
+  capabilityArcDotRefocus,
+  capabilityArcNodeRefocus,
+  capabilityPanelCrossfade,
+  capabilityPrimaryChipStyle,
+  capabilitySecondaryChipStyle,
+  getVisualFloatIndex,
+  measureCapabilityFloatIndex,
+  measureChapterEntryProgress,
+  syncCapabilityStepAnchor,
+} from '../../utils/capabilitiesChoreography.js';
+import {
+  createTrackScrollTween,
+  easeInOutCubic,
+  trackHeightVh,
+  trackScrollTargetY,
+} from '../../utils/scrollTrack.js';
 
 const ARC_PATH_D = 'M 108 36 Q 12 400 108 764';
 const ARC_VIEW_W = 120;
 const ARC_VIEW_H = 800;
-const BLUR_MAX_PX = 9;
-const PANEL_SCROLL_VH = 100;
 const FIELD_TILT_DEG = -45;
-const WHEEL_STEP_THRESHOLD = 52;
-const WHEEL_STEP_COOLDOWN_MS = 680;
-const CHAPTER_SNAP_SETTLE_MS = 900;
+const WHEEL_STEP_THRESHOLD = 10;
+const SCROLL_TWEEN_MS = 460;
+const CHAPTER_SNAP_SETTLE_MS = 280;
+const PANEL_SNAP_SETTLE_MS = 120;
+const PANEL_SNAP_EPSILON = 0.05;
 const PIN_TOP_TOLERANCE_PX = 3;
+
+/** Sticky chapter is pinned only while its top edge sits at the viewport top (not after scrolling past). */
+function isChapterStickyPinned(rect) {
+  return (
+    rect.top >= -PIN_TOP_TOLERANCE_PX &&
+    rect.top <= PIN_TOP_TOLERANCE_PX &&
+    rect.bottom > window.innerHeight
+  );
+}
 
 function smoothstep(edge0, edge1, x) {
   if (edge1 <= edge0) return x >= edge1 ? 1 : 0;
@@ -25,16 +54,19 @@ function mix(a, b, t) {
 }
 
 /** Scroll-scrubbed atmosphere (aligned with Opening field language). */
-function capabilityAtmosphere(floatIndex, panelCount, reducedMotion) {
+function capabilityAtmosphere(floatIndex, panelCount, reducedMotion, entryProgress = 1) {
   const panelP = panelCount <= 1 ? 0 : floatIndex / (panelCount - 1);
   const spread = smoothstep(0.06, 0.94, panelP);
   const snapDist = panelCount <= 1 ? 0 : Math.abs(floatIndex - Math.round(floatIndex));
-  const settle = reducedMotion ? 1 : 1 - Math.min(1, snapDist * 1.15);
+  const inHold = snapDist < 0.12;
+  const settle = reducedMotion ? 1 : inHold ? 1 : 1 - Math.min(1, snapDist * 2.2);
   const sx = spread * (reducedMotion ? 0 : 1);
+  const entry = reducedMotion ? 1 : entryProgress;
+  const fieldParallax = capabilitiesFieldParallax(entry, panelP);
 
   const fieldStyle = {
-    transform: `translate(-50%, -42%) rotate(${FIELD_TILT_DEG}deg) scale(${mix(0.94, 1.08, spread)}, ${mix(0.92, 1.04, spread)})`,
-    opacity: mix(0.78, 0.96, settle),
+    transform: `translate(-50%, calc(-42% + ${fieldParallax.translateY})) rotate(${FIELD_TILT_DEG}deg) scale(${mix(0.94, 1.08, spread) * fieldParallax.scale}, ${mix(0.92, 1.04, spread)})`,
+    opacity: mix(0.78, 0.96, settle) * fieldParallax.opacity,
     filter: reducedMotion ? 'none' : `blur(${mix(0, 2.2, 1 - settle)}px)`,
   };
 
@@ -59,33 +91,23 @@ function capabilityAtmosphere(floatIndex, panelCount, reducedMotion) {
   return { fieldStyle, discAStyle, discBStyle, discVeilStyle, scrollDriven: !reducedMotion };
 }
 
-/** Cosine ease: sharp at rest, soft handoff mid-scroll (breathing crossfade). */
-function breathe(dist) {
-  const t = Math.min(1, Math.max(0, dist));
-  const opacity = Math.cos(t * Math.PI * 0.5);
-  const blurPx = Math.pow(t, 1.55) * BLUR_MAX_PX;
-  return { opacity, blurPx };
+function assignRef(ref, node) {
+  if (!ref) return;
+  if (typeof ref === 'function') ref(node);
+  else ref.current = node;
 }
 
-function labelPresentation(index, floatIndex, reducedMotion) {
-  if (reducedMotion) {
-    const on = Math.round(floatIndex) === index;
-    return { opacity: on ? 1 : 0.22, filter: 'none' };
-  }
-  const dist = Math.abs(floatIndex - index);
-  if (dist >= 1) return { opacity: 0.18, filter: 'blur(3px)' };
-  const { opacity, blurPx } = breathe(dist);
-  const op = 0.18 + opacity * 0.82;
-  return {
-    opacity: op,
-    filter: blurPx < 0.15 ? 'none' : `blur(${Math.min(4, blurPx * 0.45).toFixed(2)}px)`,
-  };
-}
-
-export function CapabilityDialSection() {
+export function CapabilityDialSection({ trackRef }) {
   const { activeId } = useNarrativeScroll();
   const { setCapabilityFloat } = useFieldNarrative();
   const wrapRef = useRef(null);
+  const setWrapRef = useCallback(
+    (node) => {
+      wrapRef.current = node;
+      assignRef(trackRef, node);
+    },
+    [trackRef],
+  );
   const pathRef = useRef(null);
   const panelIndexRef = useRef(0);
   const [floatIndex, setFloatIndex] = useState(0);
@@ -93,15 +115,41 @@ export function CapabilityDialSection() {
   const [dot, setDot] = useState({ x: 108, y: 400 });
   const [arcStops, setArcStops] = useState([]);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [chapterPinned, setChapterPinned] = useState(false);
+  const [panelTransit, setPanelTransit] = useState(false);
   const chapterPinnedRef = useRef(false);
   const prevActiveIdRef = useRef(null);
   /** Last settled panel — scroll may not jump more than ±1 from this anchor */
   const stepAnchorRef = useRef(0);
   const wheelCooldownRef = useRef(false);
-  const settlingUntilRef = useRef(0);
+  const scrollTweenRef = useRef(null);
+  const snapTimerRef = useRef(null);
   const snapInProgressRef = useRef(false);
   const n = homeCapabilities.length;
-  const trackVh = n * PANEL_SCROLL_VH;
+  const trackVh = trackHeightVh(n);
+
+  const entryProgress = useSmoothedScrollProgress(
+    wrapRef,
+    measureChapterEntryProgress,
+    { stiffness: 90, damping: 24, mass: 0.7, enabled: !reducedMotion },
+  );
+  /** Raw scroll index + visual lock zones for rendering. */
+  const visualFloatIndex = useMemo(
+    () => getVisualFloatIndex(floatIndex),
+    [floatIndex],
+  );
+
+  const effectiveEntryProgress =
+    panelIndex === 0 && chapterPinned && !panelTransit
+      ? Math.max(entryProgress, 1)
+      : panelIndex === 0
+        ? entryProgress
+        : 1;
+
+  const entryLayers = useMemo(
+    () => capabilitiesEntryLayers(effectiveEntryProgress, reducedMotion),
+    [effectiveEntryProgress, reducedMotion],
+  );
 
   panelIndexRef.current = panelIndex;
 
@@ -122,26 +170,44 @@ export function CapabilityDialSection() {
     return () => setCapabilityFloat(null);
   }, [activeId, floatIndex, setCapabilityFloat]);
 
-  const scrollOffsetForPanel = useCallback(
-    (index) => {
-      const el = wrapRef.current;
-      if (!el || n <= 1) return 0;
-      const total = Math.max(1, el.offsetHeight - window.innerHeight);
-      return (index / (n - 1)) * total;
-    },
-    [n],
-  );
-
   const scrollToPanel = useCallback(
     (index, behavior = 'smooth') => {
       const el = wrapRef.current;
       if (!el || n <= 1) return;
       const clamped = Math.min(n - 1, Math.max(0, index));
       stepAnchorRef.current = clamped;
-      const y = el.getBoundingClientRect().top + window.scrollY + scrollOffsetForPanel(clamped);
-      window.scrollTo({ top: y, behavior });
+
+      if (!scrollTweenRef.current) {
+        scrollTweenRef.current = createTrackScrollTween();
+      }
+      scrollTweenRef.current.cancel();
+
+      const targetY = trackScrollTargetY(el, clamped, n);
+      const finish = () => {
+        const exactY = trackScrollTargetY(el, clamped, n);
+        window.scrollTo(0, exactY);
+        stepAnchorRef.current = clamped;
+        setFloatIndex(clamped);
+        setPanelIndex(clamped);
+        wheelCooldownRef.current = false;
+        setPanelTransit(false);
+      };
+
+      if (reducedMotion || behavior === 'auto') {
+        window.scrollTo(0, targetY);
+        finish();
+        return;
+      }
+
+      wheelCooldownRef.current = true;
+      setPanelTransit(true);
+      scrollTweenRef.current.tweenTo(targetY, {
+        duration: SCROLL_TWEEN_MS,
+        ease: easeInOutCubic,
+        onComplete: finish,
+      });
     },
-    [n, scrollOffsetForPanel],
+    [n, reducedMotion],
   );
 
   const snapToChapterStart = useCallback(
@@ -149,7 +215,6 @@ export function CapabilityDialSection() {
       const el = wrapRef.current;
       if (!el || snapInProgressRef.current) return;
       snapInProgressRef.current = true;
-      settlingUntilRef.current = performance.now() + CHAPTER_SNAP_SETTLE_MS;
       stepAnchorRef.current = 0;
       setFloatIndex(0);
       setPanelIndex(0);
@@ -163,91 +228,144 @@ export function CapabilityDialSection() {
     [],
   );
 
-  const isChapterSettling = useCallback(
-    () => performance.now() < settlingUntilRef.current,
-    [],
-  );
-
-  /** Entering Capabilities chapter — reset to panel 0; only snap scroll if already near the chapter. */
+  /** Entering Capabilities — preserve scroll panel when reviewing from below; panel 0 only from above. */
   useEffect(() => {
-    const entered = activeId === 'home-capabilities' && prevActiveIdRef.current !== 'home-capabilities';
+    const prevId = prevActiveIdRef.current;
+    const entered = activeId === 'home-capabilities' && prevId !== 'home-capabilities';
     prevActiveIdRef.current = activeId;
 
-    if (!entered) return;
-
-    stepAnchorRef.current = 0;
-    setFloatIndex(0);
-    setPanelIndex(0);
+    if (!entered) return undefined;
 
     const el = wrapRef.current;
     if (!el) return undefined;
 
     const rect = el.getBoundingClientRect();
-    /* Do not yank the user from landing / opening — only align when chapter is on screen */
     if (rect.top > window.innerHeight * 0.55) return undefined;
 
+    const rawFi = measureCapabilityFloatIndex(rect, n);
+    const target = Math.min(n - 1, Math.max(0, Math.round(rawFi)));
+    const fromBelow =
+      prevId === 'home-work-narrative' ||
+      prevId === 'home-life-archive' ||
+      rawFi >= 0.35;
+
+    const applyPanel = (index) => {
+      stepAnchorRef.current = index;
+      setFloatIndex(index);
+      setPanelIndex(index);
+    };
+
+    if (fromBelow) {
+      applyPanel(target);
+      if (Math.abs(rawFi - target) > 0.06) {
+        scrollToPanel(target, isChapterStickyPinned(rect) ? 'auto' : 'smooth');
+      }
+      return undefined;
+    }
+
+    applyPanel(0);
     if (rect.top > PIN_TOP_TOLERANCE_PX) {
       const raf = requestAnimationFrame(() => {
         snapToChapterStart('auto');
       });
       return () => cancelAnimationFrame(raf);
     }
+    if (Math.abs(rawFi) > 0.06) {
+      scrollToPanel(0, 'auto');
+    }
     return undefined;
-  }, [activeId, snapToChapterStart]);
+  }, [activeId, n, scrollToPanel, snapToChapterStart]);
 
   useEffect(() => {
     const onScroll = () => {
+      if (activeId !== 'home-capabilities') return;
       const el = wrapRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const total = Math.max(1, rect.height - window.innerHeight);
-      const t = Math.min(Math.max(-rect.top, 0), total);
-      const p = t / total;
-      const fi = n <= 1 ? 0 : p * (n - 1);
-      const pi = Math.min(n - 1, Math.max(0, Math.round(fi)));
+      const rawFi = measureCapabilityFloatIndex(rect, n);
 
-      const isPinned =
-        rect.top <= PIN_TOP_TOLERANCE_PX && rect.bottom > window.innerHeight;
+      const isPinned = isChapterStickyPinned(rect);
       if (isPinned && !chapterPinnedRef.current) {
         chapterPinnedRef.current = true;
-        stepAnchorRef.current = 0;
-        setFloatIndex(0);
-        setPanelIndex(0);
-        if (fi > 0.04) {
-          snapToChapterStart('auto');
+        setChapterPinned(true);
+        let target = Math.min(n - 1, Math.max(0, Math.round(rawFi)));
+        if (rawFi < 0.42) target = 0;
+        stepAnchorRef.current = target;
+        setFloatIndex(target);
+        setPanelIndex(target);
+        if (Math.abs(rawFi - target) > PANEL_SNAP_EPSILON && !scrollTweenRef.current?.isRunning()) {
+          scrollToPanel(target, 'auto');
           return;
         }
       }
       if (rect.top > window.innerHeight * 0.5) {
         chapterPinnedRef.current = false;
+        setChapterPinned(false);
       }
 
-      if (isPinned && n > 1) {
+      if (isPinned && n > 1 && !scrollTweenRef.current?.isRunning()) {
         const anchor = stepAnchorRef.current;
-        const target = Math.round(fi);
+        syncCapabilityStepAnchor(rawFi, stepAnchorRef);
+        const target = Math.round(rawFi);
         const atEnd = anchor >= n - 1;
         const atStart = anchor <= 0;
-        /* Do not clamp when leaving the chapter past first / last panel */
-        const leavingDown = atEnd && fi > anchor + 0.12;
-        const leavingUp = atStart && fi < anchor - 0.12;
+        const leavingDown = atEnd && rawFi > anchor + 0.12;
+        const leavingUp = atStart && rawFi < anchor - 0.12;
         if (!leavingDown && !leavingUp && Math.abs(target - anchor) > 1) {
           const clamped = Math.min(n - 1, Math.max(0, anchor + Math.sign(target - anchor)));
-          scrollToPanel(clamped, reducedMotion ? 'auto' : 'smooth');
+          scrollToPanel(clamped, 'smooth');
           return;
-        }
-        if (Math.abs(fi - target) < 0.07) {
-          stepAnchorRef.current = target;
         }
       }
 
-      setFloatIndex(fi);
-      setPanelIndex(pi);
+      const tweenRunning = scrollTweenRef.current?.isRunning();
+      const cooldown = wheelCooldownRef.current;
+
+      if (tweenRunning || cooldown) {
+        setFloatIndex(rawFi);
+        setPanelIndex(Math.min(n - 1, Math.max(0, Math.round(rawFi))));
+      } else {
+        syncCapabilityStepAnchor(rawFi, stepAnchorRef);
+        const anchor = stepAnchorRef.current;
+        if (Math.abs(rawFi - anchor) < PANEL_SNAP_EPSILON) {
+          setFloatIndex(anchor);
+          setPanelIndex(anchor);
+        } else {
+          setFloatIndex(rawFi);
+          setPanelIndex(Math.min(n - 1, Math.max(0, Math.round(rawFi))));
+        }
+      }
+
+      if (wheelCooldownRef.current || snapInProgressRef.current || tweenRunning) {
+        return;
+      }
+
+      clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = window.setTimeout(() => {
+        if (activeId !== 'home-capabilities') return;
+        if (wheelCooldownRef.current || scrollTweenRef.current?.isRunning()) return;
+        const r = el.getBoundingClientRect();
+        if (!isChapterStickyPinned(r)) return;
+        const latest = measureCapabilityFloatIndex(r, n);
+        const snap = Math.round(latest);
+        syncCapabilityStepAnchor(latest, stepAnchorRef);
+        if (Math.abs(latest - snap) > PANEL_SNAP_EPSILON) {
+          scrollToPanel(snap, 'smooth');
+        } else {
+          stepAnchorRef.current = snap;
+          setFloatIndex(snap);
+          setPanelIndex(snap);
+        }
+      }, PANEL_SNAP_SETTLE_MS);
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [n, reducedMotion, scrollToPanel, snapToChapterStart]);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(snapTimerRef.current);
+    };
+  }, [activeId, n, scrollToPanel, snapToChapterStart]);
 
   useLayoutEffect(() => {
     const path = pathRef.current;
@@ -271,9 +389,21 @@ export function CapabilityDialSection() {
     setArcStops(stops);
   }, [floatIndex, n]);
 
+  useEffect(
+    () => () => scrollTweenRef.current?.cancel(),
+    [],
+  );
+
   const bumpScroll = useCallback(
     (dir) => {
-      const anchor = stepAnchorRef.current;
+      const el = wrapRef.current;
+      if (!el || n <= 1) return;
+      const fi = measureCapabilityFloatIndex(el.getBoundingClientRect(), n);
+      syncCapabilityStepAnchor(fi, stepAnchorRef);
+      const nearest = Math.round(fi);
+      let anchor = stepAnchorRef.current;
+      if (dir < 0 && nearest < anchor) anchor = nearest;
+      if (dir > 0 && nearest > anchor) anchor = nearest;
       const next = Math.min(n - 1, Math.max(0, anchor + dir));
       if (next === anchor) return;
       scrollToPanel(next, 'smooth');
@@ -291,66 +421,73 @@ export function CapabilityDialSection() {
       const el = wrapRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const chapterOnScreen = rect.bottom > 48 && rect.top < window.innerHeight;
-      if (!chapterOnScreen) return;
+      const isPinned = isChapterStickyPinned(rect);
 
-      const isPinned =
-        rect.top <= PIN_TOP_TOLERANCE_PX && rect.bottom > window.innerHeight;
-      /* Chapter top still scrolling in — not deep inside the pinned track */
-      const isApproachingPin =
-        rect.top > PIN_TOP_TOLERANCE_PX && rect.top < window.innerHeight * 0.55;
-      const isSettling = isChapterSettling();
-      const scrollingDown = e.deltaY > 0;
-
-      /* Lock downward scroll only while snapping to the chapter pin (panel 0) */
-      if (scrollingDown && (isApproachingPin || isSettling)) {
-        e.preventDefault();
-        if (isApproachingPin && !snapInProgressRef.current) {
-          snapToChapterStart('smooth');
+      const workTrack = document.getElementById('home-work-strongest');
+      if (workTrack) {
+        const wr = workTrack.getBoundingClientRect();
+        const workPinned =
+          wr.top <= PIN_TOP_TOLERANCE_PX && wr.bottom > window.innerHeight * 0.45;
+        if (workPinned && activeId === 'home-work-narrative') {
+          return;
         }
-        return;
       }
 
-      if (!isPinned) return;
+      const capEngaged =
+        activeId === 'home-capabilities' ||
+        (isPinned && rect.bottom > window.innerHeight * 0.45);
+      if (!capEngaged || !isPinned) return;
 
-      const anchor = stepAnchorRef.current;
+      const scrollingDown = e.deltaY > 0;
+      const scrollingUp = e.deltaY < 0;
+      if (!scrollingDown && !scrollingUp) return;
+
+      const fiNow = measureCapabilityFloatIndex(rect, n);
+      syncCapabilityStepAnchor(fiNow, stepAnchorRef);
+      const nearest = Math.round(fiNow);
+      let anchor = stepAnchorRef.current;
+      if (scrollingUp && nearest < anchor) anchor = nearest;
+      if (scrollingDown && nearest > anchor) anchor = nearest;
       const atLast = anchor >= n - 1;
       const atFirst = anchor <= 0;
-      const scrollingUp = e.deltaY < 0;
 
-      /* At chapter edges, let the page scroll into the prev / next section */
-      if ((scrollingDown && atLast && !isSettling) || (scrollingUp && atFirst && !isSettling)) {
-        return;
-      }
-
-      if (scrollingDown && isSettling) {
-        e.preventDefault();
+      /* At first/last panel, release wheel so the page can exit the chapter */
+      if ((scrollingDown && atLast) || (scrollingUp && atFirst)) {
         return;
       }
 
       e.preventDefault();
+
+      const wheelDir = scrollingDown ? 1 : -1;
+      if (wheelCooldownRef.current && scrollTweenRef.current?.isRunning()) {
+        const nextFromTween = Math.min(n - 1, Math.max(0, anchor + wheelDir));
+        if (nextFromTween !== anchor) {
+          wheelAccum = 0;
+          bumpScroll(wheelDir);
+        }
+        return;
+      }
       if (wheelCooldownRef.current) return;
 
-      wheelAccum += e.deltaY;
+      const delta = e.deltaY;
+      if (Math.abs(delta) >= WHEEL_STEP_THRESHOLD) {
+        wheelAccum = 0;
+        bumpScroll(wheelDir);
+        return;
+      }
+
+      wheelAccum += delta;
       clearTimeout(wheelResetTimer);
       wheelResetTimer = window.setTimeout(() => {
         wheelAccum = 0;
-      }, 220);
+      }, 160);
 
       if (wheelAccum >= WHEEL_STEP_THRESHOLD) {
         wheelAccum = 0;
-        wheelCooldownRef.current = true;
         bumpScroll(1);
-        window.setTimeout(() => {
-          wheelCooldownRef.current = false;
-        }, WHEEL_STEP_COOLDOWN_MS);
       } else if (wheelAccum <= -WHEEL_STEP_THRESHOLD) {
         wheelAccum = 0;
-        wheelCooldownRef.current = true;
         bumpScroll(-1);
-        window.setTimeout(() => {
-          wheelCooldownRef.current = false;
-        }, WHEEL_STEP_COOLDOWN_MS);
       }
     };
 
@@ -359,7 +496,7 @@ export function CapabilityDialSection() {
       window.removeEventListener('wheel', onWheel);
       clearTimeout(wheelResetTimer);
     };
-  }, [bumpScroll, reducedMotion, isChapterSettling, snapToChapterStart]);
+  }, [activeId, bumpScroll, reducedMotion, snapToChapterStart]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -384,14 +521,124 @@ export function CapabilityDialSection() {
     return () => window.removeEventListener('keydown', onKey);
   }, [bumpScroll]);
 
-  const atmosphere = capabilityAtmosphere(floatIndex, n, reducedMotion);
-  const activePanelIndex = Math.min(n - 1, Math.max(0, Math.round(floatIndex)));
-  const activeCap = homeCapabilities[activePanelIndex];
-  const headlineLines = activeCap.headlineLines ?? [activeCap.headline];
+  const atmosphere = capabilityAtmosphere(
+    visualFloatIndex,
+    n,
+    reducedMotion,
+    entryProgress,
+  );
+  const activePanelIndex = Math.min(n - 1, Math.max(0, Math.round(visualFloatIndex)));
+  const ariaCap = homeCapabilities[activePanelIndex];
+  const renderFloatIndex = useMemo(() => {
+    if (Math.abs(floatIndex - panelIndex) < PANEL_SNAP_EPSILON) return panelIndex;
+    return floatIndex;
+  }, [floatIndex, panelIndex]);
+  const isPanelScrubbing = Math.abs(floatIndex - panelIndex) > PANEL_SNAP_EPSILON + 0.02;
+  /** Blur only during intentional panel tweens — not chapter-entry track bleed */
+  const crossfadeFloatIndex = panelTransit ? renderFloatIndex : panelIndex;
+
+  const renderCapabilityPanel = (cap, panelIdx) => {
+    const crossfade = capabilityPanelCrossfade(crossfadeFloatIndex, panelIdx, reducedMotion);
+    const isSettled = !isPanelScrubbing && panelIdx === panelIndex;
+    const useChapterEntry = panelIdx === 0 && effectiveEntryProgress < 0.995;
+    const layers = useChapterEntry
+      ? entryLayers
+      : capabilitiesEntryLayers(1, reducedMotion);
+    const headlineLines = cap.headlineLines ?? [cap.headline];
+    const entryP = useChapterEntry ? effectiveEntryProgress : 1;
+
+    return (
+      <div
+        key={cap.id}
+        className={`cap-dial__state-layer${isSettled ? ' is-settled' : ''}`}
+        data-cap-id={cap.id}
+        style={crossfade}
+        aria-hidden={crossfade.opacity < 0.45}
+      >
+        <h2
+          className="cap-dial__headline"
+          style={useChapterEntry ? layers.headline : undefined}
+        >
+          {headlineLines.map((line) => (
+            <span key={line} className="cap-dial__headline-line">
+              {line}
+            </span>
+          ))}
+        </h2>
+        {cap.positioning ? (
+          <p
+            className="cap-dial__positioning"
+            style={
+              useChapterEntry
+                ? {
+                    ...layers.description,
+                    transform: `translate3d(0, ${layers.parallax?.description ?? 0}px, 0)`,
+                  }
+                : undefined
+            }
+          >
+            {cap.positioning}
+          </p>
+        ) : null}
+        <div
+          className="cap-dial__chip-groups"
+          style={
+            useChapterEntry
+              ? { transform: `translate3d(0, ${layers.parallax?.chips ?? 0}px, 0)` }
+              : undefined
+          }
+        >
+          <div className="cap-dial__chip-group">
+            <p className="cap-dial__chip-group-label" style={layers.chipLabelPrimary}>
+              Primary
+            </p>
+            <ul
+              className="cap-dial__chips cap-dial__chips--primary"
+              aria-label={`${cap.headline} primary outputs`}
+            >
+              {cap.pillsPrimary.map((pill, j) => (
+                <li
+                  key={pill}
+                  className="cap-dial__chip cap-dial__chip--primary"
+                  style={capabilityPrimaryChipStyle(entryP, j, cap.pillsPrimary.length, reducedMotion)}
+                >
+                  {pill}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="cap-dial__chip-group cap-dial__chip-group--secondary">
+            <p className="cap-dial__chip-group-label" style={layers.chipLabelSecondary}>
+              Secondary
+            </p>
+            <ul
+              className="cap-dial__chips cap-dial__chips--secondary"
+              aria-label={`${cap.headline} supporting methods`}
+            >
+              {cap.pillsSecondary.map((pill, j) => (
+                <li
+                  key={pill}
+                  className="cap-dial__chip cap-dial__chip--secondary"
+                  style={capabilitySecondaryChipStyle(
+                    entryP,
+                    j,
+                    cap.pillsSecondary.length,
+                    reducedMotion,
+                  )}
+                >
+                  {pill}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <section
-      ref={wrapRef}
+      ref={setWrapRef}
       className="capability-scroll capability-scroll--snap"
       style={{ height: `${trackVh}vh`, minHeight: `${trackVh}vh` }}
     >
@@ -420,12 +667,21 @@ export function CapabilityDialSection() {
           aria-label="Capabilities. Scroll this chapter to move through capabilities, or use arrow keys."
           aria-valuemin={1}
           aria-valuemax={n}
-          aria-valuenow={panelIndex + 1}
+          aria-valuenow={activePanelIndex + 1}
+          aria-valuetext={ariaCap.headline}
         >
           <div className="cap-dial__grain" aria-hidden="true" />
 
           <div className="cap-dial__stage">
-            <div className="cap-dial__wheel cap-dial__wheel--minimal" aria-hidden="true">
+            <div
+              className="cap-dial__wheel cap-dial__wheel--minimal"
+              aria-hidden="true"
+              style={{
+                transform: `translate3d(${-10 + (entryLayers.parallax?.arc ?? 0) * 0.15}px, ${entryLayers.parallax?.arc ?? 0}px, 0)`,
+                opacity: entryLayers.arc?.opacity ?? 1,
+                filter: entryLayers.arc?.filter,
+              }}
+            >
               <div className="cap-dial__arc-rig">
                 <svg
                   className="cap-dial__arc cap-dial__arc--interactive"
@@ -436,37 +692,68 @@ export function CapabilityDialSection() {
                     ref={pathRef}
                     d={ARC_PATH_D}
                     fill="none"
-                    stroke="rgba(255,255,255,0.16)"
-                    strokeWidth="1"
+                    stroke="rgba(255,255,255,0.28)"
+                    strokeWidth="1.85"
                     vectorEffect="non-scaling-stroke"
                   />
-                  <circle className="cap-dial__arc-dot-circle" cx={dot.x} cy={dot.y} r={3.5} />
+                  {(() => {
+                    const dotPres = capabilityArcDotRefocus(visualFloatIndex, reducedMotion);
+                    return (
+                      <circle
+                        className="cap-dial__arc-dot-circle"
+                        cx={dot.x}
+                        cy={dot.y}
+                        r={dotPres.r}
+                        style={{
+                          opacity: dotPres.opacity,
+                          filter: dotPres.filter,
+                        }}
+                      />
+                    );
+                  })()}
                 </svg>
                 <div className="cap-dial__arc-labels">
                   {arcStops.map((stop, i) => {
-                    const pres = labelPresentation(i, floatIndex, reducedMotion);
-                    const isNear = Math.abs(floatIndex - i) < 0.42;
+                    const lineCount = stop.lines?.length ?? 1;
                     return (
                       <button
                         key={stop.id}
                         type="button"
-                        className={`cap-dial__arc-label ${isNear ? 'is-near' : ''} ${panelIndex === i ? 'is-active' : ''}`}
+                        data-cap={stop.id}
+                        className="cap-dial__arc-label cap-dial__arc-label--scroll"
                         style={{
                           left: `${(stop.x / ARC_VIEW_W) * 100}%`,
                           top: `${(stop.y / ARC_VIEW_H) * 100}%`,
-                          opacity: pres.opacity,
-                          filter: pres.filter,
+                          transform: 'translate(8px, -50%)',
                         }}
                         tabIndex={-1}
                         aria-hidden
                         onClick={() => scrollToPanel(i, 'smooth')}
                       >
                         <span className="cap-dial__arc-label-text">
-                          {stop.lines.map((line) => (
-                            <span key={line} className="cap-dial__arc-label-line">
-                              {line}
-                            </span>
-                          ))}
+                          {stop.lines.map((line, lineIdx) => {
+                            const linePres = capabilityArcNodeRefocus(
+                              visualFloatIndex,
+                              i,
+                              lineIdx,
+                              lineCount,
+                              reducedMotion,
+                            );
+                            return (
+                              <span
+                                key={line}
+                                className="cap-dial__arc-label-line"
+                                style={{
+                                  opacity: linePres.opacity,
+                                  filter: linePres.filter,
+                                  transform: linePres.transform,
+                                  color: linePres.color,
+                                }}
+                              >
+                                {line}
+                              </span>
+                            );
+                          })}
                         </span>
                       </button>
                     );
@@ -475,79 +762,23 @@ export function CapabilityDialSection() {
               </div>
             </div>
 
-            <div className="cap-dial__main">
+            <div
+              className="cap-dial__main"
+              style={{
+                transform: `translate3d(0, ${entryLayers.parallax?.title ?? 0}px, 0)`,
+              }}
+            >
               {capabilitySectionCopy.footer ? (
-                <p className="cap-dial__footer cap-dial__footer--lead">
+                <p
+                  className="cap-dial__footer cap-dial__footer--lead"
+                  style={entryLayers.footerLead}
+                >
                   {capabilitySectionCopy.footer}
                 </p>
               ) : null}
               <div className="cap-dial__panel-body">
                 <div className="cap-dial__state-stack" aria-live="polite">
-                  <div
-                    key={activeCap.id}
-                    className={[
-                      'cap-dial__state-layer',
-                      'cap-dial__state-layer--single',
-                      'is-settled',
-                      reducedMotion ? '' : 'cap-dial__state-layer--enter',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    <h2 className="cap-dial__headline">
-                      {headlineLines.map((line, idx) => (
-                        <span key={line} className="cap-dial__headline-line">
-                          {line}
-                          {idx < headlineLines.length - 1 ? <br /> : null}
-                        </span>
-                      ))}
-                    </h2>
-                    {activeCap.positioning ? (
-                      <p className="cap-dial__positioning">{activeCap.positioning}</p>
-                    ) : null}
-                    <div className="cap-dial__chip-groups">
-                      <div className="cap-dial__chip-group">
-                        <p className="cap-dial__chip-group-label">Primary</p>
-                        <ul
-                          className="cap-dial__chips cap-dial__chips--primary"
-                          aria-label={`${activeCap.headline} primary outputs`}
-                        >
-                          {activeCap.pillsPrimary.map((pill, j) => (
-                            <li
-                              key={pill}
-                              className="cap-dial__chip cap-dial__chip--primary"
-                              style={{
-                                transitionDelay: `${j * 22}ms`,
-                                opacity: 1,
-                              }}
-                            >
-                              {pill}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="cap-dial__chip-group cap-dial__chip-group--secondary">
-                        <p className="cap-dial__chip-group-label">Secondary</p>
-                        <ul
-                          className="cap-dial__chips cap-dial__chips--secondary"
-                          aria-label={`${activeCap.headline} supporting methods`}
-                        >
-                          {activeCap.pillsSecondary.map((pill, j) => (
-                            <li
-                              key={pill}
-                              className="cap-dial__chip cap-dial__chip--secondary"
-                              style={{
-                                transitionDelay: `${(activeCap.pillsPrimary.length + j) * 18}ms`,
-                                opacity: 1,
-                              }}
-                            >
-                              {pill}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+                  {homeCapabilities.map((cap, i) => renderCapabilityPanel(cap, i))}
                 </div>
               </div>
             </div>

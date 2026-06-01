@@ -171,7 +171,7 @@ export function OpeningBridgeSection() {
   };
 
   /** Orbit wrap: tighter around identity at rest, loosens + grows with scroll */
-  const orbitOpacity = mix(0.88, 0.32, recede);
+  const orbitOpacity = mix(0.68, 0.26, recede);
   const orbitTx = mix(0, -2.8, orbitDrive);
   const orbitTy = mix(0, 1.8, orbitDrive);
   const orbitScale = mix(1.08, 1.22, orbitDrive) * mix(1, 0.97, recede) * mix(0.98, 1.08, expand);
@@ -194,8 +194,8 @@ export function OpeningBridgeSection() {
   const e4 = `translate(${mix(0, 14, od)} ${mix(0, -10, od)}) scale(${mix(1, 1.02, od) * ex})`;
 
   const dashStrokeW = 0.92 + friction * 0.48;
-  const solidOrbitGroupOpacity = mix(1, 0.38, smoothstep(0.18, 0.82, open));
-  const dashedOrbitGroupOpacity = mix(0.92, 1, smoothstep(0.22, 0.88, open));
+  const solidOrbitGroupOpacity = mix(0.82, 0.32, smoothstep(0.18, 0.82, open));
+  const dashedOrbitGroupOpacity = mix(0.78, 0.88, smoothstep(0.22, 0.88, open));
 
   /** A→B: content shift tied to same hero timeline as background blobs */
   const abShift = smoothstep(0.04, 0.91, open);
@@ -254,7 +254,7 @@ export function OpeningBridgeSection() {
                                   rx="242"
                                   ry="104"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.075)"
+                                  stroke="rgba(10,9,8,0.052)"
                                   strokeWidth="0.68"
                                 />
                               </g>
@@ -288,7 +288,7 @@ export function OpeningBridgeSection() {
                                   rx="214"
                                   ry="92"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.09)"
+                                  stroke="rgba(10,9,8,0.058)"
                                   strokeWidth="0.62"
                                 />
                               </g>
@@ -322,7 +322,7 @@ export function OpeningBridgeSection() {
                                   rx="318"
                                   ry="122"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.125)"
+                                  stroke="rgba(10,9,8,0.068)"
                                   strokeWidth="0.82"
                                 />
                               </g>
@@ -357,7 +357,7 @@ export function OpeningBridgeSection() {
                                   rx="252"
                                   ry="108"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.34)"
+                                  stroke="rgba(10,9,8,0.22)"
                                   strokeWidth={dashStrokeW}
                                   strokeDasharray="9 5 3 11 6"
                                 />

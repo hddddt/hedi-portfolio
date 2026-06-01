@@ -10,6 +10,20 @@ export function mix(a, b, t) {
   return a + (b - a) * t;
 }
 
+/** Scroll morph — smoothstep with a mid-transition swell (breath / elastic read) */
+export function easeScrollBreath(t) {
+  const c = Math.max(0, Math.min(1, t));
+  const base = c * c * (3 - 2 * c);
+  const swell = Math.sin(c * Math.PI) * 0.12 * (1 - c * 0.4);
+  return Math.max(0, Math.min(1, base + swell));
+}
+
+/** Scale pulse that peaks mid-scroll — pairs with easeScrollBreath */
+export function scrollBreathScalePulse(t) {
+  const c = Math.max(0, Math.min(1, t));
+  return 1 + Math.sin(c * Math.PI) * 0.06 * (1 - c * 0.3);
+}
+
 export function plateauProgress(p, holdStart, holdEnd) {
   if (p <= holdStart || holdEnd <= holdStart) return p;
   if (p < holdEnd) return holdStart;
@@ -159,4 +173,17 @@ export function measureOpeningScrollProgress(el, prefersReducedMotion) {
     nextP = nextP >= 0.5 ? 1 : 0;
   }
   return Math.max(0, Math.min(1, nextP));
+}
+
+/**
+ * 0→1 as Capabilities chapter rises into pin — drives field pose blend from opening thesis to signal.
+ * @param {DOMRect | null | undefined} capabilitiesRect
+ * @param {number} vh
+ */
+export function measureOpeningCapabilitiesHandoff(capabilitiesRect, vh) {
+  if (!capabilitiesRect || vh < 1) return 1;
+  const top = capabilitiesRect.top;
+  if (top >= vh * 0.98) return 0;
+  if (top <= vh * 0.04) return 1;
+  return smoothstep(vh * 0.96, vh * 0.06, vh - top);
 }

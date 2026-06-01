@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
+import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
 import { povBeats } from '../../data/pointOfViewChapters.js';
 import { formatPovMarkers } from '../../data/povSources.js';
+import { povExitLayers } from '../../utils/povArchiveHandoff.js';
 
 const BEAT_VH = 100;
+const HANDOFF_CORRIDOR_VH = 38;
 const LINE_STAGGER_S = 0.12;
 
 function PovMarkers({ markers }) {
@@ -176,12 +179,26 @@ export function ApproachSection() {
   const wrapRef = useRef(null);
   const { activeId } = useNarrativeScroll();
   const { setDepthFloat } = useFieldNarrative();
+  const { exitProgress, reducedMotion: handoffReduced } = usePovArchiveHandoff();
   const [beatIndex, setBeatIndex] = useState(0);
   const [scrollFloat, setScrollFloat] = useState(0);
   const beatIndexRef = useRef(0);
 
   const n = povBeats.length;
-  const trackVh = n * BEAT_VH;
+  const corridorVh = handoffReduced ? 0 : HANDOFF_CORRIDOR_VH;
+  const trackVh = n * BEAT_VH + corridorVh;
+  const effectiveExit = useMemo(() => {
+    if (handoffReduced) return exitProgress;
+    /* Last beat stays fully opaque until scroll enters the handoff corridor */
+    if (beatIndex >= n - 1 && scrollFloat < n - 1 + 0.14) {
+      return Math.min(exitProgress, 0.03);
+    }
+    return exitProgress;
+  }, [exitProgress, beatIndex, scrollFloat, n, handoffReduced]);
+  const exitLayers = useMemo(
+    () => povExitLayers(effectiveExit, handoffReduced),
+    [effectiveExit, handoffReduced],
+  );
 
   useEffect(() => {
     beatIndexRef.current = beatIndex;
@@ -189,12 +206,13 @@ export function ApproachSection() {
 
   useEffect(() => {
     if (activeId === 'home-approach') {
-      setDepthFloat(scrollFloat);
+      const blueHold = 1 - exitProgress * 0.88;
+      setDepthFloat(scrollFloat * blueHold);
     } else {
       setDepthFloat(null);
     }
     return () => setDepthFloat(null);
-  }, [activeId, scrollFloat, setDepthFloat]);
+  }, [activeId, scrollFloat, exitProgress, setDepthFloat]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -235,7 +253,7 @@ export function ApproachSection() {
         ))}
       </div>
 
-      <div className="pov-atmosphere" aria-hidden="true">
+      <div className="pov-atmosphere" aria-hidden="true" style={exitLayers.atmosphere}>
         <svg className="pov-curve" viewBox="0 0 400 800" preserveAspectRatio="none">
           <path
             d="M 300 48 Q 140 400 300 752"
@@ -246,7 +264,15 @@ export function ApproachSection() {
         </svg>
       </div>
 
-      <div className="pov-pin">
+      {corridorVh > 0 ? (
+        <div className="pov-scroll__corridor" aria-hidden="true" style={{ height: `${corridorVh}vh` }} />
+      ) : null}
+
+      <div
+        className="pov-pin"
+        data-pov-exit={exitProgress > 0.04 ? 'true' : undefined}
+        style={exitLayers.stage}
+      >
         <div className="pov-pin__stage" key={beatIndex}>
           {povBeats.map((beat, i) => (
             <PovSlide key={beat.id} beat={beat} isCurrent={beatIndex === i} />

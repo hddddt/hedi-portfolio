@@ -12,6 +12,10 @@ export function NarrativeChapter({
   ariaLabel,
   scrollMinHeight,
   hideRibbon = false,
+  /** Sticky scroll track element — used for chapter active detection. */
+  measureRef,
+  /** Query inside chapter root (e.g. `.work-scroll`). */
+  measureSelector,
 }) {
   const domId = guideTargetId ?? id;
   const ref = useRef(null);
@@ -21,8 +25,18 @@ export function NarrativeChapter({
   const { registerChapter, activeId } = useNarrativeScroll();
 
   useEffect(() => {
-    return registerChapter(id, () => ref.current, ambientKey);
-  }, [id, ambientKey, registerChapter]);
+    return registerChapter(
+      id,
+      () => {
+        if (measureRef?.current) return measureRef.current;
+        const root = ref.current;
+        if (!root) return null;
+        if (measureSelector) return root.querySelector(measureSelector);
+        return root;
+      },
+      ambientKey,
+    );
+  }, [id, ambientKey, measureRef, measureSelector, registerChapter]);
 
   useEffect(() => {
     const node = ref.current;

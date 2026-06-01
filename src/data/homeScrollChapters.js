@@ -142,8 +142,8 @@ export const homeCapabilities = [
     code: '02',
     label: 'Human-AI Workflow Design',
     headline: 'Human-AI Workflow Design',
-    headlineLines: ['Human-AI Workflow', 'Design'],
-    railLabelLines: ['Human-AI', 'Workflow'],
+    headlineLines: ['Human-AI', 'Workflow Design'],
+    railLabelLines: ['Human-AI', 'Workflow Design'],
     positioning: 'Where AI output becomes continued work.',
     pillsPrimary: ['routing logic', 'handoff design', 'workflow continuation'],
     pillsSecondary: [

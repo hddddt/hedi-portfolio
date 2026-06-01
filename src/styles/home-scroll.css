@@ -255,7 +255,7 @@ html.home-scroll-page body{
     rgba(238, 236, 228, 0.88) 100%
   );
 }
-/* z1 — OrganicField portal target (above plate, below copy) */
+/* z1 — OrganicField canvas (above plate, below copy) */
 .opening-card__field-slot{
   position:absolute;
   inset:0;
