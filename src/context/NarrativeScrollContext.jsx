@@ -24,7 +24,24 @@ export function NarrativeScrollProvider({ chapters, children }) {
   }, []);
 
   const resolveActive = useCallback(() => {
-    const centerY = window.innerHeight * 0.36;
+    const vh = window.innerHeight;
+    const centerY = vh * 0.36;
+
+    /** Ch 05 entered view — prefer over ch 04 POV (400vh sticky was covering path / photos). */
+    const archiveRec = registry.current.get('home-life-archive');
+    const archiveNode = archiveRec?.getElement?.();
+    if (archiveNode) {
+      const r = archiveNode.getBoundingClientRect();
+      if (r.top < vh * 0.78 && r.bottom > 56) {
+        if (lastActiveRef.current !== 'home-life-archive') {
+          lastActiveRef.current = 'home-life-archive';
+          setActiveId('home-life-archive');
+          setAmbientKey(archiveRec.ambient ?? 'archive');
+        }
+        return;
+      }
+    }
+
     let bestId = null;
     let bestDist = Infinity;
     for (const ch of chapters) {
@@ -32,7 +49,7 @@ export function NarrativeScrollProvider({ chapters, children }) {
       const node = rec?.getElement?.();
       if (!node) continue;
       const r = node.getBoundingClientRect();
-      if (r.bottom < 48 || r.top > window.innerHeight - 24) continue;
+      if (r.bottom < 48 || r.top > vh - 24) continue;
       const mid = (r.top + r.bottom) / 2;
       const d = Math.abs(mid - centerY);
       if (d < bestDist) {

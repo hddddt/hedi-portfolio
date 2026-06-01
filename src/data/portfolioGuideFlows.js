@@ -1,18 +1,36 @@
+import {
+  GUIDE_DECISION_AREAS,
+  GUIDE_ENTRY,
+  GUIDE_FLOW_ALIASES,
+  GUIDE_RESULT_SECTIONS,
+  resolveDecisionArea,
+} from './portfolioGuideSystem.js';
+
 /** @typedef {{ type: 'section' | 'case', id: string }} GuideDestination */
 
 /** @typedef {{ step: string, label: string, description: string, action: GuideDestination }} GuideEvidence */
 
 /** @typedef {{ label: string, flowId: string }} GuideFollowUp */
 
+/** @typedef {{ step: string, title: string, line: string }} GuideKeyPoint */
+
+/** @typedef {{ step: string, title: string, question: string, tags: string[] }} GuideProblemBlock */
+
+/** @typedef {import('./portfolioGuideSystem.js').GuideDecisionAreaId} GuideDecisionAreaId */
+
 /**
  * @typedef {object} GuideFlow
  * @property {string} id
  * @property {string} question
+ * @property {GuideDecisionAreaId} [decisionArea]
+ * @property {string} [read]
+ * @property {string} [understand]
  * @property {string} guideTitle
- * @property {string} guideSubline
- * @property {string[]} why
- * @property {string} [howIntro]
- * @property {string[]} how
+ * @property {string} [guideSubline]
+ * @property {GuideKeyPoint[]} keyPoints
+ * @property {GuideKeyPoint[]} [framingBlocks]
+ * @property {GuideProblemBlock[]} [problemBlocks]
+ * @property {string} [evidenceLabel]
  * @property {GuideEvidence[]} evidence
  * @property {GuideFollowUp[]} followUps
  * @property {{ id: string, citation: string }[]} [sources]
@@ -20,289 +38,331 @@
 
 /** @type {{ id: string, num: string, flowId: string }[]} */
 export const GUIDE_ENTRY_QUESTIONS = [
-  { id: 'entry-01', num: '01', flowId: 'unclearBrief' },
-  { id: 'entry-02', num: '02', flowId: 'aiProblems' },
-  { id: 'entry-03', num: '03', flowId: 'bestCaseFit' },
-  { id: 'entry-04', num: '04', flowId: 'ambiguityToStructure' },
+  { id: 'entry-01', num: '01', flowId: 'aiBeliefDesign' },
+  { id: 'entry-02', num: '02', flowId: 'aiProblemDomain' },
+  { id: 'entry-03', num: '03', flowId: 'ambiguityToStructure' },
+  { id: 'entry-04', num: '04', flowId: 'designerTrajectory' },
 ];
 
-export const GUIDE_CUSTOM_INPUT_PLACEHOLDER =
-  'Ask about role fit · AI cases · workflow design · collaboration context';
+export const GUIDE_CUSTOM_INPUT_PLACEHOLDER = GUIDE_ENTRY.freeInputPlaceholder;
+export { GUIDE_ENTRY } from './portfolioGuideSystem.js';
 
 export const GUIDE_FALLBACK_MESSAGE =
-  'I can best guide you through Hedi’s AI product design work, case evidence, role fit, workflow design, and collaboration context. Try asking about: role fit, conversational AI, agentic workflows, decision traceability, or how she works with ambiguity.';
+  'Pick a lens: belief · problem domain · method · expanded design boundary.';
 
 /** @type {Record<string, GuideFlow>} */
 export const GUIDE_FLOWS = {
-  unclearBrief: {
-    id: 'unclearBrief',
-    question: 'Can she work when the AI brief is still unclear?',
-    guideTitle: 'She works before the brief is clear.',
-    guideSubline:
-      'Where AI capability, workflow, ownership, and next steps are still undefined.',
-    why: [
-      'AI briefs often start as capability statements: “We want an assistant.” “We want automation.” “We want to use AI.”',
-      'But the product problem is often still unresolved: What should AI own? Where should humans intervene? What happens after AI gives an output? How does work actually get completed?',
-    ],
-    howIntro:
-      'She turns vague AI ambition into product structure by locating the missing operating layer:',
-    how: [
-      'workflow continuation',
-      'decision ownership',
-      'human intervention points',
-      'escalation logic',
-      'traceability',
-      'completion responsibility',
-    ],
-    evidence: [
-      {
-        step: '01',
-        label: 'Capabilities',
-        description: 'How she turns ambiguity into structure.',
-        action: { type: 'section', id: 'home-capabilities' },
-      },
-      {
-        step: '02',
-        label: 'Case 01 · Conversational AI',
-        description:
-          'How she designs routing, recovery, continuation, and handoff after the AI response.',
-        action: { type: 'case', id: 'case01' },
-      },
-      {
-        step: '03',
-        label: 'Case 03 · Supply Chain Agents',
-        description: 'How she defines control in agentic workflows.',
-        action: { type: 'case', id: 'case03' },
-      },
-    ],
-    followUps: [
-      { label: 'What does she do when AI output is not enough?', flowId: 'aiOutputNotEnough' },
-      { label: 'Which case proves this best?', flowId: 'whichCaseProvesBest' },
-      { label: 'How is this different from traditional UX work?', flowId: 'differentFromTraditionalUx' },
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
-    ],
-    sources: [
-      { id: '1', citation: 'Amershi et al., CHI 2019 — Human-AI interaction guidelines' },
-      { id: '3', citation: 'NIST AI RMF 1.0 — accountability and operational risk' },
-    ],
-  },
-
-  aiProblems: {
-    id: 'aiProblems',
-    question: 'What AI problems does she design for?',
-    guideTitle: 'She designs where AI meets unfinished work.',
-    guideSubline:
-      'Not chat interfaces alone — but decision, continuation, ownership, and completion in enterprise systems.',
-    why: [
-      'Most AI product failures are not model failures. They are operating-layer failures: the system can respond, but the work still does not move.',
-      'She focuses on problems where AI output must become action — with human review, traceability, escalation, and clear responsibility.',
-    ],
-    howIntro: 'Her problem spaces typically include:',
-    how: [
-      'post-response workflow and handoff',
-      'human-in-the-loop review and validation',
-      'agent orchestration and control surfaces',
-      'decision traceability in high-stakes domains',
-      'service recovery when AI confidence is low',
-      'turning capability demos into operable product structure',
-    ],
+  aiBeliefDesign: {
+    id: 'aiBeliefDesign',
+    decisionArea: 'beliefStance',
+    question: 'What does she believe about AI and design?',
+    read: 'AI expands what systems can do.\nDesign defines where people still belong.',
+    understand:
+      'AI can generate, summarize, recommend, and act.\n\nBut people still need to understand it, question it, interrupt it, and take responsibility around it.\n\nHer work sits at that relationship:\njudgment · handoff · control · traceability · completion',
+    guideTitle: 'AI expands what systems can do.',
+    guideSubline: 'Design defines where people still belong.',
+    keyPoints: [],
     evidence: [
       {
         step: '01',
         label: 'Point of View',
-        description: 'How she defines the real design layer before the interface.',
+        description: 'Why AI systems still need human judgment and responsibility.',
         action: { type: 'section', id: 'home-approach' },
       },
       {
         step: '02',
-        label: 'Case 01 · Conversational AI',
-        description: 'Routing, recovery, and continuation after the AI response.',
-        action: { type: 'case', id: 'case01' },
-      },
-      {
-        step: '03',
-        label: 'Case 02 · Contract Intelligence',
-        description: 'How AI analysis becomes reviewable judgment.',
-        action: { type: 'case', id: 'case02' },
+        label: 'Capabilities',
+        description: 'How this belief becomes operating design layers.',
+        action: { type: 'section', id: 'home-capabilities' },
       },
     ],
     followUps: [
-      { label: 'Can she work when the AI brief is still unclear?', flowId: 'unclearBrief' },
-      { label: 'Which case proves this best?', flowId: 'whichCaseProvesBest' },
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
+      { label: 'What AI problems does she actually work on?', flowId: 'aiProblemDomain' },
+      { label: 'How does she move from ambiguity to structure?', flowId: 'ambiguityToStructure' },
     ],
     sources: [
-      { id: '2', citation: 'Google PAIR People + AI Guidebook — feedback loops and mental models' },
-      { id: '4', citation: 'EU Ethics Guidelines — human agency and oversight' },
+      { id: '2', citation: 'Google PAIR People + AI Guidebook' },
+      { id: '4', citation: 'EU Ethics Guidelines for Trustworthy AI' },
     ],
   },
 
-  bestCaseFit: {
-    id: 'bestCaseFit',
-    question: 'Which case best proves her fit?',
-    guideTitle: 'It depends what you need to evaluate.',
-    guideSubline:
-      'Each case proves a different AI operating layer — not a generic “AI portfolio.”',
-    why: [
-      'Recruiters and leads rarely need “more cases.” They need the right evidence for the role, team, and risk level.',
-      'Match the case to the judgment you are trying to make: conversational completion, reviewable analysis, or agentic control.',
-    ],
-    howIntro: 'Use this lens to choose evidence:',
-    how: [
-      'Conversational AI → service workflow completion after the response',
-      'Contract Intelligence → traceable judgment in high-stakes review',
-      'Supply Chain Agents → control, orchestration, and operational guardrails',
-    ],
+  aiProblemDomain: {
+    id: 'aiProblemDomain',
+    decisionArea: 'problemDomain',
+    question: 'What AI problems does she actually work on?',
+    read: 'She works beyond AI capability.',
+    understand:
+      'The question is not only whether AI can answer, analyze, recommend, or act.\n\nThe harder problems appear after capability enters real work:\nwhat happens next,\nwho reviews the result,\nwhere humans stay in control,\nhow tools and agents coordinate,\nand how work actually gets completed.',
+    guideTitle: 'She works beyond AI capability.',
+    guideSubline: '',
+    keyPoints: [],
     evidence: [
       {
         step: '01',
         label: 'Case 01 · Conversational AI',
-        description: 'Best for CX, support automation, and post-response workflow design.',
+        description:
+          'AI can respond — but work still needs routing, recovery, continuation, and handoff.',
         action: { type: 'case', id: 'case01' },
       },
       {
         step: '02',
         label: 'Case 02 · Contract Intelligence',
-        description: 'Best for auditability, legal review, and human validation flows.',
+        description:
+          'AI can analyze — but judgment still needs review states, sources, and auditability.',
         action: { type: 'case', id: 'case02' },
       },
       {
         step: '03',
         label: 'Case 03 · Supply Chain Agents',
-        description: 'Best for agentic systems, orchestration, and enterprise control design.',
+        description:
+          'AI can automate — but control boundaries and human intervention still need design.',
         action: { type: 'case', id: 'case03' },
+      },
+      {
+        step: '04',
+        label: 'Case 04 · AI Companion',
+        description:
+          'AI can interact — but continuity beyond isolated sessions still needs structure.',
+        action: { type: 'case', id: 'case04' },
       },
     ],
     followUps: [
-      { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
-      { label: 'How does she turn ambiguity into structure?', flowId: 'ambiguityToStructure' },
+      { label: 'How does she move from ambiguity to structure?', flowId: 'ambiguityToStructure' },
+      { label: 'What does she believe about AI and design?', flowId: 'aiBeliefDesign' },
     ],
-    sources: [{ id: '3', citation: 'NIST AI RMF 1.0 — evidence and accountability framing' }],
+    sources: [
+      { id: '2', citation: 'Google PAIR People + AI Guidebook' },
+      { id: '3', citation: 'NIST AI RMF 1.0' },
+    ],
   },
 
   ambiguityToStructure: {
     id: 'ambiguityToStructure',
-    question: 'How does she turn ambiguity into structure?',
-    guideTitle: 'She maps the missing operating layer first.',
-    guideSubline:
-      'Before screens — workflow, ownership, decision states, and what “done” means.',
-    why: [
-      'Ambiguous AI projects often hide structural gaps: unclear ownership, undefined handoffs, and no model for completion.',
-      'Without that layer, teams iterate on interfaces while the product problem stays unresolved.',
-    ],
-    howIntro: 'Her structuring moves typically include:',
-    how: [
-      'mapping stakeholders, triggers, and decision gates',
-      'defining what AI owns vs. what humans must validate',
-      'designing continuation paths after AI output',
-      'making escalation and recovery explicit',
-      'aligning business process with interface states',
-      'translating domain logic into reviewable product flows',
-    ],
+    decisionArea: 'methodLogic',
+    question: 'How does she move from ambiguity to structure?',
+    read: 'She starts where the AI brief is still vague.',
+    understand:
+      'Before moving into screens, she looks for what the work is missing:\n\nownership,\nhandoff,\nreview logic,\ncontrol boundaries,\nworkflow continuation,\nor decision structure.\n\nThen she turns that ambiguity into flows, states, handoff logic, decision models, escalation paths, or interaction structures.',
+    guideTitle: 'She starts where the AI brief is still vague.',
+    guideSubline: '',
+    keyPoints: [],
     evidence: [
       {
         step: '01',
         label: 'Capabilities',
-        description: 'How she frames product direction under ambiguity.',
+        description: 'AI problem framing · workflow design · traceability · control.',
         action: { type: 'section', id: 'home-capabilities' },
       },
       {
         step: '02',
-        label: 'Selected Work',
-        description: 'Three cases showing structure across conversational, analytical, and agentic AI.',
-        action: { type: 'section', id: 'home-work-narrative' },
+        label: 'Method lens · Conversational AI',
+        description:
+          'Three conversational AI projects abstracted into routing, recovery, continuation, and handoff.',
+        action: { type: 'case', id: 'case01' },
       },
       {
         step: '03',
-        label: 'Case 03 · Supply Chain Agents',
-        description: 'Control surfaces for complex agent orchestration.',
+        label: 'Method lens · Supply Chain Agents',
+        description: 'A control model for agentic workflows.',
         action: { type: 'case', id: 'case03' },
       },
     ],
     followUps: [
-      { label: 'Can she work when the AI brief is still unclear?', flowId: 'unclearBrief' },
-      { label: 'How is this different from traditional UX work?', flowId: 'differentFromTraditionalUx' },
+      { label: 'What AI problems does she actually work on?', flowId: 'aiProblemDomain' },
+      { label: 'How is her designer boundary expanding?', flowId: 'designerTrajectory' },
     ],
-    sources: [{ id: '1', citation: 'Amershi et al., CHI 2019 — structured interaction design' }],
+    sources: [{ id: '1', citation: 'Amershi et al., CHI 2019' }],
   },
 
-  aiOutputNotEnough: {
-    id: 'aiOutputNotEnough',
-    question: 'What does she do when AI output is not enough?',
-    guideTitle: 'She designs what happens after the answer.',
-    guideSubline:
-      'Recovery, routing, escalation, and handoff — so work can still complete.',
-    why: [
-      'In enterprise systems, an AI response is rarely the end state. Users still need to act, verify, escalate, or continue in another system.',
-      'The design problem is not “better answers” alone — it is what the product does when the answer is incomplete, wrong, or insufficient.',
+  designerTrajectory: {
+    id: 'designerTrajectory',
+    decisionArea: 'trajectory',
+    question: 'How is her designer boundary expanding in the AI era?',
+    read:
+      'AI expands the designer\u2019s boundary beyond interface.\n\nHer work moves into systems, workflows, and buildable logic.',
+    understand:
+      'In AI work, design no longer stops at screens.\n\nThe boundary expands into:\nhow systems behave,\nhow workflows continue,\nhow humans and AI share control,\nand how ideas become buildable.\n\nHer background across software, industrial design, HMI, and enterprise systems gives her a wider surface to work from.',
+    guideTitle: 'AI expands the designer\u2019s boundary beyond interface.',
+    guideSubline: 'Systems, workflows, and buildable logic.',
+    keyPoints: [],
+    evidence: [
+      {
+        step: '01',
+        label: 'Capabilities',
+        description: 'Expanded skills across framing, workflow, traceability, and control.',
+        action: { type: 'section', id: 'home-capabilities' },
+      },
+      {
+        step: '02',
+        label: 'Me',
+        description: 'The background behind this wider design role.',
+        action: { type: 'section', id: 'home-life-archive' },
+      },
+      {
+        step: '03',
+        label: 'Point of View',
+        description: 'Her view on design judgment in AI systems.',
+        action: { type: 'section', id: 'home-approach' },
+      },
     ],
-    howIntro: 'She typically designs:',
-    how: [
-      'fallback and recovery flows when confidence is low',
-      'intent routing to the right operational path',
-      'human takeover and review surfaces',
-      'continuation into back-office or specialist tools',
-      'visible decision states instead of dead-end chat',
+    followUps: [
+      { label: 'What does she believe about AI and design?', flowId: 'aiBeliefDesign' },
+      { label: 'How does she move from ambiguity to structure?', flowId: 'ambiguityToStructure' },
     ],
+    sources: [],
+  },
+
+  unclearBrief: {
+    id: 'unclearBrief',
+    decisionArea: 'methodLogic',
+    question: 'How does she move from ambiguity to structure?',
+    read: 'She starts where the AI brief is still vague.',
+    understand:
+      'Before moving into screens, she looks for what the work is missing: ownership, handoff, review logic, control boundaries, workflow continuation, or decision structure.',
+    guideTitle: 'She starts where the AI brief is still vague.',
+    guideSubline: '',
+    keyPoints: [],
+    evidence: [
+      {
+        step: '01',
+        label: 'Capabilities',
+        description: 'AI problem framing · workflow architecture.',
+        action: { type: 'section', id: 'home-capabilities' },
+      },
+      {
+        step: '02',
+        label: 'Method lens · Conversational AI',
+        description: 'Post-response workflow method.',
+        action: { type: 'case', id: 'case01' },
+      },
+    ],
+    followUps: [{ label: 'What AI problems does she work on?', flowId: 'aiProblemDomain' }],
+    sources: [],
+  },
+
+  aiProblems: {
+    id: 'aiProblems',
+    decisionArea: 'problemDomain',
+    question: 'What AI problems does she actually work on?',
+    read: 'She works beyond AI capability.',
+    understand: 'The harder problems appear after capability enters real work.',
+    guideTitle: 'She works beyond AI capability.',
+    guideSubline: '',
+    keyPoints: [],
     evidence: [
       {
         step: '01',
         label: 'Case 01 · Conversational AI',
-        description: 'Abstracted method across three conversational AI projects.',
+        description: 'Routing · recovery · continuation · handoff.',
         action: { type: 'case', id: 'case01' },
       },
       {
         step: '02',
         label: 'Case 02 · Contract Intelligence',
-        description: 'Review states when AI analysis requires human judgment.',
+        description: 'Review states · sources · auditability.',
         action: { type: 'case', id: 'case02' },
       },
     ],
-    followUps: [
-      { label: 'Which case proves this best?', flowId: 'whichCaseProvesBest' },
-      { label: 'Can she work when the AI brief is still unclear?', flowId: 'unclearBrief' },
+    followUps: [{ label: 'How does she move from ambiguity to structure?', flowId: 'ambiguityToStructure' }],
+    sources: [],
+  },
+
+  bestCaseFit: {
+    id: 'bestCaseFit',
+    decisionArea: 'problemDomain',
+    question: 'Which case should I look at first?',
+    read: 'Each case shows a different operating layer — not one generic portfolio.',
+    understand:
+      'Match the case to what you need to evaluate: conversation workflow, review and audit, agent control, or long-term continuity.',
+    guideTitle: 'Each case shows a different operating layer.',
+    guideSubline: '',
+    keyPoints: [],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Routing · recovery · continuation · handoff.',
+        action: { type: 'case', id: 'case01' },
+      },
+      {
+        step: '02',
+        label: 'Case 02 · Contract Intelligence',
+        description: 'Review states · sources · auditability.',
+        action: { type: 'case', id: 'case02' },
+      },
+      {
+        step: '03',
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Delegation · intervention · control boundaries.',
+        action: { type: 'case', id: 'case03' },
+      },
     ],
-    sources: [{ id: '2', citation: 'Google PAIR — feedback and failure handling' }],
+    followUps: [{ label: 'What AI problems does she work on?', flowId: 'aiProblemDomain' }],
+    sources: [],
+  },
+
+  roleFit: {
+    id: 'roleFit',
+    decisionArea: 'trajectory',
+    question: 'How is her designer boundary expanding in the AI era?',
+    read:
+      'AI expands the designer\u2019s boundary beyond interface.\n\nHer work moves into systems, workflows, and buildable logic.',
+    understand:
+      'In AI work, design no longer stops at screens.\n\nThe boundary expands into systems, workflows, shared control, and buildable logic.',
+    guideTitle: 'AI expands the designer\u2019s boundary beyond interface.',
+    guideSubline: '',
+    keyPoints: [],
+    evidence: [
+      {
+        step: '01',
+        label: 'Capabilities',
+        description: 'Expanded skills across framing, workflow, traceability, and control.',
+        action: { type: 'section', id: 'home-capabilities' },
+      },
+      {
+        step: '02',
+        label: 'Me',
+        description: 'The background behind this wider design role.',
+        action: { type: 'section', id: 'home-life-archive' },
+      },
+    ],
+    followUps: [{ label: 'What does she believe about AI and design?', flowId: 'aiBeliefDesign' }],
+    sources: [],
   },
 
   whichCaseProvesBest: {
     id: 'whichCaseProvesBest',
+    decisionArea: 'caseEvidence',
     question: 'Which case proves this best?',
-    guideTitle: 'Pick evidence by the AI layer you need to evaluate.',
-    guideSubline:
-      'Conversational completion, reviewable analysis, or agentic control — each case proves a different fit signal.',
-    why: [
-      'A single “best case” flattens the work. The strongest proof depends on whether you are hiring for service workflow, judgment design, or agent orchestration.',
-    ],
-    howIntro: 'Quick mapping:',
-    how: [
-      'CX / support / conversational → Case 01',
-      'legal / audit / review → Case 02',
-      'agents / automation / control → Case 03',
+    guideTitle: 'Match the case to the evaluation task.',
+    guideSubline: 'No single “hero case” for every hiring lens.',
+    keyPoints: [
+      { step: '01', title: 'CX / support', line: '→ Case 01' },
+      { step: '02', title: 'Legal / audit', line: '→ Case 02' },
+      { step: '03', title: 'Agents / ops', line: '→ Case 03 · Case 04 for continuity' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Case 01 · Conversational AI',
-        description: 'Routing, recovery, continuation, and handoff.',
+        description: 'Post-response workflow proof.',
         action: { type: 'case', id: 'case01' },
       },
       {
         step: '02',
         label: 'Case 02 · Contract Intelligence',
-        description: 'Traceable judgment and source-backed review.',
+        description: 'Traceability and review proof.',
         action: { type: 'case', id: 'case02' },
       },
       {
         step: '03',
         label: 'Case 03 · Supply Chain Agents',
-        description: 'Orchestration, guardrails, and operational control.',
+        description: 'Agentic control proof.',
         action: { type: 'case', id: 'case03' },
       },
     ],
     followUps: [
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
+      { label: 'What role is she strongest for?', flowId: 'roleFit' },
       { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
     ],
     sources: [],
@@ -310,302 +370,509 @@ export const GUIDE_FLOWS = {
 
   differentFromTraditionalUx: {
     id: 'differentFromTraditionalUx',
+    decisionArea: 'roleFit',
     question: 'How is this different from traditional UX work?',
-    guideTitle: 'She designs the operating layer, not just the interface.',
-    guideSubline:
-      'Workflow, ownership, decision states, and completion — especially where AI is involved.',
-    why: [
-      'Traditional UX often stops at usable screens. AI enterprise work requires designing what happens before, during, and after model output — including human intervention and traceability.',
-      'The product question is frequently: who owns the decision, and how does work finish?',
-    ],
-    howIntro: 'Her work extends into:',
-    how: [
-      'product framing under ambiguous AI briefs',
-      'decision and validation design',
-      'handoff between AI and operational systems',
-      'control surfaces for agentic workflows',
-      'evidence-oriented case narratives, not UI galleries',
+    guideTitle: 'Operating logic — not primarily screen polish.',
+    guideSubline: 'Less UI gallery · more workflow · ownership · completion.',
+    keyPoints: [
+      { step: '01', title: 'Scope', line: 'Before / during / after model output.' },
+      { step: '02', title: 'Question', line: 'Who owns the decision?' },
+      { step: '03', title: 'Proof', line: 'Case structure — not mockup volume.' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Point of View',
-        description: 'Beliefs about AI, responsibility, and completion.',
+        description: 'Design beliefs · responsibility.',
         action: { type: 'section', id: 'home-approach' },
       },
       {
         step: '02',
         label: 'Capabilities',
-        description: 'Framing, structuring, workflow, and decision design.',
+        description: 'Framing · workflow · decision design.',
         action: { type: 'section', id: 'home-capabilities' },
       },
     ],
     followUps: [
-      { label: 'How does she turn ambiguity into structure?', flowId: 'ambiguityToStructure' },
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
+      { label: 'What role is she strongest for?', flowId: 'roleFit' },
+      { label: 'Can she handle unclear AI briefs?', flowId: 'unclearBrief' },
     ],
-    sources: [{ id: '4', citation: 'EU Ethics Guidelines — human agency in AI systems' }],
+    sources: [{ id: '4', citation: 'EU Ethics Guidelines' }],
   },
 
-  roleFitStrongest: {
-    id: 'roleFitStrongest',
-    question: 'What role is she strongest for?',
-    guideTitle: 'Senior product design in complex AI and enterprise workflow contexts.',
-    guideSubline:
-      'Especially where the brief is unclear, stakes are high, and AI must become operable structure.',
-    why: [
-      'She is strongest where teams need product judgment before polished UI — framing AI capability into workflow, ownership, and reviewable outcomes.',
-      'Less ideal as a purely visual or marketing-site role; strongest when AI, operations, and decision design intersect.',
-    ],
-    howIntro: 'Strong fit signals include:',
-    how: [
-      'AI product design / lead product designer (enterprise)',
-      'human-in-the-loop and workflow design roles',
-      'agentic product or platform design with control requirements',
-      'early-stage AI product framing with cross-functional teams',
+  collaborationPmEng: {
+    id: 'collaborationPmEng',
+    decisionArea: 'workingLogic',
+    question: 'How does she work with PMs and engineers?',
+    guideTitle: 'Collaborates at the structure layer.',
+    guideSubline: 'Not only at UI handoff.',
+    keyPoints: [
+      { step: '01', title: 'With PMs', line: 'Framing · success criteria · ownership.' },
+      { step: '02', title: 'With eng', line: 'Handoffs · schemas · runtime constraints.' },
+      { step: '03', title: 'Shared', line: 'Testable structure — not feature lists alone.' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Capabilities',
-        description: 'How she creates value across framing, structure, and AI workflow design.',
+        description: 'Workflow · system structuring.',
+        action: { type: 'section', id: 'home-capabilities' },
+      },
+      {
+        step: '02',
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Cross-functional orchestration constraints.',
+        action: { type: 'case', id: 'case03' },
+      },
+    ],
+    followUps: [
+      { label: 'Can she handle unclear AI briefs?', flowId: 'unclearBrief' },
+      { label: 'What role is she strongest for?', flowId: 'roleFit' },
+    ],
+    sources: [],
+  },
+
+  postResponseWorkflow: {
+    id: 'postResponseWorkflow',
+    decisionArea: 'aiProblemSpace',
+    question: 'What does post-response workflow mean?',
+    guideTitle: 'Work that continues after the AI response.',
+    guideSubline: 'Routing · recovery · handoff · completion.',
+    keyPoints: [
+      { step: '01', title: 'Not', line: 'Not “better answers” alone.' },
+      { step: '02', title: 'Is', line: 'Next step · escalation · operational tools.' },
+      { step: '03', title: 'Proof', line: 'Case 01 — three projects, one method.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Primary evidence.',
+        action: { type: 'case', id: 'case01' },
+      },
+    ],
+    followUps: [
+      { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
+      { label: 'Which case proves this best?', flowId: 'whichCaseProvesBest' },
+    ],
+    sources: [{ id: '1', citation: 'Amershi et al., CHI 2019' }],
+  },
+
+  decisionTraceability: {
+    id: 'decisionTraceability',
+    decisionArea: 'aiProblemSpace',
+    question: 'Which case shows decision traceability?',
+    guideTitle: 'Case 02 · Contract Intelligence.',
+    guideSubline: 'Output · human review · confirmation · audit trail.',
+    keyPoints: [
+      { step: '01', title: 'Inspect', line: 'What the system proposed.' },
+      { step: '02', title: 'Sources', line: 'What evidence supports it.' },
+      { step: '03', title: 'Record', line: 'What the human confirmed.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 02 · Contract Intelligence',
+        description: 'Reviewable judgment · source visibility.',
+        action: { type: 'case', id: 'case02' },
+      },
+    ],
+    followUps: [
+      { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
+      { label: 'Which case proves this best?', flowId: 'whichCaseProvesBest' },
+    ],
+    sources: [{ id: '3', citation: 'NIST AI RMF 1.0' }],
+  },
+
+  humanInTheLoopControl: {
+    id: 'humanInTheLoopControl',
+    decisionArea: 'aiProblemSpace',
+    question: 'How does she define human-in-the-loop control?',
+    guideTitle: 'Intervention is part of the workflow.',
+    guideSubline: 'Not a single approval button after the fact.',
+    keyPoints: [
+      { step: '01', title: 'Gates', line: 'When automation pauses.' },
+      { step: '02', title: 'Roles', line: 'Who can override.' },
+      { step: '03', title: 'Trace', line: 'Handoff from AI action to human decision.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Intervention · escalation · boundaries.',
+        action: { type: 'case', id: 'case03' },
+      },
+      {
+        step: '02',
+        label: 'Case 02 · Contract Intelligence',
+        description: 'Human review on AI analysis.',
+        action: { type: 'case', id: 'case02' },
+      },
+    ],
+    followUps: [
+      { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
+    ],
+    sources: [{ id: '4', citation: 'EU Ethics Guidelines' }],
+  },
+
+  differentFromAiUi: {
+    id: 'differentFromAiUi',
+    decisionArea: 'aiProblemSpace',
+    question: 'How is this different from AI UI design?',
+    guideTitle: 'Workflow completion — not prompt-and-response polish.',
+    guideSubline: 'Interface is one layer · completion is the product.',
+    keyPoints: [
+      { step: '01', title: 'AI UI', line: 'Chat · assistant surface · output display.' },
+      { step: '02', title: 'This work', line: 'Routing · review · handoff · control.' },
+      { step: '03', title: 'Start', line: 'Case 01 if evaluating service AI.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Beyond chatbot UI.',
+        action: { type: 'case', id: 'case01' },
+      },
+      {
+        step: '02',
+        label: 'Capabilities',
+        description: 'Human-AI experience · workflow architecture.',
+        action: { type: 'section', id: 'home-capabilities' },
+      },
+    ],
+    followUps: [
+      { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
+    ],
+    sources: [],
+  },
+
+  threeMinuteCase: {
+    id: 'threeMinuteCase',
+    decisionArea: 'caseEvidence',
+    question: 'Which case if I only have 3 minutes?',
+    guideTitle: 'Pick the lens first — then one case.',
+    guideSubline: 'Three minutes = one strong signal, not a full read.',
+    keyPoints: [
+      { step: '01', title: 'Default', line: 'Case 01 — broadest AI product signal.' },
+      { step: '02', title: 'Audit / legal', line: 'Case 02.' },
+      { step: '03', title: 'Agents', line: 'Case 03.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Start here if unsure.',
+        action: { type: 'case', id: 'case01' },
+      },
+    ],
+    followUps: [
+      { label: 'Which case should I look at first?', flowId: 'bestCaseFit' },
+    ],
+    sources: [],
+  },
+
+  systemsThinkingCase: {
+    id: 'systemsThinkingCase',
+    decisionArea: 'caseEvidence',
+    question: 'Which case best shows systems thinking?',
+    guideTitle: 'Case 01 and Case 03 — structure across boundaries.',
+    guideSubline: 'Tasks · roles · tools · decision points — not screen lists.',
+    keyPoints: [
+      { step: '01', title: 'Case 01', line: 'Method across three conversational projects.' },
+      { step: '02', title: 'Case 03', line: 'Orchestration · control surfaces.' },
+      { step: '03', title: 'Capabilities', line: 'Framing before interface.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Cross-project abstraction.',
+        action: { type: 'case', id: 'case01' },
+      },
+      {
+        step: '02',
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Agentic architecture.',
+        action: { type: 'case', id: 'case03' },
+      },
+    ],
+    followUps: [
+      { label: 'How does she turn ambiguity into structure?', flowId: 'ambiguityToStructure' },
+    ],
+    sources: [],
+  },
+
+  enterpriseAiCase: {
+    id: 'enterpriseAiCase',
+    decisionArea: 'caseEvidence',
+    question: 'Which case is most relevant for enterprise AI?',
+    guideTitle: 'Cases 01–03 are the core enterprise set.',
+    guideSubline: 'Workflow · judgment · agentic control.',
+    keyPoints: [
+      { step: '01', title: 'Case 01', line: 'Service · CX automation.' },
+      { step: '02', title: 'Case 02', line: 'Compliance · review · audit.' },
+      { step: '03', title: 'Case 03', line: 'Operations · agents · escalation.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Enterprise service workflows.',
+        action: { type: 'case', id: 'case01' },
+      },
+      {
+        step: '02',
+        label: 'Case 02 · Contract Intelligence',
+        description: 'High-stakes review.',
+        action: { type: 'case', id: 'case02' },
+      },
+      {
+        step: '03',
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Agent orchestration.',
+        action: { type: 'case', id: 'case03' },
+      },
+    ],
+    followUps: [
+      { label: 'Is she a fit for enterprise AI roles?', flowId: 'enterpriseAiRoleFit' },
+    ],
+    sources: [],
+  },
+
+  enterpriseAiRoleFit: {
+    id: 'enterpriseAiRoleFit',
+    decisionArea: 'roleFit',
+    question: 'Is she a fit for enterprise AI roles?',
+    guideTitle: 'Yes — when the role needs workflow and control design.',
+    guideSubline: 'Not primarily demo UI or isolated assistant features.',
+    keyPoints: [
+      { step: '01', title: 'Fit', line: 'B2B · operations · accountability.' },
+      { step: '02', title: 'Needs', line: 'Traceability · human-in-the-loop · completion.' },
+      { step: '03', title: 'Proof', line: 'Cases 01–03 + Capabilities.' },
+    ],
+    evidence: [
+      {
+        step: '01',
+        label: 'Capabilities',
+        description: 'Scan capability areas first.',
         action: { type: 'section', id: 'home-capabilities' },
       },
       {
         step: '02',
         label: 'Selected Work',
-        description: 'Enterprise evidence across conversational, analytical, and agentic AI.',
+        description: 'Cases 01–03.',
         action: { type: 'section', id: 'home-work-narrative' },
       },
     ],
     followUps: [
-      { label: 'Which case best proves her fit?', flowId: 'bestCaseFit' },
-      { label: 'Can she work when the AI brief is still unclear?', flowId: 'unclearBrief' },
+      { label: 'What role is she strongest for?', flowId: 'roleFit' },
     ],
     sources: [],
   },
 
-  roleFit: {
-    id: 'roleFit',
-    question: 'Role fit and profile',
-    guideTitle: 'Evaluate her through capability, evidence, and operating context.',
-    guideSubline:
-      'Senior product designer for AI systems, enterprise workflows, and human-AI decision design.',
-    why: [
-      'A CV alone rarely answers whether someone can enter an ambiguous AI project and make it buildable. The guide routes you to the right evidence for that judgment.',
+  conversationalAiRoleFit: {
+    id: 'conversationalAiRoleFit',
+    decisionArea: 'roleFit',
+    question: 'Is she a fit for conversational AI work?',
+    guideTitle: 'Yes — especially beyond chatbot UI.',
+    guideSubline: 'Post-response workflow is the proof layer.',
+    keyPoints: [
+      { step: '01', title: 'Beyond', line: 'Not answers alone — routing · handoff.' },
+      { step: '02', title: 'Method', line: 'Three projects → one abstraction.' },
+      { step: '03', title: 'Look', line: 'Case 01 first.' },
     ],
-    howIntro: 'Start with:',
-    how: [
-      'Capabilities for framing and structuring',
-      'Case evidence matched to your hiring lens',
-      'Point of View for design beliefs and responsibility',
+    evidence: [
+      {
+        step: '01',
+        label: 'Case 01 · Conversational AI',
+        description: 'Primary fit evidence.',
+        action: { type: 'case', id: 'case01' },
+      },
+    ],
+    followUps: [
+      { label: 'What does post-response workflow mean?', flowId: 'postResponseWorkflow' },
+    ],
+    sources: [],
+  },
+
+  toolWorkflow: {
+    id: 'toolWorkflow',
+    decisionArea: 'workingLogic',
+    question: 'AI build workflow and tools',
+    guideTitle: 'Tools accelerate exploration — judgment defines what to build.',
+    guideSubline: 'Cursor · prototyping support structure — not replace it.',
+    keyPoints: [
+      { step: '01', title: 'Tools', line: 'Faster flow validation.' },
+      { step: '02', title: 'Lead', line: 'Framing · evidence · decision design.' },
+      { step: '03', title: 'Proof', line: 'Cases — not prototype volume.' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Capabilities',
-        description: 'Where she creates value across AI product work.',
+        description: 'Framing · structuring.',
         action: { type: 'section', id: 'home-capabilities' },
       },
       {
         step: '02',
-        label: 'Which case fits your role?',
-        description: 'Use the case lens to pick the strongest proof.',
+        label: 'Selected Work',
+        description: 'Enterprise case depth.',
         action: { type: 'section', id: 'home-work-narrative' },
       },
     ],
     followUps: [
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
-      { label: 'Which case best proves her fit?', flowId: 'bestCaseFit' },
+      { label: 'How does she work with PMs and engineers?', flowId: 'collaborationPmEng' },
     ],
     sources: [],
   },
 
   conversationalAi: {
     id: 'conversationalAi',
+    decisionArea: 'aiProblemSpace',
     question: 'Conversational AI and service workflow',
-    guideTitle: 'She designs beyond the chatbot UI.',
-    guideSubline:
-      'Routing, recovery, continuation, and handoff after the AI response.',
-    why: [
-      'Conversational AI in enterprise settings fails when the product stops at answering. Service work continues in operations, escalation, and specialist tools.',
-    ],
-    howIntro: 'Case 01 shows how she abstracted three projects into a method for:',
-    how: [
-      'intent routing',
-      'fallback and recovery flow',
-      'escalation logic',
-      'handoff to operational surfaces',
+    guideTitle: 'Beyond the chatbot UI.',
+    guideSubline: 'Routing · recovery · continuation · handoff.',
+    keyPoints: [
+      { step: '01', title: 'Route', line: 'Intent → right operational path.' },
+      { step: '02', title: 'Recover', line: 'Fallback when confidence is low.' },
+      { step: '03', title: 'Complete', line: 'Handoff to operations.' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Case 01 · Conversational AI',
-        description: 'Primary evidence for post-response workflow design.',
+        description: 'Primary evidence.',
         action: { type: 'case', id: 'case01' },
-      },
-      {
-        step: '02',
-        label: 'Capabilities',
-        description: 'AI workflow and decision design capability area.',
-        action: { type: 'section', id: 'home-capabilities' },
       },
     ],
     followUps: [
-      { label: 'What does she do when AI output is not enough?', flowId: 'aiOutputNotEnough' },
-      { label: 'Can she work when the AI brief is still unclear?', flowId: 'unclearBrief' },
+      { label: 'Can she handle unclear AI briefs?', flowId: 'unclearBrief' },
     ],
     sources: [{ id: '1', citation: 'Amershi et al., CHI 2019' }],
   },
 
   supplyChainAgents: {
     id: 'supplyChainAgents',
+    decisionArea: 'aiProblemSpace',
     question: 'Agentic workflows and control',
-    guideTitle: 'She defines control in agentic systems.',
-    guideSubline:
-      'Orchestration, guardrails, and operational surfaces — not autonomous demos alone.',
-    why: [
-      'Agent projects amplify risk when ownership, escalation, and control are undefined. The design problem includes how humans supervise, intervene, and trace outcomes.',
-    ],
-    howIntro: 'Case 03 focuses on:',
-    how: [
-      'agent orchestration steps and visibility',
-      'control and configuration surfaces',
-      'operational guardrails in enterprise context',
-      'translating agent capability into manageable product structure',
+    guideTitle: 'Control boundaries in agentic systems.',
+    guideSubline: 'Orchestration · guardrails · intervention — not demos alone.',
+    keyPoints: [
+      { step: '01', title: 'See', line: 'Orchestration steps · visibility.' },
+      { step: '02', title: 'Configure', line: 'Control surfaces · permissions.' },
+      { step: '03', title: 'Intervene', line: 'Escalation when automation stops.' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Case 03 · Supply Chain Agents',
-        description: 'Primary evidence for agentic workflow control design.',
+        description: 'Primary evidence.',
         action: { type: 'case', id: 'case03' },
-      },
-      {
-        step: '02',
-        label: 'Capabilities',
-        description: 'Complex system structuring and AI workflow design.',
-        action: { type: 'section', id: 'home-capabilities' },
       },
     ],
     followUps: [
       { label: 'Which case proves this best?', flowId: 'whichCaseProvesBest' },
-      { label: 'What AI problems does she design for?', flowId: 'aiProblems' },
     ],
-    sources: [{ id: '3', citation: 'NIST AI RMF 1.0 — operational risk and accountability' }],
+    sources: [{ id: '3', citation: 'NIST AI RMF 1.0' }],
   },
 
   contractIntelligence: {
     id: 'contractIntelligence',
+    decisionArea: 'aiProblemSpace',
     question: 'Contract intelligence and reviewable judgment',
-    guideTitle: 'She makes AI analysis inspectable.',
-    guideSubline:
-      'Source-backed answers, review states, and human validation in high-stakes work.',
-    why: [
-      'Legal and compliance contexts require more than confident output. Teams need traceability, review paths, and clear decision ownership.',
-    ],
-    howIntro: 'Case 02 demonstrates:',
-    how: [
-      'answer states tied to evidence and sources',
-      'review flows for human judgment',
-      'product structure for auditability',
-      'AI as input to decision — not replacement for responsibility',
+    guideTitle: 'AI analysis made inspectable.',
+    guideSubline: 'Sources · review states · human validation.',
+    keyPoints: [
+      { step: '01', title: 'States', line: 'Answer tied to evidence.' },
+      { step: '02', title: 'Review', line: 'Human judgment before commit.' },
+      { step: '03', title: 'Audit', line: 'Traceable record.' },
     ],
     evidence: [
       {
         step: '01',
         label: 'Case 02 · Contract Intelligence',
-        description: 'Primary evidence for traceable AI judgment design.',
+        description: 'Primary evidence.',
         action: { type: 'case', id: 'case02' },
       },
-      {
-        step: '02',
-        label: 'Point of View',
-        description: 'Design beliefs about responsibility and completion.',
-        action: { type: 'section', id: 'home-approach' },
-      },
     ],
     followUps: [
-      { label: 'What does she do when AI output is not enough?', flowId: 'aiOutputNotEnough' },
-      { label: 'How is this different from traditional UX work?', flowId: 'differentFromTraditionalUx' },
+      { label: 'Which case shows decision traceability?', flowId: 'decisionTraceability' },
     ],
-    sources: [{ id: '3', citation: 'NIST AI RMF 1.0 — transparency and documentation' }],
-  },
-
-  toolWorkflow: {
-    id: 'toolWorkflow',
-    question: 'AI build workflow and tools',
-    guideTitle: 'She uses AI tools to accelerate structure — not replace judgment.',
-    guideSubline:
-      'Cursor, rapid prototyping, and vibe coding support exploration; product framing and evidence still lead.',
-    why: [
-      'Tool fluency matters, but hiring teams usually need to know whether she can define the right problem and operating layer — not only ship prototypes quickly.',
-    ],
-    howIntro: 'Her tool workflow supports:',
-    how: [
-      'fast structural exploration and flow validation',
-      'translating ambiguity into testable product directions',
-      'collaborating with engineering on agentic and workflow products',
-      'keeping evidence and decision design central',
-    ],
-    evidence: [
-      {
-        step: '01',
-        label: 'Capabilities',
-        description: 'Product framing and complex system structuring.',
-        action: { type: 'section', id: 'home-capabilities' },
-      },
-      {
-        step: '02',
-        label: 'Selected Work',
-        description: 'Enterprise case evidence beyond prototype demos.',
-        action: { type: 'section', id: 'home-work-narrative' },
-      },
-    ],
-    followUps: [
-      { label: 'How does she turn ambiguity into structure?', flowId: 'ambiguityToStructure' },
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
-    ],
-    sources: [],
+    sources: [{ id: '3', citation: 'NIST AI RMF 1.0' }],
   },
 
   fallback: {
     id: 'fallback',
+    decisionArea: 'beliefStance',
     question: 'General inquiry',
-    guideTitle: 'Start with a structured lens.',
+    read: 'Start from what you want to understand.',
+    understand: GUIDE_FALLBACK_MESSAGE,
+    guideTitle: 'Start from what you want to understand.',
     guideSubline: GUIDE_FALLBACK_MESSAGE,
-    why: [
-      'This guide works best with specific evaluation lenses — role fit, case evidence, workflow design, or ambiguity framing.',
-    ],
-    howIntro: 'Try one of these entry points:',
-    how: [
-      'unclear AI briefs and early project framing',
-      'conversational AI and post-response workflow',
-      'agentic control and orchestration',
-      'reviewable judgment in high-stakes domains',
-    ],
+    keyPoints: [],
     evidence: [
       {
         step: '01',
-        label: 'Capabilities',
-        description: 'How she turns ambiguity into structure.',
-        action: { type: 'section', id: 'home-capabilities' },
+        label: 'Belief & stance',
+        description: 'What she believes about AI and design.',
+        action: { type: 'section', id: 'home-approach' },
       },
       {
         step: '02',
         label: 'Selected Work',
-        description: 'Case evidence across three AI operating layers.',
+        description: 'Cases 01–04 — operating problems in practice.',
         action: { type: 'section', id: 'home-work-narrative' },
       },
     ],
     followUps: [
-      { label: 'Can she work when the AI brief is still unclear?', flowId: 'unclearBrief' },
-      { label: 'Which case best proves her fit?', flowId: 'bestCaseFit' },
-      { label: 'What role is she strongest for?', flowId: 'roleFitStrongest' },
+      { label: 'What does she believe about AI and design?', flowId: 'aiBeliefDesign' },
+      { label: 'What AI problems does she actually work on?', flowId: 'aiProblemDomain' },
+      { label: 'How does she move from ambiguity to structure?', flowId: 'ambiguityToStructure' },
     ],
     sources: [],
   },
 };
+
+/**
+ * @param {GuideFlow} flow
+ * @returns {{
+ *   area: typeof GUIDE_DECISION_AREAS[keyof typeof GUIDE_DECISION_AREAS],
+ *   keyPoints: GuideKeyPoint[],
+ *   framingBlocks: GuideKeyPoint[],
+ *   problemBlocks: GuideProblemBlock[],
+ *   evidenceLabel: string,
+ *   whereToLook: GuideEvidence[],
+ * }}
+ */
+export function getFlowPresentation(flow) {
+  const areaId = resolveDecisionArea(flow.id, flow.decisionArea);
+  const framingBlocks = flow.framingBlocks?.slice(0, 3) ?? [];
+  const problemBlocks = flow.problemBlocks?.slice(0, 4) ?? [];
+  const hasReadUnderstand = Boolean(flow.read || flow.understand);
+  const hasAlternateLayout =
+    !hasReadUnderstand && (framingBlocks.length > 0 || problemBlocks.length > 0);
+  const read = flow.read ?? flow.guideTitle ?? '';
+  const understand = flow.understand ?? flow.guideSubline ?? '';
+  const readParagraphs = read
+    ? read.split(/\n+/).map((p) => p.trim()).filter(Boolean)
+    : [];
+  const understandParagraphs = understand
+    ? understand.split(/\n+/).map((p) => p.trim()).filter(Boolean)
+    : [];
+  return {
+    area: GUIDE_DECISION_AREAS[areaId],
+    read,
+    readParagraphs,
+    understand,
+    understandParagraphs,
+    hasReadUnderstand,
+    framingBlocks,
+    problemBlocks,
+    keyPoints: hasAlternateLayout || hasReadUnderstand ? [] : flow.keyPoints.slice(0, 3),
+    evidenceLabel: flow.evidenceLabel ?? GUIDE_RESULT_SECTIONS.go,
+    whereToLook: flow.evidence.slice(0, 6),
+  };
+}
 
 /**
  * @param {string} flowId
@@ -613,7 +880,8 @@ export const GUIDE_FLOWS = {
  * @returns {GuideFlow | null}
  */
 export function getGuideFlow(flowId, questionOverride) {
-  const flow = GUIDE_FLOWS[flowId] ?? GUIDE_FLOWS.fallback;
+  const resolvedId = GUIDE_FLOW_ALIASES[flowId] ?? flowId;
+  const flow = GUIDE_FLOWS[resolvedId] ?? GUIDE_FLOWS[flowId] ?? GUIDE_FLOWS.fallback;
   if (!flow) return null;
   if (!questionOverride || questionOverride === flow.question) return flow;
   return { ...flow, question: questionOverride };

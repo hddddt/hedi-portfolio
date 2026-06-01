@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { capabilitySectionCopy } from '../../data/homeScrollChapters.js';
+import { computeHeroScrollNarrative } from '../../utils/heroFieldMotion.js';
 import { LandingOrganicField } from './OrganicField.jsx';
 
 /** Shared oblique system (~30°), flattened vertically in SVG group space */
@@ -80,11 +81,8 @@ export function OpeningBridgeSection() {
   }, []);
 
   const prm = prefersReducedMotion;
-  /** Tune: ~15% of opening scroll = readable hold on section B main copy */
-  const OPENING_HOLD_LO = 0.5;
-  const OPENING_HOLD_HI = 0.66;
-  const pScrub = prm ? p : plateauProgress(p, OPENING_HOLD_LO, OPENING_HOLD_HI);
-  const open = smoothstep(0.03, 0.97, pScrub);
+  const heroNarrative = computeHeroScrollNarrative(p, prm);
+  const open = heroNarrative.heroProgress;
 
   /** Identity field “opening” — spatial expansion, not only tone */
   const expand = smoothstep(0.04, 0.9, open);
@@ -199,21 +197,16 @@ export function OpeningBridgeSection() {
   const solidOrbitGroupOpacity = mix(1, 0.38, smoothstep(0.18, 0.82, open));
   const dashedOrbitGroupOpacity = mix(0.92, 1, smoothstep(0.22, 0.88, open));
 
-  /**
-   * A→B: long scroll track + wide smoothsteps so the handoff feels slow and deliberate.
-   */
-  const ab = smoothstep(0.02, 0.94, open);
-  const abShift = smoothstep(0.04, 0.91, ab);
+  /** A→B: content shift tied to same hero timeline as background blobs */
+  const abShift = smoothstep(0.04, 0.91, open);
   const sharedShiftVh = prm ? mix(0, -8, abShift) : mix(0, -28, abShift);
   const heroLiftStyle = {
     transform: `translate3d(0, ${sharedShiftVh}vh, 0)`,
   };
-  const fadeHero = smoothstep(0.1, 0.56, ab);
-  const fadeMain = smoothstep(0.34, 0.8, ab);
-  const heroOpacity = 1 - fadeHero;
-  const narrativeOpacity = fadeMain;
+  const heroOpacity = 1 - heroNarrative.fadeHero;
+  const narrativeOpacity = heroNarrative.fadeThesis;
 
-  const orbitStopMo = !prm && ab > 0.06 && ab < 0.48;
+  const orbitStopMo = !prm && open > 0.06 && open < 0.48;
 
   const idleClass = prm
     ? 'opening-card__atmosphere-idle'

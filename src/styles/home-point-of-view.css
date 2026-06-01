@@ -56,6 +56,20 @@
   opacity:0.65;
 }
 
+/* Release sticky POV stage once chapter 04 is no longer active (avoids black void over ch 05) */
+.home-pov:not(.narrative-chapter--active) .pov-pin{
+  visibility:hidden;
+  pointer-events:none;
+}
+
+/* Ch 05 in view — POV sticky must not cover path / life archive (400vh overlap) */
+.home-scroll-root:has(.home-life-archive.narrative-chapter--inview) .home-pov .pov-pin,
+.home-scroll-root:has(.home-life-archive.narrative-chapter--active) .home-pov .pov-pin{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+
 .pov-pin{
   position:sticky;
   top:0;

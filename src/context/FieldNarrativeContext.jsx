@@ -22,6 +22,8 @@ export function FieldNarrativeProvider({ children }) {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
   const [progress, setProgress] = useState(0);
+  const [openingComplete, setOpeningComplete] = useState(false);
+  const openingCompleteRef = useRef(false);
   const [capabilityFloat, setCapabilityFloat] = useState(null);
   const depthFloatRef = useRef(null);
   const setDepthFloat = useCallback((value) => {
@@ -35,9 +37,41 @@ export function FieldNarrativeProvider({ children }) {
   const [springPos, setSpringPos] = useState({ x: 0.5, y: 0.5 });
   const timeRef = useRef(0);
 
-  const registerOpeningScroll = useCallback((el) => {
-    openingScrollRef.current = el;
+  const syncOpening = useCallback(() => {
+    const el = openingScrollRef.current;
+    const raw = measureOpeningScrollProgress(el, reduceMotionRef.current);
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
+    const pastOpening =
+      el &&
+      (() => {
+        const r = el.getBoundingClientRect();
+        return r.bottom <= vh * 0.12;
+      })();
+    const openingInView =
+      el &&
+      (() => {
+        const r = el.getBoundingClientRect();
+        return r.top < vh * 0.92 && r.bottom > vh * 0.08;
+      })();
+
+    if (pastOpening || (raw >= 0.999 && !openingInView)) {
+      openingCompleteRef.current = true;
+    } else if (openingInView) {
+      openingCompleteRef.current = false;
+    }
+
+    const nextProgress = openingCompleteRef.current ? 1 : raw;
+    setProgress(nextProgress);
+    setOpeningComplete(openingCompleteRef.current);
   }, []);
+
+  const registerOpeningScroll = useCallback(
+    (el) => {
+      openingScrollRef.current = el;
+      if (el) requestAnimationFrame(syncOpening);
+    },
+    [syncOpening],
+  );
 
   useEffect(() => {
     reduceMotionRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -52,18 +86,25 @@ export function FieldNarrativeProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => {
-      setProgress(
-        measureOpeningScrollProgress(openingScrollRef.current, reduceMotionRef.current),
-      );
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    onScroll();
+    window.addEventListener('scroll', syncOpening, { passive: true });
+    window.addEventListener('resize', syncOpening, { passive: true });
+    syncOpening();
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scroll', syncOpening);
+      window.removeEventListener('resize', syncOpening);
     };
+  }, [syncOpening]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const el = openingScrollRef.current;
+    const vh = window.innerHeight;
+    if (window.scrollY > vh * 1.25 && !el) {
+      openingCompleteRef.current = true;
+      setProgress(1);
+      setOpeningComplete(true);
+    }
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -95,6 +136,7 @@ export function FieldNarrativeProvider({ children }) {
     () => ({
       field,
       progress,
+      openingComplete,
       capabilityFloat,
       setCapabilityFloat,
       depthFloatRef,
@@ -107,6 +149,7 @@ export function FieldNarrativeProvider({ children }) {
     [
       field,
       progress,
+      openingComplete,
       capabilityFloat,
       springPos,
       registerOpeningScroll,
@@ -125,6 +168,7 @@ export function useFieldNarrative() {
     return {
       field: DEFAULT_FIELD,
       progress: 0,
+      openingComplete: false,
       capabilityFloat: null,
       setCapabilityFloat: () => {},
       depthFloatRef: { current: null },

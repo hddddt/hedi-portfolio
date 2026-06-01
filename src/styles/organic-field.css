@@ -27,3 +27,40 @@
   height:100%;
   vertical-align:top;
 }
+
+/* Section narrative scenes — host-level tuning (WebGL reads data-orb-scene via JS) */
+.organic-field-host--viewport{
+  --orb-host-opacity: 1;
+  --orb-host-blur: 0px;
+  --orb-transition: 1.1s;
+  opacity: var(--orb-host-opacity);
+  filter: blur(var(--orb-host-blur));
+  transition:
+    opacity var(--orb-transition) ease,
+    filter var(--orb-transition) ease;
+}
+
+.organic-field-host--viewport[data-orb-scene='landing']{
+  --orb-host-opacity: 1;
+  --orb-host-blur: 0px;
+}
+
+.organic-field-host--viewport[data-orb-scene='capabilities'],
+.organic-field-host--viewport[data-orb-scene='pov']{
+  --orb-host-opacity: 0.96;
+}
+
+.organic-field-host--viewport[data-orb-scene='work'],
+.organic-field-host--viewport[data-orb-scene='case']{
+  --orb-host-opacity: 0.94;
+}
+
+.organic-field-host--viewport[data-orb-scene='me'],
+.organic-field-host--viewport[data-orb-scene='guide']{
+  --orb-host-opacity: 0.92;
+  --orb-host-blur: 0.25px;
+}
+
+.organic-field-host--viewport[data-orb-scene='guide']{
+  --orb-transition: 0.85s;
+}

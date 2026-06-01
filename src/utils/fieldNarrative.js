@@ -142,13 +142,21 @@ export function computeFieldNarrative(p, options = {}) {
 }
 
 export function measureOpeningScrollProgress(el, prefersReducedMotion) {
-  if (!el) return 0;
+  if (!el) {
+    if (typeof window !== 'undefined' && window.scrollY > window.innerHeight * 1.5) return 1;
+    return 0;
+  }
   const rect = el.getBoundingClientRect();
-  const total = Math.max(1, el.offsetHeight - window.innerHeight);
+  const vh = window.innerHeight;
+  // Past opening — viewport field takes over (do not use rect.top; sticky makes top negative on screen 2)
+  if (rect.bottom <= vh * 0.15) {
+    return 1;
+  }
+  const total = Math.max(1, el.offsetHeight - vh);
   const t = Math.min(Math.max(-rect.top, 0), total);
   let nextP = t / total;
   if (prefersReducedMotion) {
     nextP = nextP >= 0.5 ? 1 : 0;
   }
-  return nextP;
+  return Math.max(0, Math.min(1, nextP));
 }

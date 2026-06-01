@@ -34,8 +34,13 @@
 }
 
 /* — Capabilities — */
-.cap-dial__lede {
+.cap-dial__lede,
+.cap-dial__question {
   color: rgba(255, 255, 255, var(--read-lede-opacity));
+}
+
+.cap-dial__body {
+  color: rgba(250, 248, 243, var(--read-body-opacity));
 }
 
 .cap-dial__section-intro,

@@ -610,16 +610,33 @@
 .cap-dial__state-stack{
   position:relative;
   width:100%;
-  min-height:clamp(392px,48vh,520px);
+  min-height:clamp(340px,42vh,460px);
   flex:0 0 auto;
 }
 .cap-dial__chip-groups{
   display:flex;
   flex-direction:column;
-  gap:clamp(14px,2vh,22px);
-  margin-top:clamp(8px,1.2vh,16px);
+  gap:clamp(10px,1.4vh,14px);
+  margin-top:clamp(12px,1.6vh,18px);
   width:100%;
-  max-width:min(50ch,100%);
+  max-width:min(54ch,100%);
+}
+.cap-dial__chip-group{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.cap-dial__chip-group-label{
+  margin:0;
+  font-family:var(--font-interface-metric);
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:rgba(186,198,172,0.5);
+}
+.cap-dial__chip-group--secondary .cap-dial__chip-group-label{
+  color:rgba(186,198,172,0.36);
 }
 .cap-dial__state-layer{
   position:absolute;
@@ -628,8 +645,8 @@
   flex-direction:column;
   justify-content:flex-start;
   align-items:flex-start;
-  gap:clamp(16px,2.2vh,24px);
-  padding-top:clamp(4px,0.8vh,12px);
+  gap:clamp(12px,1.6vh,18px);
+  padding-top:clamp(2px,0.5vh,8px);
   opacity:0;
   visibility:hidden;
   transform:translateY(12px);
@@ -684,14 +701,17 @@
 .cap-dial__headline-line{
   display:block;
 }
-.cap-dial__lede{
+.cap-dial__lede,
+.cap-dial__question,
+.cap-dial__positioning{
   margin:0;
   flex-shrink:0;
   font-family:var(--font-editorial);
   font-size:clamp(14px,1.2vw,17px);
-  line-height:1.55;
+  font-weight:480;
+  line-height:1.4;
   color:rgba(255,255,255,var(--read-lede-opacity,0.88));
-  max-width:44ch;
+  max-width:42ch;
 }
 .cap-dial__chips{
   list-style:none;
@@ -740,9 +760,18 @@
   color:rgba(14,13,10,.92);
   box-shadow:0 1px 0 rgba(0,0,0,.12);
 }
+.cap-dial__chips--secondary{
+  gap:6px 8px;
+}
 .cap-dial__chip--secondary{
-  border-color:rgba(255,255,255,.1);
-  color:rgba(255,255,255,var(--read-body-opacity,0.68));
+  padding:4px 10px;
+  font-size:clamp(11px,0.85vw,12px);
+  font-weight:420;
+  letter-spacing:0.01em;
+  border-radius:6px;
+  border-color:rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03);
+  color:rgba(255,255,255,0.48);
 }
 .cap-dial__chip--primary:hover{
   background:#fff;
@@ -752,8 +781,9 @@
   transform:translateY(-1px);
 }
 .cap-dial__chip--secondary:hover{
-  border-color:rgba(255,255,255,.18);
-  color:rgba(255,255,255,0.72);
+  border-color:rgba(255,255,255,.14);
+  background:rgba(255,255,255,.05);
+  color:rgba(255,255,255,0.62);
 }
 
 .scroll-debug{
@@ -863,9 +893,14 @@
     font-size:clamp(1.75rem,9.2vw,2.3rem);
     line-height:1.08;
   }
-  .cap-dial__lede{
+  .cap-dial__lede,
+  .cap-dial__question{
     font-size:clamp(14px,3.9vw,16px);
     line-height:1.52;
+  }
+  .cap-dial__body{
+    font-size:clamp(13px,3.6vw,15px);
+    line-height:1.55;
   }
   .cap-dial__chips{
     gap:8px;
@@ -955,6 +990,18 @@
   flex-shrink:0;
   color:rgba(250,248,243,.9);
 }
+.work-narrative-chapter:not(.narrative-chapter--active) .work-sticky{
+  visibility:hidden;
+  pointer-events:none;
+}
+
+.home-scroll-root:has(.home-life-archive.narrative-chapter--inview) .work-sticky,
+.home-scroll-root:has(.home-life-archive.narrative-chapter--active) .work-sticky{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+
 .work-sticky{
   position:sticky;
   top:0;

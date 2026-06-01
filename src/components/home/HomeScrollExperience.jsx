@@ -10,7 +10,10 @@ import { homeScrollChapters } from '../../data/homeScrollChapters.js';
 import { FieldNarrativeProvider } from '../../context/FieldNarrativeContext.jsx';
 import { NarrativeScrollProvider } from '../../context/NarrativeScrollContext.jsx';
 import { OrganicFieldHostProvider, useOrganicFieldHost } from '../../context/OrganicFieldHostContext.jsx';
+import { OrbSceneChapterSync, OrbSceneProvider } from '../../context/OrbSceneContext.jsx';
 import { PerspectiveProvider } from '../../context/PerspectiveContext.jsx';
+import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
+import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { ProjectAccessProvider } from '../../context/ProjectAccessContext.jsx';
 import { AboutContactSection } from './AboutContactSection.jsx';
 import { MeCurrentWorkSection } from './MeCurrentWorkSection.jsx';
@@ -45,6 +48,7 @@ function HomeScrollInner() {
       </NarrativeChapter>
       <NarrativeChapter
         id="home-capabilities"
+        guideTargetId="capabilities"
         sectionClassName="cap-dial-chapter"
         chapterNum="02"
         chapterLabel="Capabilities"
@@ -55,6 +59,7 @@ function HomeScrollInner() {
       </NarrativeChapter>
       <NarrativeChapter
         id="home-work-narrative"
+        guideTargetId="selected-work"
         sectionClassName="work-narrative-chapter"
         chapterNum="03"
         chapterLabel="Work"
@@ -65,6 +70,7 @@ function HomeScrollInner() {
       </NarrativeChapter>
       <NarrativeChapter
         id="home-approach"
+        guideTargetId="point-of-view"
         sectionClassName="home-pov"
         chapterNum="04"
         chapterLabel="Point of View"
@@ -75,6 +81,7 @@ function HomeScrollInner() {
       </NarrativeChapter>
       <NarrativeChapter
         id="home-life-archive"
+        guideTargetId="me"
         sectionClassName="home-life-archive"
         chapterNum="05"
         chapterLabel="Beyond the Work"
@@ -119,11 +126,19 @@ function HomeScrollInner() {
 }
 
 function HomeScrollRootLayout() {
+  const { activeId } = useNarrativeScroll();
   const { setRootHost } = useOrganicFieldHost();
+  const { orbScene } = useOrbScene();
 
   return (
     <div className="home-scroll-root">
-      <div ref={setRootHost} className="organic-field-host organic-field-host--viewport" aria-hidden="true" />
+      <OrbSceneChapterSync activeId={activeId} />
+      <div
+        ref={setRootHost}
+        className="organic-field-host organic-field-host--viewport"
+        data-orb-scene={orbScene}
+        aria-hidden="true"
+      />
       <HomeScrollInner />
       <ViewportOrganicField />
       <PovSourcesDock />
@@ -135,15 +150,17 @@ function HomeScrollRootLayout() {
 export function HomeScrollExperience() {
   return (
     <NarrativeScrollProvider chapters={narrativeChapters}>
-      <FieldNarrativeProvider>
-        <ProjectAccessProvider>
-          <PerspectiveProvider>
-            <OrganicFieldHostProvider>
-              <HomeScrollRootLayout />
-            </OrganicFieldHostProvider>
-          </PerspectiveProvider>
-        </ProjectAccessProvider>
-      </FieldNarrativeProvider>
+      <OrbSceneProvider>
+        <FieldNarrativeProvider>
+          <ProjectAccessProvider>
+            <PerspectiveProvider>
+              <OrganicFieldHostProvider>
+                <HomeScrollRootLayout />
+              </OrganicFieldHostProvider>
+            </PerspectiveProvider>
+          </ProjectAccessProvider>
+        </FieldNarrativeProvider>
+      </OrbSceneProvider>
     </NarrativeScrollProvider>
   );
 }

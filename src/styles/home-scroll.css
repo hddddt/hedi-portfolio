@@ -37,6 +37,7 @@ html.home-scroll-page body{
 .home-scroll{
   position:relative;
   z-index:1;
+  isolation:isolate;
   background:transparent;
   padding-left:0;
 }

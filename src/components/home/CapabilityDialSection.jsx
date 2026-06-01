@@ -502,42 +502,50 @@ export function CapabilityDialSection() {
                         </span>
                       ))}
                     </h2>
-                    <p className="cap-dial__lede">{activeCap.description}</p>
+                    {activeCap.positioning ? (
+                      <p className="cap-dial__positioning">{activeCap.positioning}</p>
+                    ) : null}
                     <div className="cap-dial__chip-groups">
-                      <ul
-                        className="cap-dial__chips cap-dial__chips--primary"
-                        aria-label={`${activeCap.headline} primary focus areas`}
-                      >
-                        {activeCap.pillsPrimary.map((pill, j) => (
-                          <li
-                            key={pill}
-                            className="cap-dial__chip cap-dial__chip--primary"
-                            style={{
-                              transitionDelay: `${j * 22}ms`,
-                              opacity: 1,
-                            }}
-                          >
-                            {pill}
-                          </li>
-                        ))}
-                      </ul>
-                      <ul
-                        className="cap-dial__chips cap-dial__chips--secondary"
-                        aria-label={`${activeCap.headline} supporting focus areas`}
-                      >
-                        {activeCap.pillsSecondary.map((pill, j) => (
-                          <li
-                            key={pill}
-                            className="cap-dial__chip cap-dial__chip--secondary"
-                            style={{
-                              transitionDelay: `${(activeCap.pillsPrimary.length + j) * 22}ms`,
-                              opacity: 1,
-                            }}
-                          >
-                            {pill}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="cap-dial__chip-group">
+                        <p className="cap-dial__chip-group-label">Primary</p>
+                        <ul
+                          className="cap-dial__chips cap-dial__chips--primary"
+                          aria-label={`${activeCap.headline} primary outputs`}
+                        >
+                          {activeCap.pillsPrimary.map((pill, j) => (
+                            <li
+                              key={pill}
+                              className="cap-dial__chip cap-dial__chip--primary"
+                              style={{
+                                transitionDelay: `${j * 22}ms`,
+                                opacity: 1,
+                              }}
+                            >
+                              {pill}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="cap-dial__chip-group cap-dial__chip-group--secondary">
+                        <p className="cap-dial__chip-group-label">Secondary</p>
+                        <ul
+                          className="cap-dial__chips cap-dial__chips--secondary"
+                          aria-label={`${activeCap.headline} supporting methods`}
+                        >
+                          {activeCap.pillsSecondary.map((pill, j) => (
+                            <li
+                              key={pill}
+                              className="cap-dial__chip cap-dial__chip--secondary"
+                              style={{
+                                transitionDelay: `${(activeCap.pillsPrimary.length + j) * 18}ms`,
+                                opacity: 1,
+                              }}
+                            >
+                              {pill}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </div>

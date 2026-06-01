@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { useProjectAccess } from '../../context/ProjectAccessContext.jsx';
 import { WorkCaseDetail } from './WorkCaseDetail.jsx';
 
@@ -21,9 +22,16 @@ function caseOpenLabel(item) {
 
 export function WorkNarrativeSection({ cases = [] }) {
   const { unlocked, requestAccess, pendingCaseId, clearPendingCase } = useProjectAccess();
+  const { setCaseDetailOpen } = useOrbScene();
   const wrapRef = useRef(null);
+  const guideScrollLockUntilRef = useRef(0);
   const [activeIdx, setActiveIdx] = useState(0);
   const [openCaseId, setOpenCaseId] = useState(null);
+
+  useEffect(() => {
+    setCaseDetailOpen(Boolean(openCaseId));
+    return () => setCaseDetailOpen(false);
+  }, [openCaseId, setCaseDetailOpen]);
   const prevIdxRef = useRef(0);
   const [flipDir, setFlipDir] = useState(1);
 
@@ -40,6 +48,7 @@ export function WorkNarrativeSection({ cases = [] }) {
   useEffect(() => {
     if (!n || openCaseId) return undefined;
     const onScroll = () => {
+      if (performance.now() < guideScrollLockUntilRef.current) return;
       const el = wrapRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -85,6 +94,25 @@ export function WorkNarrativeSection({ cases = [] }) {
     window.addEventListener('portfolio-guide-open-case', onGuideOpenCase);
     return () => window.removeEventListener('portfolio-guide-open-case', onGuideOpenCase);
   }, [unlocked, requestAccess]);
+
+  useEffect(() => {
+    const onGuideFocusCase = (e) => {
+      const caseId = e?.detail?.caseId;
+      const panelIndex = e?.detail?.panelIndex;
+      if (!caseId || !n) return;
+      const fromId = cases.findIndex((item) => item.id === caseId);
+      const nextIdx =
+        typeof panelIndex === 'number' && panelIndex >= 0
+          ? Math.min(n - 1, panelIndex)
+          : fromId;
+      if (nextIdx < 0) return;
+      guideScrollLockUntilRef.current = performance.now() + 920;
+      setOpenCaseId(null);
+      setActiveIdx(nextIdx);
+    };
+    window.addEventListener('portfolio-guide-focus-case', onGuideFocusCase);
+    return () => window.removeEventListener('portfolio-guide-focus-case', onGuideFocusCase);
+  }, [cases, n]);
 
   if (!n || !c) {
     return (
@@ -195,6 +223,7 @@ export function WorkNarrativeSection({ cases = [] }) {
             {cases.map((item, i) => (
               <article
                 key={item.id}
+                id={`case-0${i + 1}`}
                 className={`work-narrative__layer ${i === idx ? 'is-active' : ''}`}
                 aria-hidden={i !== idx}
               >

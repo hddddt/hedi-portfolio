@@ -166,11 +166,14 @@
 }
 
 .home-beyond-work {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: none;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .home-beyond-work__content {
@@ -178,6 +181,7 @@
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 2.4vh, 24px);
+  overflow: visible;
 }
 
 .home-beyond-work__part {
@@ -411,103 +415,102 @@
   border-color: transparent;
 }
 
-/* Editorial reveal cadence for non-image blocks */
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__kicker {
-  animation: home-me-fade-up 0.56s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__part--opening {
-  animation: home-me-fade-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__part--middle {
-  animation: home-me-fade-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__pull {
-  animation: home-me-fade-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__part--thesis {
-  animation: home-me-fade-up 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.32s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-divider {
-  animation: home-me-fade-up 0.56s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-label {
-  animation: home-me-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-title {
-  animation: home-me-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-body {
-  animation: home-me-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-status,
-.home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-cta {
-  animation: home-me-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.26s both;
-}
-
-.home-life-archive.narrative-chapter--inview .home-life-archive__contact--tail .home-about__actions {
-  animation: home-me-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.34s both;
-}
-
-@keyframes home-me-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* Ch 05 — always visible (no opacity gate); motion only when reduced-motion off */
+.home-life-archive .home-me-path__p,
+.home-life-archive .home-me-path__kicker,
 .home-life-archive .home-beyond-work__part--path .home-me-path__kicker,
 .home-life-archive .home-beyond-work__part--path .home-me-path__part,
 .home-life-archive .home-beyond-work__part--path .home-me-path__pull,
+.home-life-archive .home-beyond-work__part--path .home-me-path__portrait,
 .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-divider,
 .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-label,
 .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-title,
 .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-body,
 .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-status,
 .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-cta,
-.home-life-archive__contact--tail .home-about__actions {
-  opacity: 0;
+.home-life-archive__contact--tail .home-about__actions,
+.home-life-archive .life-archive-intent__header,
+.home-life-archive .life-archive-intent__field,
+.home-life-archive .life-archive-intent__card {
+  opacity: 1;
+  visibility: visible;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .home-life-archive .home-beyond-work__part--path .home-me-path__kicker,
-  .home-life-archive .home-beyond-work__part--path .home-me-path__part,
-  .home-life-archive .home-beyond-work__part--path .home-me-path__pull,
-  .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-divider,
-  .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-label,
-  .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-title,
-  .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-body,
-  .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-status,
-  .home-life-archive .home-beyond-work__part--resoa .home-me__current-work-cta,
-  .home-life-archive__contact--tail .home-about__actions {
-    opacity: 1;
-    transform: none;
-    animation: none !important;
+@media (prefers-reduced-motion: no-preference) {
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__kicker {
+    animation: home-me-rise 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__part--opening {
+    animation: home-me-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__part--middle {
+    animation: home-me-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__pull {
+    animation: home-me-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.24s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--path .home-me-path__part--thesis {
+    animation: home-me-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.32s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-divider {
+    animation: home-me-rise 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-label {
+    animation: home-me-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-title {
+    animation: home-me-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.14s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-body {
+    animation: home-me-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-status,
+  .home-life-archive.narrative-chapter--inview .home-beyond-work__part--resoa .home-me__current-work-cta {
+    animation: home-me-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.26s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .home-life-archive__contact--tail .home-about__actions {
+    animation: home-me-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.34s forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .life-archive-intent__header {
+    animation: home-me-rise 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .home-life-archive.narrative-chapter--inview .life-archive-intent__field {
+    animation: home-me-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+  }
+}
+
+@keyframes home-me-rise {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 
 .home-life-archive.home-section {
-  overflow: visible;
+  overflow: visible !important;
   justify-content: flex-start;
   scroll-snap-align: none;
   padding-bottom: clamp(56px, 9vh, 96px);
+  min-height: auto;
 }
 
 .home-life-archive.narrative-chapter {
   position: relative;
-  z-index: 4;
+  z-index: 5;
   overflow: visible;
   transform: none;
   filter: none;
@@ -515,7 +518,6 @@
   margin-top: clamp(48px, 10vh, 120px);
   padding-top: clamp(56px, 9vh, 88px);
   scroll-margin-top: clamp(52px, 8vh, 72px);
-  isolation: isolate;
 }
 
 .home-life-archive .narrative-chapter__body {
@@ -527,6 +529,19 @@
   max-width: none;
   overflow: visible;
   opacity: 1;
+  visibility: visible;
+}
+
+/* Prevent scroll/IO reveal rules from ever blanking ch 05 */
+.home-life-archive .home-beyond-work,
+.home-life-archive .home-beyond-work__content,
+.home-life-archive .home-beyond-work__part,
+.home-life-archive .life-archive-intent,
+.home-life-archive .life-archive-intent__field,
+.home-life-archive .life-archive-intent__scroller-wrap,
+.home-life-archive .life-archive-intent__row {
+  opacity: 1;
+  visibility: visible;
 }
 
 .home-life-archive .narrative-chapter__body > * {
