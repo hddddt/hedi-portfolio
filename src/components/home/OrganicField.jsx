@@ -309,6 +309,7 @@ function OrganicFieldCanvas({ inCard = false }) {
           aLead,
           orbScene: sceneKey,
           heroProgress,
+          openingOrch: openingPresence,
           handoffBlend: handoffBlendRef?.current ?? 0,
           openingCapBlend: capHandoff,
         },
@@ -316,23 +317,32 @@ function OrganicFieldCanvas({ inCard = false }) {
 
       const isWarmLand = ambKey === 'warm' || ambKey === 'default' || !ambKey;
       const heroDrive =
-        heroProgress != null && isWarmLand ? heroScrollDrive(heroProgress) : 0;
+        inOpening && openingPresence && isWarmLand
+          ? openingPresence.scrollDrive
+          : heroProgress != null && isWarmLand
+            ? heroScrollDrive(heroProgress)
+            : 0;
       const capActive = capabilityFloatRef.current;
       const chapterScrollDrive =
         capActive != null && sceneKey === 'capabilities' ? Math.min(1, capActive * 1.15) : 0;
-      const idleMotion = (1 - heroDrive) * (1 - chapterScrollDrive * 0.88);
+      const gatherDamp =
+        inOpening && openingPresence ? 1 - openingPresence.gather * 0.88 : 1;
+      const idleMotion =
+        inOpening && openingPresence && isWarmLand
+          ? openingPresence.idleStillness * gatherDamp * (1 - chapterScrollDrive * 0.88)
+          : (1 - heroDrive) * (1 - chapterScrollDrive * 0.88);
 
       if (isWarmLand && idleMotion > 0.001) {
         const arcBase =
           WARM_MOTION.arcMult *
           (sceneKey === 'landing' ? WARM_MOTION.landingArcMult : 1) *
           idleMotion;
-        const phaseA = animTime * 0.5;
-        const phaseB = animTime * 1.18 + (motion.b.flow ?? 0) * 0.1;
-        const phaseC = animTime * 0.62;
-        const arcA = ARC_AMP.a * arcBase * orbSceneArcScale(sceneKey, 'a');
-        const arcB = ARC_AMP.b * arcBase * orbSceneArcScale(sceneKey, 'b');
-        const arcC = ARC_AMP.c * arcBase * orbSceneArcScale(sceneKey, 'c');
+        const phaseA = animTime * 0.22 + 0.83;
+        const phaseB = animTime * 0.44 + 1.37 + (motion.b.flow ?? 0) * 0.06;
+        const phaseC = animTime * 1.52 + 2.14;
+        const arcA = ARC_AMP.a * arcBase * orbSceneArcScale(sceneKey, 'a') * (WARM_MOTION.arcMultA || 1);
+        const arcB = ARC_AMP.b * arcBase * orbSceneArcScale(sceneKey, 'b') * (WARM_MOTION.arcMultB || 1);
+        const arcC = ARC_AMP.c * arcBase * orbSceneArcScale(sceneKey, 'c') * (WARM_MOTION.arcMultC || 1);
         targets = {
           ...targets,
           a:

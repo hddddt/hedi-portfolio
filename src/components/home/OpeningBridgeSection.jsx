@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { capabilitySectionCopy } from '../../data/homeScrollChapters.js';
-import { computeHeroScrollNarrative } from '../../utils/heroFieldMotion.js';
+import { computeHeroScrollNarrative, OPENING_PHASE2_END } from '../../utils/heroFieldMotion.js';
 import { LandingOrganicField } from './OrganicField.jsx';
 
 /** Shared oblique system (~30°), flattened vertically in SVG group space */
@@ -197,16 +197,15 @@ export function OpeningBridgeSection() {
   const solidOrbitGroupOpacity = mix(0.82, 0.32, smoothstep(0.18, 0.82, open));
   const dashedOrbitGroupOpacity = mix(0.78, 0.88, smoothstep(0.22, 0.88, open));
 
-  /** A→B: content shift tied to same hero timeline as background blobs */
-  const abShift = smoothstep(0.04, 0.91, open);
-  const sharedShiftVh = prm ? mix(0, -8, abShift) : mix(0, -28, abShift);
+  /** Phase 1–2: Hedi lifts off; thesis waits until hero fully gone (phase 3) */
+  const heroSlideT = heroNarrative.fadeHero;
   const heroLiftStyle = {
-    transform: `translate3d(0, ${sharedShiftVh}vh, 0)`,
+    transform: `translate3d(0, ${prm ? mix(0, -8, heroSlideT) : mix(0, -36, heroSlideT)}vh, 0)`,
   };
   const heroOpacity = 1 - heroNarrative.fadeHero;
   const narrativeOpacity = heroNarrative.fadeThesis;
 
-  const orbitStopMo = !prm && open > 0.06 && open < 0.48;
+  const orbitStopMo = !prm && p > 0.025 && p < OPENING_PHASE2_END + 0.02;
 
   const idleClass = prm
     ? 'opening-card__atmosphere-idle'

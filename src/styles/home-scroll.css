@@ -190,7 +190,7 @@ html.home-scroll-page body{
 .opening-scroll{
   position:relative;
   width:100%;
-  height:300vh;
+  height:360vh;
   flex-shrink:0;
   box-sizing:border-box;
 }

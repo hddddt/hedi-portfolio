@@ -1,18 +1,19 @@
 /**
- * Hero opening scroll narrative — one master timeline for green / blue / yellow blobs.
- * Screen 1 (intro) → transition → Screen 2 (thesis). Coordinated convergence, minimal rotation.
+ * Hero opening scroll narrative — three coordinated phases:
+ *  1 scroll start → Hedi lifts, field settles from idle + elastic impact
+ *  2 continued scroll → blobs gather, Hedi exits, then thesis copy fades in
+ *  3 thesis complete → shrunk field + full copy hold, exit only after dwell
  */
 
 import { HERO_BLOB_INTRO, HERO_GREEN_ROTATION } from '../data/organicFieldPalette.js';
 import {
   easeScrollBreath,
   mix,
-  plateauProgress,
   scrollBreathScalePulse,
   smoothstep,
 } from './fieldNarrative.js';
 
-/** @typedef {'intro' | 'transition' | 'thesis'} HeroPhase */
+/** @typedef {'intro' | 'transition' | 'thesis' | 'exit'} HeroPhase */
 
 /**
  * @typedef {object} HeroBlobState
@@ -30,49 +31,116 @@ const PHASE = {
   thesisStart: 0.7,
 };
 
+/** Raw scroll segment boundaries (0–1 through .opening-scroll) */
+export const OPENING_PHASE1_END = 0.08;
+export const OPENING_PHASE2_END = 0.26;
+export const OPENING_PHASE3_END = 0.5;
+export const OPENING_EXIT_END = 1;
+
+/** @deprecated */
+export const OPENING_SCREEN1_END = OPENING_PHASE1_END;
+export const OPENING_SCREEN2_ENTER = OPENING_PHASE2_END;
+export const OPENING_SCREEN2_DWELL_END = OPENING_PHASE3_END;
+export const OPENING_FIELD_SHRINK_END = 0.88;
+export const OPENING_SHRINK_START = OPENING_PHASE2_END;
+export const OPENING_SHRINK_END = OPENING_EXIT_END;
+
 const INTRO_OPACITY = {
   a: HERO_BLOB_INTRO.a.opacity,
   b: HERO_BLOB_INTRO.b.opacity,
   c: HERO_BLOB_INTRO.c.opacity,
 };
 
-/** Chapter id for the opening scroll (in-card field only while this chapter is active). */
 export const OPENING_CHAPTER_ID = 'home-landing';
-
-/** Opening scroll complete — switch from in-card field to viewport field. */
 export const OPENING_SCROLL_COMPLETE = 1;
 
-/**
- * In-card field for the full opening scrub (0→1); hand off when capabilities handoff settles.
- * @param {number} _rawProgress
- * @param {boolean} [openingComplete]
- * @param {number} [capHandoff]
- */
 export function shouldUseInCardOrganicField(_rawProgress, openingComplete = false, capHandoff = 1) {
   return !openingComplete || capHandoff < 0.85;
 }
 
-/**
- * Viewport field once opening latch begins — overlaps briefly for seamless pose carry.
- * @param {number} _rawProgress
- * @param {boolean} [openingComplete]
- * @param {number} [capHandoff]
- */
 export function shouldUseViewportOrganicField(_rawProgress, openingComplete = false, capHandoff = 1) {
   return openingComplete && capHandoff > 0.04;
 }
-/** Raw progress where screen-2 shrink begins (≈ second viewport of opening) */
-export const OPENING_SHRINK_START = 0.34;
-export const OPENING_SHRINK_END = 0.92;
 
-/** Scroll progress where independent idle motion yields to hero narrative */
+/** @deprecated use openingFieldScrollDrive(rawP) during opening */
 export const HERO_SCROLL_DRIVE_START = 0.006;
 export const HERO_SCROLL_DRIVE_END = 0.09;
 
 /**
- * 0 at rest — independent warm motion. Ramps to 1 shortly after scroll begins.
- * @param {number | null | undefined} heroProgress
+ * Master opening orchestration from raw scroll — single source for UI + field.
+ * @param {number} rawP
  */
+export function computeOpeningScrollOrchestration(rawP) {
+  const p = Math.max(0, Math.min(1, rawP));
+
+  /** Phase 1 — idle → still, elastic impact on first scroll (short) */
+  const idleStillness = 1 - smoothstep(0.008, OPENING_PHASE1_END, p);
+  const scrollImpact = scrollBreathScalePulse(smoothstep(0.012, OPENING_PHASE1_END * 0.95, p));
+
+  /** Phase 2 — narrative drive + blob gather */
+  const scrollDrive = easeScrollBreath(
+    Math.max(smoothstep(0.003, 0.07, p), smoothstep(0.008, OPENING_PHASE1_END + 0.04, p) * 0.78) *
+      (1 - smoothstep(OPENING_PHASE3_END, OPENING_EXIT_END, p) * 0.35),
+  );
+
+  /** Blob hero timeline — fast intro → thesis convergence */
+  let heroProgress;
+  if (p <= OPENING_PHASE1_END) {
+    heroProgress = smoothstep(0, OPENING_PHASE1_END, p) * 0.22;
+  } else if (p <= OPENING_PHASE2_END) {
+    const t = (p - OPENING_PHASE1_END) / (OPENING_PHASE2_END - OPENING_PHASE1_END);
+    heroProgress = 0.22 + easeScrollBreath(t) * (PHASE.thesisStart - 0.22);
+  } else if (p <= OPENING_PHASE3_END) {
+    heroProgress = PHASE.thesisStart;
+  } else {
+    const t = (p - OPENING_PHASE3_END) / (OPENING_EXIT_END - OPENING_PHASE3_END);
+    heroProgress = PHASE.thesisStart + easeScrollBreath(t) * (1 - PHASE.thesisStart);
+  }
+
+  /** Gather — completes early in phase 2 */
+  const gather = smoothstep(0.003, OPENING_PHASE2_END - 0.04, p);
+
+  /** Screen 1 — quick lift off, gone before thesis */
+  const fadeHero = smoothstep(0.015, OPENING_PHASE2_END - 0.03, p);
+
+  /** Screen 2 — right after Hedi leaves */
+  const fadeThesis =
+    p < OPENING_PHASE2_END - 0.008
+      ? 0
+      : smoothstep(OPENING_PHASE2_END, OPENING_PHASE3_END - 0.05, p);
+
+  /** Field shrink — starts mid phase 2, settles before phase 3 hold ends */
+  const shrinkLinear = smoothstep(OPENING_PHASE2_END - 0.12, OPENING_PHASE3_END - 0.08, p);
+  const fieldScale = mix(1, 0.56, easeScrollBreath(shrinkLinear));
+
+  let phase = /** @type {HeroPhase} */ ('intro');
+  if (p > OPENING_PHASE3_END) phase = 'exit';
+  else if (p >= OPENING_PHASE2_END) phase = 'thesis';
+  else if (p >= OPENING_PHASE1_END) phase = 'transition';
+
+  return {
+    rawP: p,
+    heroProgress,
+    phase,
+    idleStillness,
+    scrollDrive,
+    scrollImpact,
+    gather,
+    fadeHero,
+    fadeThesis,
+    fieldScale,
+    fieldEnvelope: 1,
+    converge: gather,
+    globalBlur: mix(14, 8, smoothstep(OPENING_PHASE1_END, OPENING_PHASE3_END, p)),
+  };
+}
+
+/** Opening field scroll drive — raw scroll based */
+export function openingFieldScrollDrive(rawP) {
+  return computeOpeningScrollOrchestration(rawP).scrollDrive;
+}
+
+/** @param {number | null | undefined} heroProgress */
 export function heroScrollDrive(heroProgress) {
   if (heroProgress == null || heroProgress <= 0) return 0;
   return easeScrollBreath(
@@ -80,7 +148,6 @@ export function heroScrollDrive(heroProgress) {
   );
 }
 
-/** Green = system field, Blue = POV lens, Yellow = human agency */
 const BLOB_STATES = {
   intro: HERO_BLOB_INTRO,
   transition: {
@@ -112,7 +179,7 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.a,
       centerX: 0.41,
       centerY: 0.5,
-      scale: 1.14,
+      scale: 1.08,
       opacity: INTRO_OPACITY.a,
       rotation: HERO_GREEN_ROTATION,
     },
@@ -120,14 +187,14 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.b,
       centerX: 0.57,
       centerY: 0.46,
-      scale: 1.06,
+      scale: 1.0,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
       centerX: 0.5,
       centerY: 0.4,
-      scale: 0.96,
+      scale: 0.9,
       opacity: INTRO_OPACITY.c,
     },
   },
@@ -135,12 +202,6 @@ const BLOB_STATES = {
 
 const FOCUS = { x: 0.5, y: 0.48 };
 
-/**
- * @param {HeroBlobState} from
- * @param {HeroBlobState} to
- * @param {number} t
- * @returns {HeroBlobState}
- */
 function lerpBlobState(from, to, t) {
   const u = Math.max(0, Math.min(1, t));
   const rotFrom = from.rotation ?? 0;
@@ -159,16 +220,11 @@ function lerpBlobState(from, to, t) {
   };
 }
 
-function resolveBlobOpacity() {
-  return INTRO_OPACITY;
-}
-
 function applyBlobOpacity(states) {
-  const op = resolveBlobOpacity();
   return {
-    a: { ...states.a, opacity: op.a },
-    b: { ...states.b, opacity: op.b },
-    c: { ...states.c, opacity: op.c },
+    a: { ...states.a, opacity: INTRO_OPACITY.a },
+    b: { ...states.b, opacity: INTRO_OPACITY.b },
+    c: { ...states.c, opacity: INTRO_OPACITY.c },
   };
 }
 
@@ -195,115 +251,64 @@ function blobStatesAtProgress(heroProgress) {
   return applyBlobOpacity(states);
 }
 
-/**
- * Shared scroll scrub for opening (screen 1 hold → screen 2 thesis).
- * @param {number} rawP
- * @param {boolean} [prm]
- */
 export function computeHeroScrollNarrative(rawP, prm = false) {
-  const pScrub = prm ? rawP : plateauProgress(rawP, 0.5, 0.66);
-  const open = smoothstep(0.03, 0.97, pScrub);
-  const heroProgress = open;
-
-  let phase = /** @type {HeroPhase} */ ('intro');
-  if (heroProgress >= PHASE.thesisStart) phase = 'thesis';
-  else if (heroProgress >= PHASE.introEnd) phase = 'transition';
-
-  const converge = smoothstep(PHASE.introEnd * 0.5, PHASE.thesisStart, heroProgress);
-  const globalBlur = mix(14, 8, smoothstep(0.35, 0.85, heroProgress));
-
+  if (prm) {
+    const heroProgress = rawP;
+    return {
+      rawP,
+      pScrub: heroProgress,
+      heroProgress,
+      phase: heroProgress >= PHASE.thesisStart ? 'thesis' : heroProgress >= PHASE.introEnd ? 'transition' : 'intro',
+      converge: smoothstep(PHASE.introEnd * 0.5, PHASE.thesisStart, heroProgress),
+      globalBlur: mix(14, 8, smoothstep(0.35, 0.85, heroProgress)),
+      fadeHero: smoothstep(0.12, 0.52, heroProgress),
+      fadeThesis: smoothstep(0.38, 0.78, heroProgress),
+      fieldEnvelope: 1,
+      idleStillness: 0,
+      scrollDrive: 1,
+      scrollImpact: 1,
+      gather: 1,
+      fieldScale: 1,
+    };
+  }
+  const orch = computeOpeningScrollOrchestration(rawP);
   return {
-    rawP,
-    pScrub,
-    heroProgress,
-    phase,
-    converge,
-    globalBlur,
-    /** Content crossfade — thesis copy appears on screen 2, independent of field fade */
-    fadeHero: smoothstep(0.12, 0.52, heroProgress),
-    fadeThesis: smoothstep(0.38, 0.78, heroProgress),
-    /** Field color stays full through screen-2 shrink — only scale recedes */
-    fieldEnvelope: 1,
+    ...orch,
+    pScrub: orch.heroProgress,
   };
 }
 
-/**
- * Opening field presence from raw scroll — shrink on screen 2, no sudden vanish.
- * @param {number} rawP
- * @param {boolean} [prm]
- */
 export function computeOpeningFieldPresence(rawP, prm = false) {
-  const narrative = computeHeroScrollNarrative(rawP, prm);
-  const p = Math.max(0, Math.min(1, rawP));
-  /** Shrink only after screen 2 entry — elastic breath, no color fade */
-  const shrinkLinear = smoothstep(0.72, 0.94, p);
-  const shrinkT = easeScrollBreath(shrinkLinear);
-  const fieldScale = mix(1, 0.74, shrinkT) * scrollBreathScalePulse(shrinkLinear);
-  return {
-    ...narrative,
-    fieldScale,
-    fieldEnvelope: 1,
-  };
+  return computeHeroScrollNarrative(rawP, prm);
 }
 
 /**
- * Subtle shared breathe — only after thesis settles.
  * @param {number} heroProgress
- * @param {number} time
- * @param {boolean} prm
- */
-function heroBreathe(heroProgress, time, prm) {
-  if (prm) return { dx: 0, dy: 0, scale: 1 };
-  const transitionGain =
-    smoothstep(PHASE.introEnd * 0.75, PHASE.thesisStart + 0.08, heroProgress) *
-    (1 - smoothstep(PHASE.thesisStart + 0.18, 0.96, heroProgress));
-  const settleGain = smoothstep(0.82, 0.94, heroProgress) * 0.35;
-  const gain = Math.max(transitionGain * 0.9, settleGain);
-  const wave = Math.sin(time * 0.48) * gain;
-  const scrollSwell =
-    transitionGain > 0.01
-      ? Math.sin(
-          ((heroProgress - PHASE.introEnd) /
-            Math.max(0.001, PHASE.thesisStart - PHASE.introEnd)) *
-            Math.PI,
-        ) *
-        0.045 *
-        transitionGain
-      : 0;
-  return {
-    dx: wave * 0.004,
-    dy: Math.sin(time * 0.48 + 0.6) * 0.003 * gain,
-    scale: 1 + wave * 0.012 + scrollSwell,
-  };
-}
-
-function transitionBreathScale(heroProgress) {
-  if (heroProgress < PHASE.introEnd || heroProgress > PHASE.thesisStart + 0.12) return 1;
-  const t = (heroProgress - PHASE.introEnd) / (PHASE.thesisStart - PHASE.introEnd);
-  return scrollBreathScalePulse(t);
-}
-
-/**
- * OrganicField targets for in-card hero (progress-driven, no independent loops).
- * @param {number} heroProgress 0–1
  * @param {number} [time]
  * @param {boolean} [prm]
+ * @param {object} [orch] opening orchestration slice
  */
-export function computeHeroFieldTargets(heroProgress, time = 0, prm = false) {
+export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orch = null) {
   const states = blobStatesAtProgress(heroProgress);
-  const breath = heroBreathe(heroProgress, time, prm);
-  const gather = smoothstep(PHASE.introEnd * 0.55, PHASE.thesisStart + 0.06, heroProgress) * 0.14;
+  const gather = orch?.gather ?? smoothstep(PHASE.introEnd * 0.55, PHASE.thesisStart + 0.06, heroProgress);
+  const impact = orch?.scrollImpact ?? 1;
+  const stillness = orch?.idleStillness ?? 0;
+  const impactGain = (1 - stillness) * Math.max(0, impact - 1) * 3.2;
 
   const applyBlob = (state) => {
-    const cx = mix(state.centerX, FOCUS.x, gather * 0.22) + breath.dx;
-    const cy = mix(state.centerY, FOCUS.y, gather * 0.18) + breath.dy;
+    const cx = mix(state.centerX, FOCUS.x, gather * 0.44);
+    const cy = mix(state.centerY, FOCUS.y, gather * 0.36);
+    const gatherScale = 1 + gather * 0.06;
+    const impactScale = 1 + impactGain * 0.18;
+    const radialX = (state.centerX - FOCUS.x) * impactGain * 0.22;
+    const radialY = (state.centerY - FOCUS.y) * impactGain * 0.16;
     return {
-      centerX: cx,
-      centerY: cy,
-      scale: state.scale * breath.scale * transitionBreathScale(heroProgress),
+      centerX: cx + radialX,
+      centerY: cy + radialY,
+      scale: state.scale * gatherScale * impactScale,
       opacity: state.opacity,
-      stretchX: state.stretchX,
-      stretchY: state.stretchY,
+      stretchX: mix(state.stretchX, state.stretchX * 1.08, impactGain * 0.35 + gather * 0.08),
+      stretchY: mix(state.stretchY, state.stretchY * 0.94, impactGain * 0.28 + gather * 0.06),
       rotation: state.rotation ?? 0,
       flow: 0,
     };

@@ -30,8 +30,8 @@ export const HERO_LANDING_ORBS = {
 export const HERO_LANDING_FIELD = {
   rest: {
     a: { x: 0.37, y: 0.48 },
-    b: { x: 0.7, y: 0.39 },
-    c: { x: 0.6, y: 0.24 },
+    b: { x: 0.71, y: 0.39 },
+    c: { x: 0.58, y: 0.31 },
   },
   layout: {
     a: { opacity: 1, scale: 1.18, dx: 0, dy: 0, stretchX: 1.02, stretchY: 0.98, rotation: HERO_GREEN_ROTATION },

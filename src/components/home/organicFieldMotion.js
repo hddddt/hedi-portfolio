@@ -167,16 +167,19 @@ const LAYOUT = {
 
 const CYCLE = { a: 21, b: 14, c: 8.5 };
 
-export const ARC_AMP = { a: 0.017, b: 0.035, c: 0.042 };
+export const ARC_AMP = { a: 0.004, b: 0.024, c: 0.092 };
 
-/** Landing / warm hero — per-field motion channels (see warmAmbient*) */
+/** Landing motion tempo — green slow, blue moderate, amber fastest */
+export const LANDING_MOTION_RATE = { a: 0.2, b: 0.44, c: 1.68 };
+
+/** Per-field arc — green anchored, blue compact float, amber wide roam */
 export const WARM_MOTION = {
-  timeScale: 1.08,
-  arcMult: 2.15,
-  landingArcMult: 2.72,
-  arcMultA: 0,
-  arcMultB: 0,
-  arcMultC: 0,
+  timeScale: 1.14,
+  arcMult: 2.55,
+  landingArcMult: 3.35,
+  arcMultA: 0.08,
+  arcMultB: 0.72,
+  arcMultC: 1.55,
 };
 
 /** Incommensurate drift — reads irregular, not repetitive back-and-forth. */
@@ -198,52 +201,152 @@ function irregularFieldOffset(t, seed = 0) {
   return { x, y, rot };
 }
 
-/** Blue hugs green right edge — free path, clamped so it never leaves the seam. */
-function landingBlueSeamMotion(t) {
+/**
+ * Aperiodic scalar — irrational freq mix, no obvious loop cadence.
+ * @param {number} t
+ * @param {number} seed
+ * @param {number} [gain]
+ */
+function aperiodicChannel(t, seed, gain = 1) {
+  const s = seed;
+  const f1 = 0.173 + s * 0.0117;
+  const f2 = 0.311 + s * 0.0073;
+  const f3 = 0.497 + s * 0.0131;
+  const f4 = 0.619 + s * 0.0059;
+  const f5 = 0.853 + s * 0.0094;
+  const v =
+    Math.sin(t * f1 + s * 2.17) * 0.36 +
+    Math.sin(t * f2 + s * 1.43) * 0.26 +
+    Math.cos(t * f3 + s * 3.81) * 0.2 +
+    Math.sin(t * f4 + s * 0.92) * 0.15 +
+    Math.cos(t * f5 + s * 4.33) * 0.11 +
+    Math.sin(t * (f1 * 1.618) + s * 0.67) * 0.08 +
+    Math.cos(t * (f3 * 0.707) + s * 2.04) * 0.06;
+  return v * gain;
+}
+
+/** Vector + scale from unrelated aperiodic scalars. */
+function aperiodicFieldOffset(t, seed, amp = 1) {
+  const x = aperiodicChannel(t, seed, amp);
+  const y = aperiodicChannel(t + 17.31, seed + 4.91, amp * 0.93);
+  const rot = aperiodicChannel(t + 31.74, seed + 8.17, amp * 0.019);
+  const scale = 1 + aperiodicChannel(t + 9.07, seed + 2.13, amp * 0.044);
+  return { x, y, rot, scale };
+}
+
+/** Green — slowest: membrane breathe, virtually anchored */
+function landingGreenBreathMotion(t) {
+  const rate = LANDING_MOTION_RATE.a;
+  const off = aperiodicFieldOffset(t * 0.28 * rate, 1.7, 1);
+  const off2 = aperiodicFieldOffset(t * 0.41 * rate + 3.2, 5.4, 0.68);
+  const breathe =
+    (off.scale - 1) * 2.4 + (off2.scale - 1) * 1.55 + aperiodicChannel(t * rate, 3.31, 0.018);
+  const expand = Math.max(0, breathe);
+  const contract = Math.max(0, -breathe) * 0.9;
+  return {
+    dx: off.x * 0.0007 + off2.x * 0.00035,
+    dy: off.y * 0.00055 + off2.y * 0.00028,
+    scale: 1 + breathe * 2.65 + aperiodicChannel(t * rate + 4.2, 7.8, 0.011),
+    rotation: off.rot * 0.38 + off2.rot * 0.22,
+    stretchX: 1 + expand * 0.084 - contract * 0.054 + aperiodicChannel(t * rate + 2.1, 11.2, 0.015),
+    stretchY: 1 + expand * 0.068 - contract * 0.046 + aperiodicChannel(t * rate + 5.4, 9.8, 0.013),
+    flow: off.x * 0.14 + off2.y * 0.08,
+  };
+}
+
+/** Blue — moderate tempo, compact radius, gentle rightward float */
+function landingBlueFloatMotion(t) {
+  const rate = LANDING_MOTION_RATE.b;
   const g = WARM_REST.a;
   const base = WARM_REST.b;
-  const seamX = g.x + 0.11;
-  const seamY = g.y - 0.035;
-  const off = irregularFieldOffset(t * 0.72, 2.9);
-  const along = (off.x / 3.2) * 0.018;
-  const lift = (off.y / 3.2) * 0.015;
-  const targetX = Math.max(seamX - 0.006, Math.min(seamX + 0.02, seamX + along));
-  const targetY = seamY + lift;
-  const urTilt = -0.32;
+  const anchorX = g.x + 0.118;
+  const anchorY = g.y - 0.044;
+  const drift = aperiodicFieldOffset(t * 0.31 * rate, 2.3, 1);
+  const drift2 = aperiodicFieldOffset(t * 0.22 * rate + 4.1, 6.8, 0.74);
+  const rightBias = 0.012 + aperiodicChannel(t * 0.27 * rate, 8.4, 0.008);
+  const floatX =
+    rightBias +
+    (drift.x / 2.9) * 0.018 +
+    (drift2.x / 3.3) * 0.011;
+  const floatY =
+    (drift.y / 2.9) * 0.028 +
+    (drift2.y / 3.3) * 0.016;
   return {
-    dx: targetX - base.x,
-    dy: targetY - base.y,
-    scale: 1 + Math.abs(off.x) * 0.0018 + Math.abs(off.y) * 0.0012,
-    rotation: urTilt + off.rot * 0.55,
-    stretchX: 1.1 + off.x * 0.003,
-    stretchY: 0.84 - off.y * 0.002,
-    flow: t * 0.22 + off.x * 0.35 + off.y * 0.2,
+    dx: anchorX + floatX - base.x,
+    dy: anchorY + floatY - base.y,
+    scale: drift.scale * (0.98 + aperiodicChannel(t * rate, 11.2, 0.02)),
+    rotation: -0.28 + drift.rot * 0.82 + drift2.rot * 0.38,
+    stretchX: 1.07 + aperiodicChannel(t * rate + 1.3, 4.5, 0.016),
+    stretchY: 0.87 - aperiodicChannel(t * rate + 3.7, 8.1, 0.012),
+    flow: drift.x * 0.38 + drift2.y * 0.24 + rightBias * 1.6,
   };
 }
 
-/** Orange — wider orbit on Opening. */
+/** Centroid between green + blue — amber orbits this hub */
+function landingClusterCentroid() {
+  const g = WARM_REST.a;
+  const b = WARM_REST.b;
+  return {
+    x: g.x + (b.x - g.x) * 0.54,
+    y: g.y + (b.y - g.y) * 0.42 - 0.015,
+  };
+}
+
+/** Amber — fastest; wide free orbit around green / blue cluster */
+function landingAmberWanderMotion(t) {
+  const rate = LANDING_MOTION_RATE.c;
+  const base = WARM_REST.c;
+  const centroid = landingClusterCentroid();
+  const hubDrift = aperiodicFieldOffset(t * 0.28 * rate, 6.2, 0.46);
+  const hubX = centroid.x + (hubDrift.x / 3.0) * 0.022;
+  const hubY = centroid.y + (hubDrift.y / 3.0) * 0.019;
+
+  const orbitT = t * rate * 0.98;
+  const off = aperiodicFieldOffset(orbitT * 1.22, 4.7, 1);
+  const off2 = aperiodicFieldOffset(orbitT * 0.81 + 2.1, 9.3, 0.9);
+  const off3 = aperiodicFieldOffset(orbitT * 1.38 + 7.4, 12.6, 0.54);
+  const ringR = 0.104 + aperiodicChannel(orbitT, 10.4, 0.046);
+  const ringPh = orbitT * 1.12 + off.x * 0.16 + aperiodicChannel(orbitT, 7.1, 0.38);
+  const orbitX =
+    Math.cos(ringPh * 0.61) * ringR +
+    Math.sin(ringPh * 1.39 + 0.85) * ringR * 0.46 +
+    (off.x / 2.0) * 0.078 +
+    (off2.x / 2.4) * 0.052 +
+    (off3.x / 2.9) * 0.03;
+  const orbitY =
+    Math.sin(ringPh * 0.76) * ringR * 0.92 +
+    Math.cos(ringPh * 1.24 + 1.15) * ringR * 0.42 +
+    (off.y / 2.0) * 0.07 +
+    (off2.y / 2.4) * 0.046 +
+    (off3.y / 2.9) * 0.028;
+
+  return {
+    dx: hubX + orbitX - base.x,
+    dy: hubY + orbitY - base.y,
+    scale: off.scale * (0.97 + aperiodicChannel(t * rate, 14.3, 0.042)),
+    rotation: off.rot * 1.4 + off2.rot * 0.88 + off3.rot * 0.5,
+    stretchX: 1.03 + aperiodicChannel(t * rate + 2.4, 15.1, 0.03),
+    stretchY: 1.03 + aperiodicChannel(t * rate + 6.1, 17.4, 0.026),
+    flow: ringPh * 0.48 + off.x * 0.32 + off2.y * 0.2,
+  };
+}
+
+/** @deprecated alias */
+function landingBlueSeamMotion(t) {
+  return landingBlueFloatMotion(t);
+}
+
+/** @deprecated alias */
 function landingAmberOrbitMotion(t) {
-  const ph = (t / WARM_ELASTIC.cycleC) * TAU;
-  const pulse = elasticPulse(t, WARM_ELASTIC.cycleC, 1.15);
-  const r = 0.068 * (1 + elasticWave(t, 15, [0.14], [1.1]) * 0.38);
-  const wobble = elasticWave(t, 8.5, [0.22], [0.3]) * 0.018;
-  return {
-    dx: Math.cos(ph * 0.88) * r + wobble,
-    dy: Math.sin(ph * 1.05) * r * 0.86 + pulse * 0.012,
-    scale: 1 + pulse * 0.028,
-    rotation: Math.sin(ph * 0.7) * 0.038 + pulse * 0.015,
-    stretchX: 1.02 + Math.sin(ph * 0.45) * 0.016,
-    stretchY: 1.02 + Math.cos(ph * 0.45) * 0.014,
-    flow: ph * 0.55,
-  };
+  return landingAmberWanderMotion(t);
 }
 
-/** Shared elastic rhythm for landing idle */
+/** Shared elastic rhythm for landing idle — distinct cadence per field */
 const WARM_ELASTIC = {
   ensemblePeriod: 26,
-  cycleA: 18,
-  cycleB: 12.5,
-  cycleC: 22,
+  cycleA: 20,
+  cycleB: 14,
+  cycleC: 16,
 };
 
 /**
@@ -426,32 +529,19 @@ function ambientC(t, perspectiveKey, capPulse = 0) {
   };
 }
 
-/** Green — swell / contract + slow drift toward upper-right */
+/** Green — swell / contract in place (minimal drift) */
 function warmAmbientA(t) {
-  const ens = warmEnsemble(t);
-  const pulse = elasticPulse(t, WARM_ELASTIC.cycleA);
-  const swell = elasticWave(t, WARM_ELASTIC.cycleA * 0.58, [0.22], [0.3]);
-  const ph = (t / WARM_ELASTIC.cycleA) * TAU;
-  const breathe = pulse * 0.85 + swell * 0.4;
-  const ur = irregularFieldOffset(t * 0.42, 1.3);
-  return {
-    dx: ens.sway * 0.0025 + (ur.x / 3.4) * 0.0056,
-    dy: ens.breath * 0.0019 - (ur.y / 3.4) * 0.005,
-    scale: 1 + breathe * 0.062 + Math.sin(ph * 2.0) * 0.008,
-    rotation: Math.sin(ph * 0.35) * 0.012 + ens.sway * 0.006,
-    stretchX: 1 + breathe * 0.042 - swell * 0.012,
-    stretchY: 1 + breathe * 0.038 + swell * 0.014,
-  };
+  return landingGreenBreathMotion(t);
 }
 
-/** Blue — Opening: slides along green edge */
+/** Blue — weightless float near green */
 function warmAmbientB(t) {
-  return landingBlueSeamMotion(t);
+  return landingBlueFloatMotion(t);
 }
 
-/** Amber — Opening: wider orbit */
+/** Amber — restless wander near cluster */
 function warmAmbientC(t) {
-  return landingAmberOrbitMotion(t);
+  return landingAmberWanderMotion(t);
 }
 
 /** Depth chapter — blue slides on a slow diagonal while scrolling */
@@ -565,16 +655,18 @@ export function applyArcDrift(cur, target, amp, phase) {
   };
 }
 
-/** Warm idle — arc path with elastic lateral sway */
+/** Warm idle — arc path modulated by aperiodic ripple (no clean loop) */
 export function applyWarmArcDrift(cur, target, amp, phase, t) {
-  const elasticPh = phase + elasticWave(t, 11, [0.2], [0.4]) * 0.85;
-  const ampMod = amp * (1 + elasticPulse(t, 20) * 0.2);
-  const out = applyArcDrift(cur, target, ampMod, elasticPh);
-  const ripple = elasticWave(t, 15, [0.25], [1.0]) * amp * 0.52;
+  const off = aperiodicFieldOffset(t * 0.44 + phase * 0.08, phase * 0.17 + 3.3, 1);
+  const ampMod = amp * (0.84 + (off.scale - 1) * 2.4);
+  const aperiodicPhase = phase + off.x * 0.42 + aperiodicChannel(t, phase * 0.09 + 2.7, 0.55);
+  const out = applyArcDrift(cur, target, ampMod, aperiodicPhase);
+  const rippleX = (off.x / 2.4) * amp * 0.64 + aperiodicChannel(t + 3.1, 13.6, amp * 0.18);
+  const rippleY = (off.y / 2.4) * amp * 0.56 + aperiodicChannel(t + 7.4, 16.9, amp * 0.15);
   return {
     ...out,
-    centerX: out.centerX + Math.cos(elasticPh * 1.1) * ripple,
-    centerY: out.centerY + Math.sin(elasticPh * 0.95) * ripple * 0.86,
+    centerX: out.centerX + rippleX,
+    centerY: out.centerY + rippleY,
   };
 }
 
@@ -582,57 +674,53 @@ export function applyWarmArcDrift(cur, target, amp, phase, t) {
  * Landing warm fields — three unrelated motion languages (not shared arc drift).
  * @param {'a'|'b'|'c'} id
  */
-/** Green — slow system-field drift (large, soft, low frequency). */
+/** Green — anchored breathe: scale + stretch, almost no travel */
 function greenSceneDrift(target, t, signalHero = false, landing = false) {
-  const phase = t * (signalHero ? 0.52 : landing ? 0.38 : 0.42);
+  if (landing) {
+    const breath = landingGreenBreathMotion(t);
+    return {
+      ...target,
+      centerX: target.centerX + breath.dx,
+      centerY: target.centerY + breath.dy,
+      rotation: (target.rotation ?? 0) + breath.rotation,
+      stretchX: (target.stretchX ?? 1) * breath.stretchX,
+      stretchY: (target.stretchY ?? 1) * breath.stretchY,
+      scale: target.scale * breath.scale,
+    };
+  }
+  const phase = t * (signalHero ? 0.52 : 0.42);
   const wobble =
-    Math.sin(phase * 0.5) * (signalHero ? 0.038 : landing ? 0.014 : 0.022) +
-    Math.cos(phase * 1.12) * (signalHero ? 0.028 : landing ? 0.01 : 0.016);
-  const breathe = Math.sin(phase * 0.35) * (signalHero ? 0.014 : landing ? 0.022 : 0.006);
-  const swell = elasticPulse(t, WARM_ELASTIC.cycleA) * (landing ? 0.048 : 0);
-  const ur = landing ? irregularFieldOffset(t * 0.48, 1.3) : { x: 0, y: 0, rot: 0 };
+    Math.sin(phase * 0.5) * (signalHero ? 0.038 : 0.022) +
+    Math.cos(phase * 1.12) * (signalHero ? 0.028 : 0.016);
+  const breathe = Math.sin(phase * 0.35) * (signalHero ? 0.014 : 0.006);
   return {
     ...target,
-    centerX:
-      target.centerX +
-      (landing
-        ? (ur.x / 3.3) * 0.018
-        : Math.sin(phase) * (signalHero ? 0.014 : 0.009) + breathe),
-    centerY:
-      target.centerY +
-      (landing
-        ? -(ur.y / 3.3) * 0.015
-        : Math.cos(phase * 0.68) * (signalHero ? 0.012 : 0.007)),
+    centerX: target.centerX + Math.sin(phase) * (signalHero ? 0.014 : 0.009) + breathe,
+    centerY: target.centerY + Math.cos(phase * 0.68) * (signalHero ? 0.012 : 0.007),
     rotation: (target.rotation ?? 0) + wobble,
     stretchX:
       (target.stretchX ?? 1) *
-      (1 +
-        Math.sin(phase * 0.88) * (signalHero ? 0.038 : landing ? 0.045 : 0.022) +
-        swell * 0.35),
+      (1 + Math.sin(phase * 0.88) * (signalHero ? 0.038 : 0.022)),
     stretchY:
       (target.stretchY ?? 1) *
-      (1 -
-        Math.sin(phase * 0.88) * (signalHero ? 0.032 : landing ? 0.038 : 0.018) -
-        swell * 0.28),
-    scale:
-      target.scale *
-      (1 + Math.sin(phase * 0.62) * (signalHero ? 0.018 : landing ? 0.055 : 0.008) + swell),
+      (1 - Math.sin(phase * 0.88) * (signalHero ? 0.032 : 0.018)),
+    scale: target.scale * (1 + Math.sin(phase * 0.62) * (signalHero ? 0.018 : 0.008)),
   };
 }
 
-/** Blue — directional lens motion; on landing slides along green seam */
+/** Blue — directional lens motion; on landing floats near green */
 function blueSceneDrift(target, t, flow = 0, signalAccent = false, landing = false) {
   if (landing) {
-    const seam = landingBlueSeamMotion(t);
+    const float = landingBlueFloatMotion(t);
     return {
       ...target,
-      centerX: WARM_REST.b.x + seam.dx,
-      centerY: WARM_REST.b.y + seam.dy,
-      rotation: (target.rotation ?? 0) + seam.rotation,
-      stretchX: (target.stretchX ?? 1) * seam.stretchX,
-      stretchY: (target.stretchY ?? 1) * seam.stretchY,
-      scale: target.scale * seam.scale,
-      flow: seam.flow,
+      centerX: WARM_REST.b.x + float.dx,
+      centerY: WARM_REST.b.y + float.dy,
+      rotation: (target.rotation ?? 0) + float.rotation,
+      stretchX: (target.stretchX ?? 1) * float.stretchX,
+      stretchY: (target.stretchY ?? 1) * float.stretchY,
+      scale: target.scale * float.scale,
+      flow: float.flow,
     };
   }
   const phase = t * (signalAccent ? 0.72 : 1.05) + flow * 0.08;
@@ -648,18 +736,19 @@ function blueSceneDrift(target, t, flow = 0, signalAccent = false, landing = fal
   };
 }
 
-/** Yellow — precise author/guide presence; wider orbit on landing */
+/** Yellow — precise author/guide presence; landing wanders near cluster */
 function yellowSceneDrift(target, t, landing = false) {
   if (landing) {
-    const orbit = landingAmberOrbitMotion(t);
+    const wander = landingAmberWanderMotion(t);
     return {
       ...target,
-      centerX: WARM_REST.c.x + orbit.dx,
-      centerY: WARM_REST.c.y + orbit.dy,
-      rotation: (target.rotation ?? 0) + orbit.rotation,
-      stretchX: (target.stretchX ?? 1) * orbit.stretchX,
-      stretchY: Math.min((target.stretchY ?? 1) * orbit.stretchY, 1.06),
-      scale: target.scale * orbit.scale,
+      centerX: WARM_REST.c.x + wander.dx,
+      centerY: WARM_REST.c.y + wander.dy,
+      rotation: (target.rotation ?? 0) + wander.rotation,
+      stretchX: (target.stretchX ?? 1) * wander.stretchX,
+      stretchY: Math.min((target.stretchY ?? 1) * wander.stretchY, 1.06),
+      scale: target.scale * wander.scale,
+      flow: wander.flow,
     };
   }
   const phase = t * 0.66;
@@ -681,8 +770,8 @@ const TIER_MOTION_GAIN = {
 function tierMotionGain(tier, orbScene) {
   if (orbScene !== 'landing') return TIER_MOTION_GAIN[tier] ?? 0.5;
   if (tier === 'dominant') return 1;
-  if (tier === 'supporting') return 0.82;
-  return 0.62;
+  if (tier === 'supporting') return 0.88;
+  return 1;
 }
 
 /**
@@ -739,7 +828,7 @@ export function applyOrbSceneSemantics(targets, orbScene, t, reducedMotion = fal
 export function orbSceneArcScale(orbScene, fieldId) {
   const spec = ORB_SCENE_SPECS[orbScene] ?? ORB_SCENE_SPECS.landing;
   const role = fieldId === 'a' ? spec.green : fieldId === 'b' ? spec.blue : spec.yellow;
-  return TIER_MOTION_GAIN[role.tier] ?? 0.5;
+  return tierMotionGain(role.tier, orbScene);
 }
 
 function lerpNum(a, b, t) {
@@ -788,43 +877,41 @@ export function blendOpeningToCapabilitiesField(fromHero, signalTargets, blend) 
 }
 
 export function applyWarmFieldDrift(id, target, phase, t) {
-  const ens = warmEnsemble(t);
   if (id === 'a') {
-    const pulse = elasticPulse(t, WARM_ELASTIC.cycleA);
-    const swell = elasticWave(t, WARM_ELASTIC.cycleA * 0.55, [0.2], [0.35]);
-    const breathe = pulse * 0.7 + swell * 0.35;
-    const ur = irregularFieldOffset(t * 0.45, 1.3);
+    const breath = landingGreenBreathMotion(t);
     return {
       ...target,
-      centerX: target.centerX + ens.sway * 0.0038 + (ur.x / 3.3) * 0.0065,
-      centerY: target.centerY + ens.breath * 0.0032 - (ur.y / 3.3) * 0.0052,
-      scale: target.scale * (1 + breathe * 0.038),
-      rotation: (target.rotation ?? 0) + pulse * 0.008,
-      stretchX: (target.stretchX ?? 1) * (1 + breathe * 0.028),
-      stretchY: (target.stretchY ?? 1) * (1 + breathe * 0.024),
+      centerX: target.centerX + breath.dx,
+      centerY: target.centerY + breath.dy,
+      scale: target.scale * breath.scale,
+      rotation: (target.rotation ?? 0) + breath.rotation,
+      stretchX: (target.stretchX ?? 1) * breath.stretchX,
+      stretchY: (target.stretchY ?? 1) * breath.stretchY,
     };
   }
   if (id === 'b') {
-    const seam = landingBlueSeamMotion(t);
+    const float = landingBlueFloatMotion(t);
     return {
       ...target,
-      centerX: WARM_REST.b.x + seam.dx,
-      centerY: WARM_REST.b.y + seam.dy,
-      rotation: (target.rotation ?? 0) + seam.rotation * 0.65,
-      scale: target.scale * seam.scale,
-      stretchX: (target.stretchX ?? 1) * seam.stretchX,
-      stretchY: (target.stretchY ?? 1) * seam.stretchY,
+      centerX: WARM_REST.b.x + float.dx,
+      centerY: WARM_REST.b.y + float.dy,
+      rotation: (target.rotation ?? 0) + float.rotation * 0.72,
+      scale: target.scale * float.scale,
+      stretchX: (target.stretchX ?? 1) * float.stretchX,
+      stretchY: (target.stretchY ?? 1) * float.stretchY,
+      flow: float.flow,
     };
   }
-  const orbit = landingAmberOrbitMotion(t);
+  const wander = landingAmberWanderMotion(t);
   return {
     ...target,
-    centerX: WARM_REST.c.x + orbit.dx,
-    centerY: WARM_REST.c.y + orbit.dy,
-    rotation: (target.rotation ?? 0) + orbit.rotation,
-    scale: target.scale * orbit.scale,
-    stretchX: (target.stretchX ?? 1) * orbit.stretchX,
-    stretchY: Math.min((target.stretchY ?? 1) * orbit.stretchY, 1.06),
+    centerX: WARM_REST.c.x + wander.dx,
+    centerY: WARM_REST.c.y + wander.dy,
+    rotation: (target.rotation ?? 0) + wander.rotation,
+    scale: target.scale * wander.scale,
+    stretchX: (target.stretchX ?? 1) * wander.stretchX,
+    stretchY: Math.min((target.stretchY ?? 1) * wander.stretchY, 1.06),
+    flow: wander.flow,
   };
 }
 
@@ -844,15 +931,16 @@ export function computeMotionTargets(
   opts = {},
 ) {
   const heroProgress = opts.heroProgress;
+  const openingOrch = opts.openingOrch;
   const isWarmHero =
     heroProgress != null &&
     (ambientKey === 'warm' || ambientKey === 'default' || !ambientKey) &&
     (perspectiveKey ?? 'default') === 'default';
 
   if (isWarmHero) {
-    const drive = heroScrollDrive(heroProgress);
+    const drive = openingOrch ? openingOrch.scrollDrive : heroScrollDrive(heroProgress);
     if (drive > 0.001) {
-      const narrative = computeHeroFieldTargets(heroProgress, t, reducedMotion);
+      const narrative = computeHeroFieldTargets(heroProgress, t, reducedMotion, openingOrch);
       if (drive >= 0.999) {
         return narrative;
       }
