@@ -3,6 +3,7 @@
  * Effective presence targets: fieldVisualGovernance.js FIELD_SCENE_TARGETS
  */
 
+import { CAPABILITIES_ORB_SCALE } from './fieldSizeHierarchy.js';
 import { HERO_LANDING_ORBS } from './organicFieldPalette.js';
 
 /** @typedef {'dominant' | 'supporting' | 'latent'} OrbTier */
@@ -27,9 +28,27 @@ import { HERO_LANDING_ORBS } from './organicFieldPalette.js';
 export const ORB_SCENE_SPECS = {
   landing: HERO_LANDING_ORBS,
   capabilities: {
-    green: { tier: 'dominant', opacity: 1, scale: 1.08, stretchX: 1.04, stretchY: 0.98 },
-    blue: { tier: 'supporting', opacity: 0.88, scale: 0.96, stretchX: 1.04, stretchY: 0.92 },
-    yellow: { tier: 'latent', opacity: 0.72, scale: 0.82, stretchX: 1, stretchY: 1.02 },
+    green: {
+      tier: 'dominant',
+      opacity: 1,
+      scale: CAPABILITIES_ORB_SCALE.green,
+      stretchX: 1.04,
+      stretchY: 0.98,
+    },
+    blue: {
+      tier: 'supporting',
+      opacity: 0.88,
+      scale: CAPABILITIES_ORB_SCALE.blue,
+      stretchX: 1.04,
+      stretchY: 0.92,
+    },
+    yellow: {
+      tier: 'latent',
+      opacity: 0.72,
+      scale: CAPABILITIES_ORB_SCALE.amber,
+      stretchX: 1,
+      stretchY: 1.02,
+    },
   },
   work: {
     green: { tier: 'dominant', opacity: 1, scale: 1.16, stretchX: 1.04, stretchY: 1.02 },

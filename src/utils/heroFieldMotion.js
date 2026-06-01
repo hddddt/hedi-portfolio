@@ -5,6 +5,7 @@
  *  3 thesis complete → shrunk field + full copy hold, exit only after dwell
  */
 
+import { OPENING_LINEAR_SCALE, OPENING_SCROLL_SCALE } from '../data/fieldSizeHierarchy.js';
 import { HERO_BLOB_INTRO, HERO_GREEN_ROTATION } from '../data/organicFieldPalette.js';
 import {
   easeScrollBreath,
@@ -155,7 +156,7 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.a,
       centerX: 0.4,
       centerY: 0.495,
-      scale: 1.16,
+      scale: OPENING_SCROLL_SCALE.transition.green,
       opacity: INTRO_OPACITY.a,
       rotation: HERO_GREEN_ROTATION,
     },
@@ -163,14 +164,14 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.b,
       centerX: 0.63,
       centerY: 0.43,
-      scale: 1.04,
+      scale: OPENING_SCROLL_SCALE.transition.blue,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
       centerX: 0.54,
       centerY: 0.34,
-      scale: 0.94,
+      scale: OPENING_SCROLL_SCALE.transition.amber,
       opacity: INTRO_OPACITY.c,
     },
   },
@@ -179,7 +180,7 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.a,
       centerX: 0.41,
       centerY: 0.5,
-      scale: 1.08,
+      scale: OPENING_SCROLL_SCALE.thesis.green,
       opacity: INTRO_OPACITY.a,
       rotation: HERO_GREEN_ROTATION,
     },
@@ -187,14 +188,14 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.b,
       centerX: 0.57,
       centerY: 0.46,
-      scale: 1.0,
+      scale: OPENING_SCROLL_SCALE.thesis.blue,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
       centerX: 0.5,
       centerY: 0.4,
-      scale: 0.9,
+      scale: OPENING_SCROLL_SCALE.thesis.amber,
       opacity: INTRO_OPACITY.c,
     },
   },

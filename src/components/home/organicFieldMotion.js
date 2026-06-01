@@ -3,6 +3,7 @@
  * Deterministic; A/B/C use distinct breathe curves, stiffness, and transition arcs.
  */
 
+import { SIGNAL_LAYOUT_SCALE } from '../../data/fieldSizeHierarchy.js';
 import { ORB_SCENE_SPECS } from '../../data/orbScenes.js';
 import { HERO_LANDING_FIELD } from '../../data/organicFieldPalette.js';
 import {
@@ -41,9 +42,25 @@ const SIGNAL_ACCENT_C = { x: 0.94, y: 0.22 };
 
 const SIGNAL_LAYOUT = {
   default: {
-    a: { opacity: 0.78, scale: 1.34, dx: -0.028, dy: 0, rotation: 0, stretchX: 1.06, stretchY: 0.94 },
-    b: { opacity: 0.50, scale: 0.86, dx: 0, dy: 0, stretchX: 1.06, stretchY: 0.9, rotation: 0.1 },
-    c: { opacity: 0.22, scale: 0.48, dx: 0, dy: 0 },
+    a: {
+      opacity: 0.78,
+      scale: SIGNAL_LAYOUT_SCALE.green,
+      dx: -0.028,
+      dy: 0,
+      rotation: 0,
+      stretchX: 1.06,
+      stretchY: 0.94,
+    },
+    b: {
+      opacity: 0.58,
+      scale: SIGNAL_LAYOUT_SCALE.blue,
+      dx: 0,
+      dy: 0,
+      stretchX: 1.06,
+      stretchY: 0.9,
+      rotation: 0.1,
+    },
+    c: { opacity: 0.32, scale: SIGNAL_LAYOUT_SCALE.amber, dx: 0, dy: 0 },
   },
 };
 
@@ -167,19 +184,22 @@ const LAYOUT = {
 
 const CYCLE = { a: 21, b: 14, c: 8.5 };
 
-export const ARC_AMP = { a: 0.004, b: 0.024, c: 0.092 };
+export const ARC_AMP = { a: 0.014, b: 0.048, c: 0.074 };
 
 /** Landing motion tempo — green slow, blue moderate, amber fastest */
-export const LANDING_MOTION_RATE = { a: 0.2, b: 0.44, c: 1.68 };
+export const LANDING_MOTION_RATE = { a: 0.58, b: 0.92, c: 1.28 };
 
-/** Per-field arc — green anchored, blue compact float, amber wide roam */
+/** Post-landing idle motion gain — arc, float, orbit */
+export const LANDING_MOTION_GAIN = 1.28;
+
+/** Per-field arc — green breathe, blue float, amber orbit */
 export const WARM_MOTION = {
-  timeScale: 1.14,
-  arcMult: 2.55,
-  landingArcMult: 3.35,
-  arcMultA: 0.08,
-  arcMultB: 0.72,
-  arcMultC: 1.55,
+  timeScale: 1.32,
+  arcMult: 2.75,
+  landingArcMult: 3.85,
+  arcMultA: 0.36,
+  arcMultB: 1.18,
+  arcMultC: 1.22,
 };
 
 /** Incommensurate drift — reads irregular, not repetitive back-and-forth. */
@@ -234,51 +254,47 @@ function aperiodicFieldOffset(t, seed, amp = 1) {
   return { x, y, rot, scale };
 }
 
-/** Green — slowest: membrane breathe, virtually anchored */
+/** Green — slow anchor drift only; scale pulse lives in greenFieldBreathing.js */
 function landingGreenBreathMotion(t) {
   const rate = LANDING_MOTION_RATE.a;
-  const off = aperiodicFieldOffset(t * 0.28 * rate, 1.7, 1);
-  const off2 = aperiodicFieldOffset(t * 0.41 * rate + 3.2, 5.4, 0.68);
-  const breathe =
-    (off.scale - 1) * 2.4 + (off2.scale - 1) * 1.55 + aperiodicChannel(t * rate, 3.31, 0.018);
-  const expand = Math.max(0, breathe);
-  const contract = Math.max(0, -breathe) * 0.9;
+  const gain = LANDING_MOTION_GAIN;
+  const off = aperiodicFieldOffset(t * 0.52 * rate, 1.7, 0.42);
+  const off2 = aperiodicFieldOffset(t * 0.38 * rate + 3.2, 5.4, 0.34);
   return {
-    dx: off.x * 0.0007 + off2.x * 0.00035,
-    dy: off.y * 0.00055 + off2.y * 0.00028,
-    scale: 1 + breathe * 2.65 + aperiodicChannel(t * rate + 4.2, 7.8, 0.011),
-    rotation: off.rot * 0.38 + off2.rot * 0.22,
-    stretchX: 1 + expand * 0.084 - contract * 0.054 + aperiodicChannel(t * rate + 2.1, 11.2, 0.015),
-    stretchY: 1 + expand * 0.068 - contract * 0.046 + aperiodicChannel(t * rate + 5.4, 9.8, 0.013),
-    flow: off.x * 0.14 + off2.y * 0.08,
+    dx: (off.x * 0.001 + off2.x * 0.0005) * gain,
+    dy: (off.y * 0.00082 + off2.y * 0.0004) * gain,
+    scale: 1,
+    rotation: (off.rot * 0.18 + off2.rot * 0.1) * gain,
+    stretchX: 1,
+    stretchY: 1,
+    flow: off.x * 0.1 + off2.y * 0.06,
   };
 }
 
-/** Blue — moderate tempo, compact radius, gentle rightward float */
+/** Blue — gentle float, readable drift near green */
 function landingBlueFloatMotion(t) {
   const rate = LANDING_MOTION_RATE.b;
-  const g = WARM_REST.a;
+  const gain = LANDING_MOTION_GAIN;
+  const greenRest = WARM_REST.a;
   const base = WARM_REST.b;
-  const anchorX = g.x + 0.118;
-  const anchorY = g.y - 0.044;
-  const drift = aperiodicFieldOffset(t * 0.31 * rate, 2.3, 1);
-  const drift2 = aperiodicFieldOffset(t * 0.22 * rate + 4.1, 6.8, 0.74);
-  const rightBias = 0.012 + aperiodicChannel(t * 0.27 * rate, 8.4, 0.008);
+  const anchorX = greenRest.x + 0.112;
+  const anchorY = greenRest.y - 0.042;
+  const drift = aperiodicFieldOffset(t * 0.48 * rate, 2.3, 1);
+  const drift2 = aperiodicFieldOffset(t * 0.34 * rate + 4.1, 6.8, 0.78);
+  const rightBias = 0.012 + aperiodicChannel(t * 0.38 * rate, 8.4, 0.009);
   const floatX =
     rightBias +
-    (drift.x / 2.9) * 0.018 +
-    (drift2.x / 3.3) * 0.011;
+    ((drift.x / 2.8) * 0.036 + (drift2.x / 3.2) * 0.021) * gain;
   const floatY =
-    (drift.y / 2.9) * 0.028 +
-    (drift2.y / 3.3) * 0.016;
+    ((drift.y / 2.8) * 0.054 + (drift2.y / 3.2) * 0.031) * gain;
   return {
     dx: anchorX + floatX - base.x,
     dy: anchorY + floatY - base.y,
-    scale: drift.scale * (0.98 + aperiodicChannel(t * rate, 11.2, 0.02)),
-    rotation: -0.28 + drift.rot * 0.82 + drift2.rot * 0.38,
-    stretchX: 1.07 + aperiodicChannel(t * rate + 1.3, 4.5, 0.016),
-    stretchY: 0.87 - aperiodicChannel(t * rate + 3.7, 8.1, 0.012),
-    flow: drift.x * 0.38 + drift2.y * 0.24 + rightBias * 1.6,
+    scale: drift.scale * (0.98 + aperiodicChannel(t * rate, 11.2, 0.032)),
+    rotation: -0.28 + (drift.rot * 0.88 + drift2.rot * 0.42) * gain,
+    stretchX: 1.07 + aperiodicChannel(t * rate + 1.3, 4.5, 0.024),
+    stretchY: 0.87 - aperiodicChannel(t * rate + 3.7, 8.1, 0.019),
+    flow: drift.x * 0.38 + drift2.y * 0.24 + rightBias * 1.4,
   };
 }
 
@@ -292,42 +308,42 @@ function landingClusterCentroid() {
   };
 }
 
-/** Amber — fastest; wide free orbit around green / blue cluster */
+/** Amber — orbits green / blue; faster than others but smooth, not jumpy */
 function landingAmberWanderMotion(t) {
   const rate = LANDING_MOTION_RATE.c;
+  const gain = LANDING_MOTION_GAIN;
   const base = WARM_REST.c;
   const centroid = landingClusterCentroid();
-  const hubDrift = aperiodicFieldOffset(t * 0.28 * rate, 6.2, 0.46);
-  const hubX = centroid.x + (hubDrift.x / 3.0) * 0.022;
-  const hubY = centroid.y + (hubDrift.y / 3.0) * 0.019;
+  const hubDrift = aperiodicFieldOffset(t * 0.22 * rate, 6.2, 0.42);
+  const hubX = centroid.x + (hubDrift.x / 3.2) * 0.023 * gain;
+  const hubY = centroid.y + (hubDrift.y / 3.2) * 0.02 * gain;
 
-  const orbitT = t * rate * 0.98;
-  const off = aperiodicFieldOffset(orbitT * 1.22, 4.7, 1);
-  const off2 = aperiodicFieldOffset(orbitT * 0.81 + 2.1, 9.3, 0.9);
-  const off3 = aperiodicFieldOffset(orbitT * 1.38 + 7.4, 12.6, 0.54);
-  const ringR = 0.104 + aperiodicChannel(orbitT, 10.4, 0.046);
-  const ringPh = orbitT * 1.12 + off.x * 0.16 + aperiodicChannel(orbitT, 7.1, 0.38);
+  const orbitT = t * rate * 0.44;
+  const off = aperiodicFieldOffset(orbitT * 0.72, 4.7, 0.82);
+  const off2 = aperiodicFieldOffset(orbitT * 0.54 + 2.1, 9.3, 0.62);
+  const ringR = (0.118 + aperiodicChannel(orbitT, 14.2, 0.036)) * gain;
+  const ringPh = orbitT * 0.54 + off.x * 0.07 + aperiodicChannel(orbitT, 11.8, 0.22);
   const orbitX =
-    Math.cos(ringPh * 0.61) * ringR +
-    Math.sin(ringPh * 1.39 + 0.85) * ringR * 0.46 +
-    (off.x / 2.0) * 0.078 +
-    (off2.x / 2.4) * 0.052 +
-    (off3.x / 2.9) * 0.03;
+    (Math.cos(ringPh * 0.61) * ringR +
+      Math.sin(ringPh * 1.21 + 0.85) * ringR * 0.32 +
+      (off.x / 2.2) * 0.066 +
+      (off2.x / 2.7) * 0.041) *
+    (0.92 + gain * 0.08);
   const orbitY =
-    Math.sin(ringPh * 0.76) * ringR * 0.92 +
-    Math.cos(ringPh * 1.24 + 1.15) * ringR * 0.42 +
-    (off.y / 2.0) * 0.07 +
-    (off2.y / 2.4) * 0.046 +
-    (off3.y / 2.9) * 0.028;
+    (Math.sin(ringPh * 0.74) * ringR * 0.88 +
+      Math.cos(ringPh * 1.14 + 1.1) * ringR * 0.3 +
+      (off.y / 2.2) * 0.061 +
+      (off2.y / 2.7) * 0.036) *
+    (0.92 + gain * 0.08);
 
   return {
     dx: hubX + orbitX - base.x,
     dy: hubY + orbitY - base.y,
-    scale: off.scale * (0.97 + aperiodicChannel(t * rate, 14.3, 0.042)),
-    rotation: off.rot * 1.4 + off2.rot * 0.88 + off3.rot * 0.5,
-    stretchX: 1.03 + aperiodicChannel(t * rate + 2.4, 15.1, 0.03),
-    stretchY: 1.03 + aperiodicChannel(t * rate + 6.1, 17.4, 0.026),
-    flow: ringPh * 0.48 + off.x * 0.32 + off2.y * 0.2,
+    scale: off.scale * (0.98 + aperiodicChannel(t * rate * 0.72, 14.3, 0.022)),
+    rotation: off.rot * 0.95 + off2.rot * 0.55,
+    stretchX: 1.03 + aperiodicChannel(t * rate * 0.65 + 2.4, 15.1, 0.018),
+    stretchY: 1.03 + aperiodicChannel(t * rate * 0.65 + 6.1, 17.4, 0.015),
+    flow: ringPh * 0.32 + off.x * 0.22 + off2.y * 0.14,
   };
 }
 
@@ -481,7 +497,7 @@ function ambientA(t, signalMode = false) {
   return {
     dx: Math.sin(ph) * 0.006 + Math.sin(ph * 0.41) * 0.003,
     dy: Math.cos(ph * 0.79) * 0.006 + Math.sin(ph * 0.23) * 0.003,
-    scale: 1 + Math.sin(ph) * 0.008,
+    scale: 1,
     rotation: Math.sin(ph * 0.72) * rotAmp + Math.cos(ph * 1.15) * rotAmp * 0.65,
     stretchX: 1 + Math.sin(ph * 0.55) * stretchAmp,
     stretchY: 1 - Math.sin(ph * 0.55) * stretchAmp * 0.82,
@@ -661,8 +677,8 @@ export function applyWarmArcDrift(cur, target, amp, phase, t) {
   const ampMod = amp * (0.84 + (off.scale - 1) * 2.4);
   const aperiodicPhase = phase + off.x * 0.42 + aperiodicChannel(t, phase * 0.09 + 2.7, 0.55);
   const out = applyArcDrift(cur, target, ampMod, aperiodicPhase);
-  const rippleX = (off.x / 2.4) * amp * 0.64 + aperiodicChannel(t + 3.1, 13.6, amp * 0.18);
-  const rippleY = (off.y / 2.4) * amp * 0.56 + aperiodicChannel(t + 7.4, 16.9, amp * 0.15);
+  const rippleX = (off.x / 2.4) * amp * 0.78 + aperiodicChannel(t + 3.1, 13.6, amp * 0.22);
+  const rippleY = (off.y / 2.4) * amp * 0.68 + aperiodicChannel(t + 7.4, 16.9, amp * 0.19);
   return {
     ...out,
     centerX: out.centerX + rippleX,
@@ -674,7 +690,7 @@ export function applyWarmArcDrift(cur, target, amp, phase, t) {
  * Landing warm fields — three unrelated motion languages (not shared arc drift).
  * @param {'a'|'b'|'c'} id
  */
-/** Green — anchored breathe: scale + stretch, almost no travel */
+/** Green — anchored; scale pulse applied via greenFieldBreathing.js */
 function greenSceneDrift(target, t, signalHero = false, landing = false) {
   if (landing) {
     const breath = landingGreenBreathMotion(t);
@@ -683,9 +699,6 @@ function greenSceneDrift(target, t, signalHero = false, landing = false) {
       centerX: target.centerX + breath.dx,
       centerY: target.centerY + breath.dy,
       rotation: (target.rotation ?? 0) + breath.rotation,
-      stretchX: (target.stretchX ?? 1) * breath.stretchX,
-      stretchY: (target.stretchY ?? 1) * breath.stretchY,
-      scale: target.scale * breath.scale,
     };
   }
   const phase = t * (signalHero ? 0.52 : 0.42);
@@ -698,13 +711,6 @@ function greenSceneDrift(target, t, signalHero = false, landing = false) {
     centerX: target.centerX + Math.sin(phase) * (signalHero ? 0.014 : 0.009) + breathe,
     centerY: target.centerY + Math.cos(phase * 0.68) * (signalHero ? 0.012 : 0.007),
     rotation: (target.rotation ?? 0) + wobble,
-    stretchX:
-      (target.stretchX ?? 1) *
-      (1 + Math.sin(phase * 0.88) * (signalHero ? 0.038 : 0.022)),
-    stretchY:
-      (target.stretchY ?? 1) *
-      (1 - Math.sin(phase * 0.88) * (signalHero ? 0.032 : 0.018)),
-    scale: target.scale * (1 + Math.sin(phase * 0.62) * (signalHero ? 0.018 : 0.008)),
   };
 }
 
@@ -883,10 +889,7 @@ export function applyWarmFieldDrift(id, target, phase, t) {
       ...target,
       centerX: target.centerX + breath.dx,
       centerY: target.centerY + breath.dy,
-      scale: target.scale * breath.scale,
       rotation: (target.rotation ?? 0) + breath.rotation,
-      stretchX: (target.stretchX ?? 1) * breath.stretchX,
-      stretchY: (target.stretchY ?? 1) * breath.stretchY,
     };
   }
   if (id === 'b') {

@@ -2,9 +2,16 @@
  * Opening disc CSS + motion anchors.
  *
  * COLOR AUTHORITY: organicFieldGl.js shaders — NOT this file.
+ * SIZE AUTHORITY: fieldSizeHierarchy.js — scales + base radii.
  * Presence targets: fieldVisualGovernance.js FIELD_SCENE_TARGETS
  * HERO_OPENING_PALETTE below is reference / docs only.
  */
+
+import {
+  OPENING_LINEAR_SCALE,
+  OPENING_SCROLL_SCALE,
+  openingOrbRole,
+} from './fieldSizeHierarchy.js';
 
 /**
  * Reference RGBA (docs / CSS). Landing WebGL colors: organicFieldGl.js mesh*Hero.
@@ -19,11 +26,11 @@ export const HERO_OPENING_PALETTE = {
 /** Opening green blob — 25° counterclockwise (shader applies -rotation) */
 export const HERO_GREEN_ROTATION = -(25 * Math.PI) / 180;
 
-/** Landing orb weights — authoritative final opacities (not multiplied with layout) */
+/** Landing orb weights — scale from fieldSizeHierarchy (blue = 1.0) */
 export const HERO_LANDING_ORBS = {
-  green: { tier: 'dominant', opacity: 0.92, scale: 1.18, stretchX: 1.02, stretchY: 0.98 },
-  blue: { tier: 'supporting', opacity: 0.78, scale: 1.04, stretchX: 1.1, stretchY: 0.84 },
-  yellow: { tier: 'latent', opacity: 0.58, scale: 0.92, stretchX: 1, stretchY: 1.02 },
+  green: openingOrbRole('green', 'dominant'),
+  blue: openingOrbRole('blue', 'supporting'),
+  yellow: openingOrbRole('amber', 'latent'),
 };
 
 /** Rest positions + layout multipliers for warm / landing motion */
@@ -34,9 +41,33 @@ export const HERO_LANDING_FIELD = {
     c: { x: 0.58, y: 0.31 },
   },
   layout: {
-    a: { opacity: 1, scale: 1.18, dx: 0, dy: 0, stretchX: 1.02, stretchY: 0.98, rotation: HERO_GREEN_ROTATION },
-    b: { opacity: 1, scale: 1.04, dx: 0, dy: 0, stretchX: 1.1, stretchY: 0.84, rotation: -0.32 },
-    c: { opacity: 1, scale: 0.92, dx: 0, dy: 0, stretchX: 1, stretchY: 1.02, rotation: 0.06 },
+    a: {
+      opacity: 1,
+      scale: OPENING_LINEAR_SCALE.green,
+      dx: 0,
+      dy: 0,
+      stretchX: 1.02,
+      stretchY: 0.98,
+      rotation: HERO_GREEN_ROTATION,
+    },
+    b: {
+      opacity: 1,
+      scale: OPENING_LINEAR_SCALE.blue,
+      dx: 0,
+      dy: 0,
+      stretchX: 1.06,
+      stretchY: 0.84,
+      rotation: -0.32,
+    },
+    c: {
+      opacity: 1,
+      scale: OPENING_LINEAR_SCALE.amber,
+      dx: 0,
+      dy: 0,
+      stretchX: 1,
+      stretchY: 1.02,
+      rotation: 0.06,
+    },
   },
 };
 
@@ -45,7 +76,7 @@ export const HERO_BLOB_INTRO = {
   a: {
     centerX: 0.38,
     centerY: 0.49,
-    scale: 1.18,
+    scale: OPENING_SCROLL_SCALE.intro.green,
     opacity: 0.92,
     stretchX: 1.06,
     stretchY: 0.94,
@@ -54,13 +85,20 @@ export const HERO_BLOB_INTRO = {
   b: {
     centerX: 0.7,
     centerY: 0.4,
-    scale: 1.02,
+    scale: OPENING_SCROLL_SCALE.intro.blue,
     opacity: 0.78,
-    stretchX: 1.1,
+    stretchX: 1.06,
     stretchY: 0.84,
     rotation: -0.32,
   },
-  c: { centerX: 0.6, centerY: 0.24, scale: 0.92, opacity: 0.58, stretchX: 1, stretchY: 1.02 },
+  c: {
+    centerX: 0.6,
+    centerY: 0.24,
+    scale: OPENING_SCROLL_SCALE.intro.amber,
+    opacity: 0.58,
+    stretchX: 1,
+    stretchY: 1.02,
+  },
 };
 
 export const HERO_WARM_AMBIENT = {

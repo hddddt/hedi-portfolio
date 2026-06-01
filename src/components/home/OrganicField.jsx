@@ -6,6 +6,7 @@ import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { useOrganicFieldHost } from '../../context/OrganicFieldHostContext.jsx';
 import { usePerspective } from '../../context/PerspectiveContext.jsx';
 import { easeScrollBreath } from '../../utils/fieldNarrative.js';
+import { applyGreenBreathingLayer } from '../../utils/greenFieldBreathing.js';
 import { createOrganicFieldRenderer } from './organicFieldGl.js';
 import {
   computeHeroFieldTargets,
@@ -26,17 +27,18 @@ import {
   smoothField,
   smoothScalar,
 } from './organicFieldMotion.js';
+import { FIELD_BASE_RADII, fieldRadiiMultiplier } from '../../data/fieldSizeHierarchy.js';
 import '../../styles/organic-field.css';
 
 export const ORGANIC_FIELD_CONFIG = {
   fields: {
-    a: { radii: [0.11, 0.15] },
-    b: { radii: [0.09, 0.125] },
-    c: { radii: [0.058, 0.074] },
+    a: { radii: FIELD_BASE_RADII.a },
+    b: { radii: FIELD_BASE_RADII.b },
+    c: { radii: FIELD_BASE_RADII.c },
   },
   ambient: {
     warm: { opacityMult: 1, scaleMult: 1.03, light: true, extraC: 1.04 },
-    signal: { opacityMult: 0.94, scaleMult: 1.22, light: false, extraC: 1.06, organic: 0.85 },
+    signal: { opacityMult: 0.94, scaleMult: 1.08, light: false, extraC: 1.06, organic: 0.85 },
     work: { opacityMult: 0.5, scaleMult: 1.06, light: false, extraC: 0.9 },
     depth: { opacityMult: 0.68, scaleMult: 1.14, light: false, extraC: 0.96 },
     archive: { opacityMult: 0.78, scaleMult: 1.0, light: false, extraC: 1.08 },
@@ -63,36 +65,10 @@ function fieldRadii(id, stretchX = 1, stretchY = 1, ambKey = 'warm') {
   const [rx0, ry0] = fields[id].radii;
   const isWarmLand = ambKey === 'warm' || ambKey === 'default' || !ambKey;
   const isSignal = ambKey === 'signal';
-  if (isSignal) {
+  if (isSignal || isWarmLand) {
     const avgStretch = (stretchX + stretchY) * 0.5;
-    if (id === 'a') {
-      const r = 1.34 * avgStretch;
-      return { x: rx0 * r, y: ry0 * r };
-    }
-    if (id === 'b') {
-      const r = 1.06 * avgStretch;
-      return { x: rx0 * r, y: ry0 * r };
-    }
-    if (id === 'c') {
-      const r = 0.88 * avgStretch;
-      return { x: rx0 * r, y: ry0 * r };
-    }
-  }
-  if (!isWarmLand) {
-    return { x: rx0 * stretchX, y: ry0 * stretchY };
-  }
-  const avgStretch = (stretchX + stretchY) * 0.5;
-  if (id === 'a') {
-      const r = 1.28 * avgStretch;
-    return { x: rx0 * r, y: ry0 * r };
-  }
-  if (id === 'b') {
-    const r = 1.18 * avgStretch;
-    return { x: rx0 * r, y: ry0 * r };
-  }
-  if (id === 'c') {
-    const r = 1.34 * avgStretch;
-    return { x: rx0 * r, y: ry0 * r };
+    const mult = fieldRadiiMultiplier(id, isSignal ? 'signal' : 'warm') * avgStretch;
+    return { x: rx0 * mult, y: ry0 * mult };
   }
   return { x: rx0 * stretchX, y: ry0 * stretchY };
 }
@@ -337,9 +313,9 @@ function OrganicFieldCanvas({ inCard = false }) {
           WARM_MOTION.arcMult *
           (sceneKey === 'landing' ? WARM_MOTION.landingArcMult : 1) *
           idleMotion;
-        const phaseA = animTime * 0.22 + 0.83;
-        const phaseB = animTime * 0.44 + 1.37 + (motion.b.flow ?? 0) * 0.06;
-        const phaseC = animTime * 1.52 + 2.14;
+        const phaseA = animTime * 0.44 + 0.83;
+        const phaseB = animTime * 0.64 + 1.37 + (motion.b.flow ?? 0) * 0.05;
+        const phaseC = animTime * 0.96 + 2.14;
         const arcA = ARC_AMP.a * arcBase * orbSceneArcScale(sceneKey, 'a') * (WARM_MOTION.arcMultA || 1);
         const arcB = ARC_AMP.b * arcBase * orbSceneArcScale(sceneKey, 'b') * (WARM_MOTION.arcMultB || 1);
         const arcC = ARC_AMP.c * arcBase * orbSceneArcScale(sceneKey, 'c') * (WARM_MOTION.arcMultC || 1);
@@ -359,17 +335,17 @@ function OrganicFieldCanvas({ inCard = false }) {
               : targets.c,
         };
 
-        if (idleMotion > 0.02) {
+        if (idleMotion > 0.012) {
           const warmPhase = animTime * WARM_MOTION.timeScale;
           const driftA = applyWarmFieldDrift('a', targets.a, warmPhase, animTime);
           const driftB = applyWarmFieldDrift('b', targets.b, warmPhase, animTime);
           const driftC = applyWarmFieldDrift('c', targets.c, warmPhase, animTime);
+          const driftBlend = Math.min(1, idleMotion * 1.12);
           const blendDrift = (base, drifted) => ({
             ...base,
-            centerX: lerp(base.centerX, drifted.centerX, idleMotion),
-            centerY: lerp(base.centerY, drifted.centerY, idleMotion),
-            rotation: lerp(base.rotation ?? 0, drifted.rotation ?? 0, idleMotion),
-            scale: lerp(base.scale, drifted.scale ?? base.scale, idleMotion),
+            centerX: lerp(base.centerX, drifted.centerX, driftBlend),
+            centerY: lerp(base.centerY, drifted.centerY, driftBlend),
+            rotation: lerp(base.rotation ?? 0, drifted.rotation ?? 0, driftBlend),
           });
           targets = {
             ...targets,
@@ -391,6 +367,16 @@ function OrganicFieldCanvas({ inCard = false }) {
           b: scaleField(targets.b),
           c: scaleField(targets.c),
         };
+      }
+
+      if (!reducedMotion) {
+        targets = applyGreenBreathingLayer(targets, animTime, {
+          ambientKey: ambKey,
+          orbScene: sceneKey,
+          inOpening,
+          reducedMotion,
+          scrollDrive: chapterScrollDrive,
+        });
       }
 
       const idleSpring = idleMotion * idleMotion;
