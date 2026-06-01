@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { GuideOrbWithHat } from './GuideOrb.jsx';
+import {
+  getGuideFlow,
+  getGuideQuestionForEntry,
+  GUIDE_CUSTOM_INPUT_PLACEHOLDER,
+  GUIDE_ENTRY_QUESTIONS,
+} from '../../data/portfolioGuideFlows.js';
+import { matchGuideFlowIntent } from '../../utils/portfolioGuideIntent.js';
 import '../../styles/portfolio-guide.css';
 
 const SCROLL_SHOW_THRESHOLD = 1.2;
@@ -11,87 +18,6 @@ const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
 const LANDING_TEASER_DELAY_MS = 1400;
 const ENTRANCE_ANIM_MS = 1650;
 const ORB_MOOD_CLICK_MS = 1400;
-
-const PRESET_OPTIONS = [
-  {
-    id: 'q1',
-    num: '01',
-    question: 'Can she work where the AI brief is broken?',
-    matchedPath: 'capabilities',
-    guideMain: 'She works before the brief is clear.',
-    guideSupport:
-      'Where AI capability, workflow, ownership, and next steps are still undefined.',
-  },
-  {
-    id: 'q2',
-    num: '02',
-    question: 'Where does she place the real design problem?',
-    matchedPath: 'pointOfView',
-    guideMain: 'She places the design problem before the interface.',
-    guideSupport:
-      'Where AI output becomes decision, responsibility, continuation, or completion.',
-  },
-  {
-    id: 'q3',
-    num: '03',
-    question: 'What keeps shaping her eye?',
-    matchedPath: 'beyond',
-    guideMain: 'Her eye is shaped outside formal project work.',
-    guideSupport:
-      'Through visual fragments, everyday behavior, and product ideas that keep asking to be connected.',
-  },
-];
-
-const ROUTE_CONFIG = {
-  capabilities: {
-    node1: {
-      title: 'Capabilities',
-      description: 'How she turns ambiguity into structure.',
-      action: { type: 'section', id: 'home-capabilities' },
-    },
-    node2: {
-      title: 'Case 03 · Supply Chain Agents',
-      description: 'How she defines control in agentic workflows.',
-      action: { type: 'case', id: 'case03' },
-    },
-  },
-  pointOfView: {
-    node1: {
-      title: 'Point of View',
-      description: 'How she defines the real design layer.',
-      action: { type: 'section', id: 'home-approach' },
-    },
-    node2: {
-      title: 'Case 02 · Contract Intelligence',
-      description: 'How AI analysis becomes reviewable judgment.',
-      action: { type: 'case', id: 'case02' },
-    },
-  },
-  beyond: {
-    node1: {
-      title: 'Beyond the Work',
-      description: 'The visual archive behind her way of seeing.',
-      action: { type: 'section', id: 'home-life-archive' },
-    },
-    node2: {
-      title: 'Resoa',
-      description: 'Where pattern recognition becomes a product direction.',
-      action: { type: 'section', id: 'home-beyond-resoa' },
-    },
-  },
-  fallback: {
-    node1: {
-      title: 'Point of View',
-      description: 'How she defines the real design layer.',
-      action: { type: 'section', id: 'home-approach' },
-    },
-    node2: {
-      title: 'Selected Work',
-      description: 'The project evidence behind the judgment.',
-      action: { type: 'section', id: 'home-work-narrative' },
-    },
-  },
-};
 
 function scrollToId(id) {
   const el = document.getElementById(id);
@@ -104,108 +30,11 @@ function openCaseFromGuide(caseId) {
   window.dispatchEvent(new CustomEvent('portfolio-guide-open-case', { detail: { caseId } }));
 }
 
-function splitGuideText(text) {
-  const normalized = String(text ?? '').trim();
-  if (!normalized) return { guideMain: '', guideSupport: '' };
-
-  const emDash = normalized.indexOf(' — ');
-  if (emDash !== -1) {
-    const main = normalized.slice(0, emDash).trim();
-    const support = normalized.slice(emDash + 3).trim();
-    return {
-      guideMain: /[.!?]$/.test(main) ? main : `${main}.`,
-      guideSupport: support,
-    };
-  }
-
-  const sentence = normalized.match(/^(.+?[.!?])\s+(.+)$/s);
-  if (sentence) {
-    return { guideMain: sentence[1].trim(), guideSupport: sentence[2].trim() };
-  }
-
-  return { guideMain: normalized, guideSupport: '' };
-}
-
-function detectRoute(input) {
-  const text = String(input ?? '').toLowerCase();
-  const contains = (terms) => terms.some((term) => text.includes(term));
-
-  if (
-    contains([
-      'capability',
-      'skill',
-      'can she',
-      'complex',
-      'messy',
-      'brief',
-      'workflow',
-      'handoff',
-      'enterprise',
-      'agent',
-      'agentic',
-      'execution',
-      'control',
-      'ai project',
-    ])
-  ) {
-    return {
-      matchedPath: 'capabilities',
-      guideMain: 'She works before the brief is clear.',
-      guideSupport:
-        'Where AI capability, workflow, ownership, and next steps are still undefined.',
-    };
-  }
-  if (
-    contains([
-      'think',
-      'judgment',
-      'point of view',
-      'approach',
-      'strategy',
-      'ai strategy',
-      'philosophy',
-      'responsibility',
-      'completion',
-      'traceability',
-      'trust',
-      'principle',
-      'problem',
-      'interface',
-    ])
-  ) {
-    return {
-      matchedPath: 'pointOfView',
-      guideText:
-        'You are looking for how she thinks before the interface — where AI output becomes responsibility, decision, control, or continuity.',
-    };
-  }
-  if (
-    contains([
-      'who',
-      'person',
-      'background',
-      'eye',
-      'taste',
-      'inspiration',
-      'archive',
-      'resoa',
-      'creator',
-      'outside',
-      'motivation',
-    ])
-  ) {
-    return {
-      matchedPath: 'beyond',
-      guideMain: 'Her eye is shaped outside formal project work.',
-      guideSupport:
-        'Through visual fragments, everyday behavior, and product ideas that keep asking to be connected.',
-    };
-  }
-  return {
-    matchedPath: 'fallback',
-    guideMain: 'Start with how she thinks.',
-    guideSupport: 'Then inspect the proof in the work.',
-  };
+function openPovSourcesFromGuide() {
+  scrollToId('home-approach');
+  window.setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('portfolio-guide-open-sources'));
+  }, 480);
 }
 
 export function PortfolioGuide() {
@@ -222,6 +51,7 @@ export function PortfolioGuide() {
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
+  const resultScrollRef = useRef(null);
   const teaserTimerRef = useRef(null);
   const entrancePlayedRef = useRef(false);
 
@@ -236,11 +66,17 @@ export function PortfolioGuide() {
   const [view, setView] = useState('questions');
   const [customQuestion, setCustomQuestion] = useState('');
   const [readingQuestion, setReadingQuestion] = useState(false);
-  const [result, setResult] = useState(null);
+  const [resultFlowId, setResultFlowId] = useState(null);
+  const [displayQuestion, setDisplayQuestion] = useState('');
   const [orbSignalTick, setOrbSignalTick] = useState(0);
   const [orbMood, setOrbMood] = useState('neutral');
   const [entranceAnimate, setEntranceAnimate] = useState(false);
   const orbMoodTimerRef = useRef(0);
+
+  const resultFlow = useMemo(
+    () => (resultFlowId ? getGuideFlow(resultFlowId, displayQuestion) : null),
+    [resultFlowId, displayQuestion],
+  );
 
   const panelClass = useMemo(
     () =>
@@ -253,7 +89,7 @@ export function PortfolioGuide() {
   const pulseOrb = useCallback((strength = 'normal') => {
     setOrbSignalTick((n) => n + 1);
     if (strength === 'strong') {
-      setTimeout(() => setOrbSignalTick((n) => n + 1), 120);
+      window.setTimeout(() => setOrbSignalTick((n) => n + 1), 120);
     }
   }, []);
 
@@ -269,10 +105,10 @@ export function PortfolioGuide() {
   }, []);
 
   const saveGuideLog = useCallback(
-    (input, matchedPath) => {
+    (input, flowId) => {
       const entry = {
         input,
-        matchedPath,
+        flowId,
         source,
         timestamp: new Date().toISOString(),
       };
@@ -310,7 +146,8 @@ export function PortfolioGuide() {
       // noop
     }
     setView('questions');
-    setResult(null);
+    setResultFlowId(null);
+    setDisplayQuestion('');
     pulseOrb();
     flashOrbMood('warm');
     window.requestAnimationFrame(() => {
@@ -347,32 +184,31 @@ export function PortfolioGuide() {
     [closePanel, flashOrbMood],
   );
 
-  const runRouteResult = useCallback(
-    ({ question, matchedPath, guideMain, guideSupport }) => {
-      const route = ROUTE_CONFIG[matchedPath] ?? ROUTE_CONFIG.fallback;
-      setResult({
-        question,
-        guideMain,
-        guideSupport,
-        matchedPath,
-        route,
-      });
+  const showFlowResult = useCallback(
+    (flowId, question) => {
+      const flow = getGuideFlow(flowId, question);
+      if (!flow) return;
+      setResultFlowId(flow.id);
+      setDisplayQuestion(flow.question);
       setView('result');
       pulseOrb('strong');
       flashOrbMood('warm');
-      saveGuideLog(question, matchedPath);
+      saveGuideLog(flow.question, flow.id);
+      window.requestAnimationFrame(() => {
+        resultScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      });
     },
     [saveGuideLog, pulseOrb, flashOrbMood],
   );
 
-  const handlePreset = (item) => {
+  const handleEntryQuestion = (entry) => {
     flashOrbMood('warm');
-    runRouteResult({
-      question: item.question,
-      matchedPath: item.matchedPath,
-      guideMain: item.guideMain,
-      guideSupport: item.guideSupport,
-    });
+    showFlowResult(entry.flowId, getGuideQuestionForEntry(entry.flowId));
+  };
+
+  const handleFollowUp = (followUp) => {
+    flashOrbMood('warm');
+    showFlowResult(followUp.flowId, followUp.label);
   };
 
   const handleCustomSubmit = (e) => {
@@ -383,17 +219,8 @@ export function PortfolioGuide() {
     flashOrbMood('warm');
     setReadingQuestion(true);
     window.setTimeout(() => {
-      const routed = detectRoute(question);
-      const guide =
-        routed.guideMain != null
-          ? { guideMain: routed.guideMain, guideSupport: routed.guideSupport ?? '' }
-          : splitGuideText(routed.guideText);
-      runRouteResult({
-        question,
-        matchedPath: routed.matchedPath,
-        guideMain: guide.guideMain,
-        guideSupport: guide.guideSupport,
-      });
+      const { flowId, question: matchedQuestion } = matchGuideFlowIntent(question);
+      showFlowResult(flowId, matchedQuestion);
       setReadingQuestion(false);
     }, 300);
   };
@@ -452,7 +279,6 @@ export function PortfolioGuide() {
   const shouldShowRoot = scrollVisible || teaserVisible || isLanding || open;
   const greetingActive = isLanding && !open && (entranceAnimate || teaserVisible) && teaserInViewportZone;
 
-  /** Orb entrance — runs once whenever the guide first becomes visible (any chapter). */
   useEffect(() => {
     if (!shouldShowRoot || entrancePlayedRef.current) return undefined;
     entrancePlayedRef.current = true;
@@ -480,6 +306,8 @@ export function PortfolioGuide() {
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open, closePanel]);
+
+  const evidenceCount = resultFlow?.evidence?.length ?? 0;
 
   return (
     <div
@@ -516,8 +344,8 @@ export function PortfolioGuide() {
                 <p className="portfolio-guide__section-label">05 · Portfolio Guide</p>
                 {view === 'questions' ? (
                   <h3 className="portfolio-guide__headline">
-                    <span>Start with what you want to know.</span>
-                    <span>Pick an angle, or ask your own.</span>
+                    <span>Start with what you need to decide.</span>
+                    <span>Pick a lens, or ask your own.</span>
                   </h3>
                 ) : null}
               </div>
@@ -533,29 +361,26 @@ export function PortfolioGuide() {
                   alive
                   mood={orbMood}
                   scrollReactive
+                  thinking={readingQuestion}
                 />
               </div>
             </header>
 
             {view === 'questions' ? (
               <ul className="portfolio-guide__cards" aria-label="Portfolio guide entry questions">
-                {PRESET_OPTIONS.map((item) => (
+                {GUIDE_ENTRY_QUESTIONS.map((item) => (
                   <li key={item.id} className="portfolio-guide__card-item">
-                    <button type="button" className="portfolio-guide__card" onClick={() => handlePreset(item)}>
+                    <button type="button" className="portfolio-guide__card" onClick={() => handleEntryQuestion(item)}>
                       <span className="portfolio-guide__card-kicker">{item.num}</span>
-                      <span className="portfolio-guide__card-title">{item.question}</span>
+                      <span className="portfolio-guide__card-title">{getGuideQuestionForEntry(item.flowId)}</span>
                       <span className="portfolio-guide__card-arrow" aria-hidden="true">
                         →
                       </span>
                     </button>
                   </li>
                 ))}
-                <li className="portfolio-guide__card-item">
+                <li className="portfolio-guide__card-item portfolio-guide__card-item--input">
                   <form className="portfolio-guide__input-card" onSubmit={handleCustomSubmit}>
-                    <div className="portfolio-guide__input-row-label">
-                      <span className="portfolio-guide__card-kicker">04</span>
-                      <span className="portfolio-guide__card-title">Something else on your mind?</span>
-                    </div>
                     <div className="portfolio-guide__input-row">
                       <span className="portfolio-guide__custom-arrow" aria-hidden="true">
                         →
@@ -565,7 +390,8 @@ export function PortfolioGuide() {
                         value={customQuestion}
                         onChange={(e) => setCustomQuestion(e.target.value)}
                         className="portfolio-guide__custom-input"
-                        placeholder="e.g. agentic workflows · AI strategy · who is she"
+                        placeholder={GUIDE_CUSTOM_INPUT_PLACEHOLDER}
+                        aria-label="Ask your own evaluation question"
                       />
                       <button type="submit" className="portfolio-guide__custom-submit" aria-label="Submit question">
                         Go
@@ -575,73 +401,127 @@ export function PortfolioGuide() {
                 </li>
               </ul>
             ) : (
-              <section className="portfolio-guide__result" aria-label="Guide result">
+              <section
+                ref={resultScrollRef}
+                className="portfolio-guide__result"
+                aria-label="Guide evaluation"
+              >
                 <div className="portfolio-guide__result-context">
                   <button
                     type="button"
                     className="portfolio-guide__back"
                     onClick={() => {
                       setView('questions');
-                      setResult(null);
+                      setResultFlowId(null);
+                      setDisplayQuestion('');
                     }}
                   >
                     ← Back
                   </button>
                   <p className="portfolio-guide__result-label">You asked</p>
-                  <p className="portfolio-guide__result-question">{result?.question}</p>
+                  <p className="portfolio-guide__result-question">{resultFlow?.question}</p>
                 </div>
 
                 <div className="portfolio-guide__result-answer">
                   <p className="portfolio-guide__result-answer-label">Guide</p>
-                  <p className="portfolio-guide__result-claim">{result?.guideMain}</p>
-                  {result?.guideSupport ? (
-                    <p className="portfolio-guide__result-support">{result.guideSupport}</p>
+                  <p className="portfolio-guide__result-claim">{resultFlow?.guideTitle}</p>
+                  {resultFlow?.guideSubline ? (
+                    <p className="portfolio-guide__result-support">{resultFlow.guideSubline}</p>
                   ) : null}
                 </div>
 
-                <div className="portfolio-guide__path-module">
-                  <p className="portfolio-guide__path-module-head">
-                    <span className="portfolio-guide__path-module-title">Recommended path</span>
-                    <span className="portfolio-guide__path-module-meta">2 steps</span>
-                  </p>
-                  <ol className="portfolio-guide__path-track">
-                    <li className="portfolio-guide__path-track-item">
-                      <button
-                        type="button"
-                        className="portfolio-guide__path-node"
-                        onClick={() => runDestination(result?.route?.node1?.action)}
-                      >
-                        <span className="portfolio-guide__path-step">01</span>
-                        <span className="portfolio-guide__path-copy">
-                          <span className="portfolio-guide__path-title">{result?.route?.node1?.title}</span>
-                          <span className="portfolio-guide__path-desc">
-                            {result?.route?.node1?.description}
-                          </span>
-                        </span>
-                        <span className="portfolio-guide__path-open" aria-hidden="true">
-                          ↗
-                        </span>
-                      </button>
-                    </li>
-                    <li className="portfolio-guide__path-track-item">
-                      <button
-                        type="button"
-                        className="portfolio-guide__path-node"
-                        onClick={() => runDestination(result?.route?.node2?.action)}
-                      >
-                        <span className="portfolio-guide__path-step">02</span>
-                        <span className="portfolio-guide__path-copy">
-                          <span className="portfolio-guide__path-title">{result?.route?.node2?.title}</span>
-                          <span className="portfolio-guide__path-desc">
-                            {result?.route?.node2?.description}
-                          </span>
-                        </span>
-                        <span className="portfolio-guide__path-open" aria-hidden="true">
-                          ↗
-                        </span>
-                      </button>
-                    </li>
-                  </ol>
+                {resultFlow?.why?.length ? (
+                  <div className="portfolio-guide__result-block">
+                    <p className="portfolio-guide__result-block-label">Why this matters</p>
+                    <div className="portfolio-guide__result-copy">
+                      {resultFlow.why.map((paragraph) => (
+                        <p key={paragraph} className="portfolio-guide__result-paragraph">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {resultFlow?.how?.length ? (
+                  <div className="portfolio-guide__result-block">
+                    <p className="portfolio-guide__result-block-label">How she works</p>
+                    {resultFlow.howIntro ? (
+                      <p className="portfolio-guide__result-paragraph">{resultFlow.howIntro}</p>
+                    ) : null}
+                    <ul className="portfolio-guide__result-list">
+                      {resultFlow.how.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {resultFlow?.evidence?.length ? (
+                  <div className="portfolio-guide__path-module">
+                    <p className="portfolio-guide__path-module-head">
+                      <span className="portfolio-guide__path-module-title">Evidence to look at</span>
+                      <span className="portfolio-guide__path-module-meta">
+                        {evidenceCount} {evidenceCount === 1 ? 'step' : 'steps'}
+                      </span>
+                    </p>
+                    <ol className="portfolio-guide__path-track">
+                      {resultFlow.evidence.map((item) => (
+                        <li key={`${item.step}-${item.label}`} className="portfolio-guide__path-track-item">
+                          <button
+                            type="button"
+                            className="portfolio-guide__path-node"
+                            onClick={() => runDestination(item.action)}
+                          >
+                            <span className="portfolio-guide__path-step">{item.step}</span>
+                            <span className="portfolio-guide__path-copy">
+                              <span className="portfolio-guide__path-title">{item.label}</span>
+                              <span className="portfolio-guide__path-desc">{item.description}</span>
+                            </span>
+                            <span className="portfolio-guide__path-open" aria-hidden="true">
+                              ↗
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
+                {resultFlow?.followUps?.length ? (
+                  <div className="portfolio-guide__followups">
+                    <p className="portfolio-guide__result-block-label">Ask next</p>
+                    <div className="portfolio-guide__followup-chips" role="group" aria-label="Follow-up questions">
+                      {resultFlow.followUps.map((item) => (
+                        <button
+                          key={item.flowId}
+                          type="button"
+                          className="portfolio-guide__followup-chip"
+                          onClick={() => handleFollowUp(item)}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="portfolio-guide__sources">
+                  <p className="portfolio-guide__result-block-label">Sources</p>
+                  {resultFlow?.sources?.length ? (
+                    <ul className="portfolio-guide__sources-list">
+                      {resultFlow.sources.map((sourceItem) => (
+                        <li key={sourceItem.id}>{sourceItem.citation}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="portfolio-guide__result-paragraph portfolio-guide__result-paragraph--muted">
+                      Framework references live in Point of View.
+                    </p>
+                  )}
+                  <button type="button" className="portfolio-guide__sources-btn" onClick={openPovSourcesFromGuide}>
+                    View sources in Point of View →
+                  </button>
                 </div>
               </section>
             )}
@@ -660,7 +540,7 @@ export function PortfolioGuide() {
           <button
             ref={triggerRef}
             type="button"
-            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}${greetingActive ? ' is-greeting' : ''}`}
+            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}`}
             aria-label="Open portfolio guide"
             aria-expanded={open}
             onClick={togglePanel}

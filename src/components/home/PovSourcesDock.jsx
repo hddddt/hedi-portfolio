@@ -21,6 +21,14 @@ export function PovSourcesDock() {
     }
   }, [visible]);
 
+  useEffect(() => {
+    const onOpenFromGuide = () => {
+      if (visible) setOpen(true);
+    };
+    window.addEventListener('portfolio-guide-open-sources', onOpenFromGuide);
+    return () => window.removeEventListener('portfolio-guide-open-sources', onOpenFromGuide);
+  }, [visible]);
+
   const close = useCallback(() => {
     setOpen(false);
     setExpandedId(null);
