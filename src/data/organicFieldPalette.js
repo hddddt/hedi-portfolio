@@ -16,9 +16,12 @@ export const HERO_OPENING_PALETTE = {
   amber: { r: 207, g: 164, b: 112, a: 0.26 },
 };
 
+/** Opening green blob — 25° counterclockwise (shader applies -rotation) */
+export const HERO_GREEN_ROTATION = -(25 * Math.PI) / 180;
+
 /** Landing orb weights — authoritative final opacities (not multiplied with layout) */
 export const HERO_LANDING_ORBS = {
-  green: { tier: 'dominant', opacity: 0.92, scale: 1.14, stretchX: 1.02, stretchY: 0.98 },
+  green: { tier: 'dominant', opacity: 0.92, scale: 1.18, stretchX: 1.02, stretchY: 0.98 },
   blue: { tier: 'supporting', opacity: 0.78, scale: 1.04, stretchX: 1.1, stretchY: 0.84 },
   yellow: { tier: 'latent', opacity: 0.58, scale: 0.92, stretchX: 1, stretchY: 1.02 },
 };
@@ -31,7 +34,7 @@ export const HERO_LANDING_FIELD = {
     c: { x: 0.6, y: 0.24 },
   },
   layout: {
-    a: { opacity: 1, scale: 1.14, dx: 0, dy: 0, stretchX: 1.02, stretchY: 0.98, rotation: -0.1 },
+    a: { opacity: 1, scale: 1.18, dx: 0, dy: 0, stretchX: 1.02, stretchY: 0.98, rotation: HERO_GREEN_ROTATION },
     b: { opacity: 1, scale: 1.04, dx: 0, dy: 0, stretchX: 1.1, stretchY: 0.84, rotation: -0.32 },
     c: { opacity: 1, scale: 0.92, dx: 0, dy: 0, stretchX: 1, stretchY: 1.02, rotation: 0.06 },
   },
@@ -42,11 +45,11 @@ export const HERO_BLOB_INTRO = {
   a: {
     centerX: 0.38,
     centerY: 0.49,
-    scale: 1.14,
+    scale: 1.18,
     opacity: 0.92,
     stretchX: 1.06,
     stretchY: 0.94,
-    rotation: -0.18,
+    rotation: HERO_GREEN_ROTATION,
   },
   b: {
     centerX: 0.7,

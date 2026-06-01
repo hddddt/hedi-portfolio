@@ -3,7 +3,7 @@
  * Screen 1 (intro) → transition → Screen 2 (thesis). Coordinated convergence, minimal rotation.
  */
 
-import { HERO_BLOB_INTRO } from '../data/organicFieldPalette.js';
+import { HERO_BLOB_INTRO, HERO_GREEN_ROTATION } from '../data/organicFieldPalette.js';
 import {
   easeScrollBreath,
   mix,
@@ -88,9 +88,9 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.a,
       centerX: 0.4,
       centerY: 0.495,
-      scale: 1.12,
+      scale: 1.16,
       opacity: INTRO_OPACITY.a,
-      rotation: -0.14,
+      rotation: HERO_GREEN_ROTATION,
     },
     b: {
       ...HERO_BLOB_INTRO.b,
@@ -112,9 +112,9 @@ const BLOB_STATES = {
       ...HERO_BLOB_INTRO.a,
       centerX: 0.41,
       centerY: 0.5,
-      scale: 1.1,
+      scale: 1.14,
       opacity: INTRO_OPACITY.a,
-      rotation: -0.1,
+      rotation: HERO_GREEN_ROTATION,
     },
     b: {
       ...HERO_BLOB_INTRO.b,

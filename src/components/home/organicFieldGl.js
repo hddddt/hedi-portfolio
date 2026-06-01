@@ -167,6 +167,95 @@ vec3 internalHighlight(vec2 p, float seed, vec3 tint, float amp) {
   return tint * max(0.0, h - 0.52) * amp;
 }
 
+/* Light opening — multi-scale mottle, speckle, film grain */
+vec3 heroFieldTexture(vec2 p, float rot, float seed, vec3 grainTint, vec3 mottleTint) {
+  vec2 drift = vec2(u_time * 0.011, u_time * 0.007);
+  float mottle = fbm(p * 2.35 + drift + vec2(seed * 1.1, rot * 0.08)) - 0.5;
+  float cloud = fbm(p * 4.2 - drift * 0.55 + vec2(seed * 2.4, rot * 0.12)) - 0.5;
+  float speckle = vnoise(p * 13.5 + vec2(rot * 0.18, seed * 2.3) + drift * 0.35) - 0.5;
+  float fine = vnoise(p * 26.0 + vec2(seed * 3.1, rot * 0.25)) - 0.5;
+  float ultra = vnoise(p * 42.0 + vec2(seed * 4.8, rot * 0.31) + drift * 0.2) - 0.5;
+  float dust = hash21(p * 88.0 + vec2(seed * 1.7, rot * 1.9)) - 0.5;
+  vec3 tex = mottleTint * mottle * 0.068;
+  tex += mottleTint * cloud * 0.036;
+  tex += grainTint * speckle * 0.032;
+  tex += grainTint * fine * 0.018;
+  tex += grainTint * ultra * 0.01;
+  tex += grainTint * dust * 0.009;
+  return tex;
+}
+
+float heroVein(vec2 p, float rot, float seed) {
+  float ang = atan(p.y, p.x);
+  float r = length(p);
+  return vnoise(vec2(ang * 0.38 + r * 1.55 - rot * 0.12, r * 2.05 + seed * 0.6));
+}
+
+/* Curved + radial fine striations — per-blob line character */
+vec3 heroFineLines(vec2 p, float rot, float seed, vec3 lineTint, float strength) {
+  float ang = atan(p.y, p.x);
+  float r = length(p);
+  float radial = vnoise(vec2(ang * 3.2 + rot * 0.22 + seed * 0.08, r * 3.6 + seed * 0.4)) - 0.5;
+  float curve = vnoise(vec2(p.x * 9.0 + p.y * 5.2 + seed * 0.15, r * 5.5 - rot * 0.18)) - 0.5;
+  float cross = vnoise(vec2(p.x * 6.5 - p.y * 3.8 + rot * 0.12, r * 4.2 + seed)) - 0.5;
+  float lines = radial * 0.42 + curve * 0.38 + cross * 0.2;
+  float core = 1.0 - smoothstep(0.08, 0.38, r);
+  float fade = (1.0 - smoothstep(0.62, 1.08, r)) * (0.55 + core * 0.45);
+  return lineTint * lines * strength * fade;
+}
+
+/* Soft multi-stop radial gradient with outer pale wash */
+vec3 heroLayeredGradient(float t, float r, vec3 deep, vec3 shade, vec3 mid, vec3 lift, vec3 hi, vec3 wash) {
+  vec3 col = mix(deep, shade, smoothstep(0.0, 0.44, t));
+  col = mix(col, mid, smoothstep(0.18, 0.64, t));
+  col = mix(col, lift, smoothstep(0.42, 0.82, t));
+  col = mix(col, hi, smoothstep(0.62, 0.96, t));
+  col = mix(col, wash, smoothstep(0.72, 1.06, t));
+  float edgePale = smoothstep(0.48, 1.02, r);
+  col = mix(col, wash, edgePale * 0.28);
+  return col;
+}
+
+/* Richer gradient — accent + mist stops + subtle angular wash */
+vec3 heroRichGradient(
+  float t, float r, vec2 p, float rot, float seed,
+  vec3 deep, vec3 shade, vec3 mid, vec3 accent, vec3 lift, vec3 hi, vec3 wash, vec3 mist
+) {
+  vec3 col = mix(deep, shade, smoothstep(0.0, 0.36, t));
+  col = mix(col, mid, smoothstep(0.1, 0.48, t));
+  col = mix(col, accent, smoothstep(0.24, 0.56, t) * 0.62);
+  col = mix(col, lift, smoothstep(0.34, 0.72, t));
+  col = mix(col, hi, smoothstep(0.52, 0.86, t));
+  col = mix(col, wash, smoothstep(0.66, 0.98, t));
+  col = mix(col, mist, smoothstep(0.76, 1.08, t) * 0.52);
+  float ang = atan(p.y, p.x);
+  float angLift = sin(ang * 1.6 + rot * 0.8 + seed * 0.35) * 0.5 + 0.5;
+  col = mix(col, wash, angLift * 0.1 * (1.0 - r * 0.55));
+  float edgePale = smoothstep(0.4, 1.04, r);
+  col = mix(col, mist, edgePale * 0.34);
+  return col;
+}
+
+/* Frosted blur layers — soft offset washes stacked over base color */
+vec3 heroLayerBlur(vec2 p, float rot, float seed, vec3 col, vec3 tintA, vec3 tintB, float strength) {
+  vec2 drift = vec2(u_time * 0.0055, u_time * 0.0035);
+  float s1 = fbm(p * 1.08 + drift + vec2(seed * 0.9, rot * 0.05));
+  float s2 = fbm(p * 0.82 - drift * 0.65 + vec2(seed * 1.35, rot * 0.11));
+  float s3 = fbm(p * 1.38 + vec2(-rot * 0.04, seed * 0.75) + drift * 0.45);
+  float m1 = smoothstep(0.18, 0.82, s1);
+  float m2 = smoothstep(0.22, 0.78, s2);
+  float m3 = smoothstep(0.26, 0.74, s3);
+  vec2 offA = vec2(0.022, 0.014) * (s1 - 0.5);
+  vec2 offB = vec2(-0.018, 0.02) * (s2 - 0.5);
+  float mistA = smoothstep(0.3, 0.7, fbm(p * 1.22 + offA + seed));
+  float mistB = smoothstep(0.32, 0.68, fbm(p * 1.18 + offB + seed * 1.1));
+  vec3 blur = tintA * m1 * 0.42;
+  blur += tintB * m2 * 0.36;
+  blur += mix(tintA, tintB, 0.45) * m3 * 0.28;
+  blur += mix(tintA, tintB, 0.6) * (mistA + mistB) * 0.14;
+  return col + blur * strength;
+}
+
 vec3 heroChroma(vec3 col, float sat) {
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   return clamp(mix(vec3(l), col, sat), 0.0, 1.0);
@@ -174,25 +263,43 @@ vec3 heroChroma(vec3 col, float sat) {
 
 vec3 meshGreenHero(vec2 p, float rot) {
   float r = length(p);
-  float cloud = (fbm(p * 1.6 + vec2(rot * 0.1, u_time * 0.008)) - 0.5) * 0.04;
-  float micro = (vnoise(p * 6.5 + vec2(rot * 0.15, u_time * 0.012)) - 0.5) * 0.018;
-  float t = clamp(r * 0.5 + cloud + micro, 0.0, 1.0);
-  vec3 base = vec3(0.36, 0.72, 0.52);
-  vec3 deep = vec3(0.26, 0.58, 0.42);
-  vec3 shade = vec3(0.32, 0.66, 0.48);
-  vec3 mid = base;
-  vec3 lift = vec3(0.44, 0.78, 0.56);
-  vec3 hi = vec3(0.52, 0.86, 0.6);
-  vec3 col = mix(deep, shade, smoothstep(0.0, 0.34, t));
-  col = mix(col, mid, smoothstep(0.28, 0.58, t));
-  col = mix(col, lift, smoothstep(0.5, 0.8, t));
-  col = mix(col, hi, smoothstep(0.72, 1.0, t));
-  float dome = 1.0 - smoothstep(0.34, 1.05, r);
-  col *= 0.94 + dome * 0.08;
-  col += internalHighlight(p, 1.3, vec3(0.1, 0.2, 0.12), 0.09);
-  float grain = (vnoise(p * 16.0 + vec2(rot * 0.12, r)) - 0.5) * 0.02;
-  col += vec3(grain * 0.008, grain * 0.022, grain * 0.016);
-  return heroChroma(col, 1.22) * 1.14;
+  float cloud = (fbm(p * 1.6 + vec2(rot * 0.1, u_time * 0.008)) - 0.5) * 0.048;
+  float micro = (vnoise(p * 6.5 + vec2(rot * 0.15, u_time * 0.012)) - 0.5) * 0.022;
+  float layer = (fbm(p * 3.2 + vec2(rot * 0.08, u_time * 0.006)) - 0.5) * 0.032;
+  float t = clamp(r * 0.42 + cloud + micro + layer * 0.5, 0.0, 1.0);
+  vec3 deep = vec3(0.3, 0.6, 0.46);
+  vec3 shade = vec3(0.36, 0.68, 0.5);
+  vec3 mid = vec3(0.42, 0.74, 0.54);
+  vec3 accent = vec3(0.48, 0.8, 0.6);
+  vec3 lift = vec3(0.54, 0.84, 0.64);
+  vec3 hi = vec3(0.64, 0.92, 0.72);
+  vec3 wash = vec3(0.74, 0.94, 0.8);
+  vec3 mist = vec3(0.82, 0.96, 0.86);
+  vec3 col = heroRichGradient(t, r, p, rot, 1.3, deep, shade, mid, accent, lift, hi, wash, mist);
+  col = heroLayerBlur(
+    p, rot, 1.3, col,
+    vec3(0.52, 0.86, 0.66),
+    vec3(0.68, 0.94, 0.78),
+    0.38
+  );
+  float tBlur = clamp(length(p + vec2(0.035, -0.018)) * 0.36 + fbm(p * 1.05) * 0.1, 0.0, 1.0);
+  vec3 blurWash = mix(vec3(0.56, 0.84, 0.64), vec3(0.8, 0.96, 0.84), smoothstep(0.15, 0.88, tBlur));
+  col = mix(col, blurWash, 0.28 * (1.0 - smoothstep(0.25, 0.92, r)));
+  float dome = 1.0 - smoothstep(0.38, 1.08, r);
+  col *= 0.96 + dome * 0.06;
+  col += internalHighlight(p, 1.3, vec3(0.1, 0.2, 0.12), 0.06);
+  float vein = heroVein(p, rot, 1.3);
+  col += vec3(0.05, 0.1, 0.06) * (vein - 0.5) * 0.055 * (1.0 - r * 0.38);
+  col += heroFineLines(p, rot, 1.3, vec3(0.04, 0.09, 0.05), 0.048);
+  col += heroFieldTexture(
+    p, rot, 1.3,
+    vec3(0.07, 0.14, 0.08),
+    vec3(0.06, 0.12, 0.07)
+  );
+  float grain = (vnoise(p * 16.0 + vec2(rot * 0.12, r)) - 0.5) * 0.034;
+  float grain2 = (vnoise(p * 34.0 + vec2(rot * 0.2, r * 1.4)) - 0.5) * 0.018;
+  col += vec3(grain * 0.014 + grain2 * 0.008, grain * 0.032 + grain2 * 0.012, grain * 0.02 + grain2 * 0.009);
+  return heroChroma(col, 1.16) * 1.1;
 }
 
 vec3 meshGreen(vec2 p, float rot) {
@@ -242,25 +349,43 @@ vec3 meshGreen(vec2 p, float rot) {
 
 vec3 meshBlueHero(vec2 p, float flow, float rot) {
   float r = length(p);
-  float cloud = (fbm(p * 1.75 + vec2(flow * 0.03, u_time * 0.01)) - 0.5) * 0.04;
-  float micro = (vnoise(p * 7.5 + vec2(rot * 0.2, flow * 0.03)) - 0.5) * 0.02;
-  float t = clamp(r * 0.54 + cloud + micro, 0.0, 1.0);
-  vec3 base = vec3(0.34, 0.46, 0.78);
-  vec3 deep = vec3(0.26, 0.36, 0.68);
-  vec3 shade = vec3(0.3, 0.42, 0.74);
-  vec3 mid = base;
-  vec3 lift = vec3(0.42, 0.54, 0.86);
-  vec3 hi = vec3(0.5, 0.62, 0.92);
-  vec3 col = mix(deep, shade, smoothstep(0.0, 0.32, t));
-  col = mix(col, mid, smoothstep(0.26, 0.56, t));
-  col = mix(col, lift, smoothstep(0.48, 0.78, t));
-  col = mix(col, hi, smoothstep(0.7, 1.0, t));
-  float dome = 1.0 - smoothstep(0.36, 1.08, r);
-  col *= 0.92 + dome * 0.1;
-  col += internalHighlight(p, 2.9, vec3(0.14, 0.2, 0.36), 0.09);
-  float grain = (vnoise(p * 18.0 + u_time * 0.015) - 0.5) * 0.018;
-  col += vec3(grain * 0.012, grain * 0.018, grain * 0.032);
-  return heroChroma(col, 1.2) * 1.12;
+  float cloud = (fbm(p * 1.75 + vec2(flow * 0.03, u_time * 0.01)) - 0.5) * 0.046;
+  float micro = (vnoise(p * 7.5 + vec2(rot * 0.2, flow * 0.03)) - 0.5) * 0.024;
+  float layer = (fbm(p * 3.4 + vec2(flow * 0.02, rot * 0.06)) - 0.5) * 0.03;
+  float t = clamp(r * 0.44 + cloud + micro + layer * 0.45, 0.0, 1.0);
+  vec3 deep = vec3(0.26, 0.38, 0.62);
+  vec3 shade = vec3(0.3, 0.42, 0.68);
+  vec3 mid = vec3(0.34, 0.46, 0.74);
+  vec3 accent = vec3(0.38, 0.44, 0.78);
+  vec3 lift = vec3(0.42, 0.5, 0.82);
+  vec3 hi = vec3(0.5, 0.56, 0.86);
+  vec3 wash = vec3(0.62, 0.66, 0.9);
+  vec3 mist = vec3(0.72, 0.74, 0.92);
+  vec3 col = heroRichGradient(t, r, p, rot, 2.9, deep, shade, mid, accent, lift, hi, wash, mist);
+  col = heroLayerBlur(
+    p, rot, 2.9, col,
+    vec3(0.42, 0.48, 0.76),
+    vec3(0.56, 0.6, 0.84),
+    0.3
+  );
+  float tBlur = clamp(length(p + vec2(-0.028, 0.022)) * 0.34 + fbm(p * 1.08 + vec2(flow * 0.02, 0.0)) * 0.11, 0.0, 1.0);
+  vec3 blurWash = mix(vec3(0.44, 0.5, 0.74), vec3(0.62, 0.66, 0.86), smoothstep(0.12, 0.9, tBlur));
+  col = mix(col, blurWash, 0.2 * (1.0 - smoothstep(0.22, 0.94, r)));
+  float dome = 1.0 - smoothstep(0.4, 1.1, r);
+  col *= 0.93 + dome * 0.05;
+  col += internalHighlight(p, 2.9, vec3(0.12, 0.14, 0.28), 0.038);
+  float vein = heroVein(p, rot, 2.9);
+  col += vec3(0.06, 0.07, 0.12) * (vein - 0.5) * 0.04 * (1.0 - r * 0.4);
+  col += heroFineLines(p, rot, 2.9, vec3(0.06, 0.07, 0.11), 0.034);
+  col += heroFieldTexture(
+    p, rot, 2.9,
+    vec3(0.07, 0.08, 0.14),
+    vec3(0.06, 0.07, 0.12)
+  );
+  float grain = (vnoise(p * 18.0 + u_time * 0.015) - 0.5) * 0.028;
+  float grain2 = (vnoise(p * 36.0 + vec2(rot * 0.14, r * 1.3)) - 0.5) * 0.014;
+  col += vec3(grain * 0.014 + grain2 * 0.008, grain * 0.018 + grain2 * 0.008, grain * 0.028 + grain2 * 0.01);
+  return heroChroma(col, 1.06) * 1.03;
 }
 
 vec3 meshBlue(vec2 p, float flow, float rot) {
@@ -289,25 +414,34 @@ vec3 meshBlue(vec2 p, float flow, float rot) {
 
 vec3 meshAmberHero(vec2 p) {
   float r = length(p);
-  float cloud = (fbm(p * 1.7 + vec2(u_time * 0.009, 4.6)) - 0.5) * 0.035;
-  float micro = (vnoise(p * 8.0) - 0.5) * 0.02;
-  float t = clamp(r * 0.52 + micro + cloud * 0.3, 0.0, 1.0);
-  vec3 base = vec3(0.86, 0.58, 0.24);
-  vec3 deep = vec3(0.72, 0.46, 0.16);
-  vec3 shade = vec3(0.78, 0.52, 0.2);
-  vec3 mid = base;
-  vec3 lift = vec3(0.94, 0.66, 0.32);
-  vec3 hi = vec3(0.98, 0.76, 0.42);
-  vec3 col = mix(deep, shade, smoothstep(0.0, 0.34, t));
-  col = mix(col, mid, smoothstep(0.28, 0.56, t));
-  col = mix(col, lift, smoothstep(0.5, 0.78, t));
-  col = mix(col, hi, smoothstep(0.7, 1.0, t));
-  float dome = 1.0 - smoothstep(0.36, 1.06, r);
-  col *= 0.9 + dome * 0.08;
-  col += internalHighlight(p, 4.6, vec3(0.18, 0.12, 0.04), 0.08);
-  float grain = (vnoise(p * 17.0) - 0.5) * 0.016;
-  col += vec3(grain * 0.028, grain * 0.02, grain * 0.008);
-  return heroChroma(col, 1.18) * 1.1;
+  float cloud = (fbm(p * 1.7 + vec2(u_time * 0.009, 4.6)) - 0.5) * 0.042;
+  float micro = (vnoise(p * 8.0) - 0.5) * 0.024;
+  float layer = (fbm(p * 3.0 + vec2(u_time * 0.007, 4.6)) - 0.5) * 0.028;
+  float t = clamp(r * 0.43 + micro + cloud * 0.35 + layer * 0.4, 0.0, 1.0);
+  vec3 deep = vec3(0.92, 0.44, 0.08);
+  vec3 shade = vec3(0.96, 0.52, 0.1);
+  vec3 mid = vec3(0.98, 0.6, 0.14);
+  vec3 accent = vec3(1.0, 0.68, 0.18);
+  vec3 lift = vec3(1.0, 0.76, 0.24);
+  vec3 hi = vec3(1.0, 0.84, 0.32);
+  vec3 wash = vec3(1.0, 0.9, 0.48);
+  vec3 mist = vec3(1.0, 0.94, 0.58);
+  vec3 col = heroRichGradient(t, r, p, 0.0, 4.6, deep, shade, mid, accent, lift, hi, wash, mist);
+  float dome = 1.0 - smoothstep(0.38, 1.08, r);
+  col *= 0.97 + dome * 0.08;
+  col += internalHighlight(p, 4.6, vec3(0.28, 0.12, 0.02), 0.072);
+  float vein = heroVein(p, 0.0, 4.6);
+  col += vec3(0.18, 0.08, 0.01) * (vein - 0.5) * 0.055 * (1.0 - r * 0.4);
+  col += heroFineLines(p, 0.0, 4.6, vec3(0.16, 0.07, 0.01), 0.046);
+  col += heroFieldTexture(
+    p, 0.0, 4.6,
+    vec3(0.2, 0.1, 0.02),
+    vec3(0.16, 0.08, 0.01)
+  );
+  float grain = (vnoise(p * 17.0) - 0.5) * 0.03;
+  float grain2 = (vnoise(p * 33.0 + vec2(r * 1.2, 4.6)) - 0.5) * 0.016;
+  col += vec3(grain * 0.05 + grain2 * 0.016, grain * 0.034 + grain2 * 0.011, grain * 0.012 + grain2 * 0.004);
+  return heroChroma(col, 1.2) * 1.12;
 }
 
 vec3 meshAmber(vec2 p) {
@@ -340,12 +474,13 @@ vec3 meshAmber(vec2 p) {
 
 vec4 layerFromMask(float mask, vec3 rgb, float opacity, vec2 pLocal, float seed, float internalAmp) {
   if (mask < 0.004) return vec4(0.0);
-  float dens = internalDensity(pLocal, seed, internalAmp);
-  float densN = clamp(dens, 0.94, 1.06);
+  float amp = internalAmp * (u_light > 0.5 ? 1.62 : 1.0);
+  float dens = internalDensity(pLocal, seed, amp);
+  float densN = clamp(dens, u_light > 0.5 ? 0.9 : 0.94, u_light > 0.5 ? 1.1 : 1.06);
   vec3 col = rgb * mix(1.06, 1.0, densN);
-  col *= 1.0 + (densN - 1.0) * 2.8;
+  col *= 1.0 + (densN - 1.0) * (u_light > 0.5 ? 3.6 : 2.8);
   float a = mask * opacity * u_globalOpacity;
-  a *= mix(1.0, densN, 0.12);
+  a *= mix(1.0, densN, u_light > 0.5 ? 0.22 : 0.12);
   a = clamp(a, 0.0, u_light > 0.5 ? 0.9 : 0.88);
   return vec4(col * a, a);
 }
@@ -411,8 +546,13 @@ void main() {
     acc = screenLayer(acc, layerC);
   }
 
-  float grain = (vnoise(uv * 380.0 + vec2(9.2, 31.0) + u_time * 0.02) - 0.5) * 0.024;
-  acc.rgb += vec3(grain * 0.018, grain * 0.022, grain * 0.016) * u_globalOpacity * smoothstep(0.12, 0.42, acc.a);
+  float grainFine = (vnoise(uv * 520.0 + vec2(9.2, 31.0) + u_time * 0.018) - 0.5) * 0.036;
+  float grainMed = (vnoise(uv * 240.0 + vec2(31.0, 9.2) + u_time * 0.008) - 0.5) * 0.024;
+  float grainUltra = (hash21(uv * 680.0 + vec2(17.0, 41.0)) - 0.5) * 0.014;
+  float grain = grainFine + grainMed * 0.7 + grainUltra * 0.45;
+  float grainGain = u_light > 0.5 ? 1.48 : 1.0;
+  acc.rgb += vec3(grain * 0.026, grain * 0.03, grain * 0.022) * u_globalOpacity * grainGain
+    * smoothstep(0.06, 0.38, acc.a);
 
   gl_FragColor = vec4(clamp(acc.rgb, 0.0, 1.0), clamp(acc.a, 0.0, 1.0));
 }

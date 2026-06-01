@@ -83,7 +83,7 @@ function fieldRadii(id, stretchX = 1, stretchY = 1, ambKey = 'warm') {
   }
   const avgStretch = (stretchX + stretchY) * 0.5;
   if (id === 'a') {
-    const r = 1.24 * avgStretch;
+      const r = 1.28 * avgStretch;
     return { x: rx0 * r, y: ry0 * r };
   }
   if (id === 'b') {

@@ -167,13 +167,13 @@ const LAYOUT = {
 
 const CYCLE = { a: 21, b: 14, c: 8.5 };
 
-export const ARC_AMP = { a: 0.014, b: 0.028, c: 0.034 };
+export const ARC_AMP = { a: 0.017, b: 0.035, c: 0.042 };
 
 /** Landing / warm hero — per-field motion channels (see warmAmbient*) */
 export const WARM_MOTION = {
   timeScale: 1.08,
-  arcMult: 1.88,
-  landingArcMult: 2.35,
+  arcMult: 2.15,
+  landingArcMult: 2.72,
   arcMultA: 0,
   arcMultB: 0,
   arcMultC: 0,
@@ -205,8 +205,8 @@ function landingBlueSeamMotion(t) {
   const seamX = g.x + 0.11;
   const seamY = g.y - 0.035;
   const off = irregularFieldOffset(t * 0.72, 2.9);
-  const along = (off.x / 3.2) * 0.014;
-  const lift = (off.y / 3.2) * 0.012;
+  const along = (off.x / 3.2) * 0.018;
+  const lift = (off.y / 3.2) * 0.015;
   const targetX = Math.max(seamX - 0.006, Math.min(seamX + 0.02, seamX + along));
   const targetY = seamY + lift;
   const urTilt = -0.32;
@@ -225,7 +225,7 @@ function landingBlueSeamMotion(t) {
 function landingAmberOrbitMotion(t) {
   const ph = (t / WARM_ELASTIC.cycleC) * TAU;
   const pulse = elasticPulse(t, WARM_ELASTIC.cycleC, 1.15);
-  const r = 0.056 * (1 + elasticWave(t, 15, [0.14], [1.1]) * 0.38);
+  const r = 0.068 * (1 + elasticWave(t, 15, [0.14], [1.1]) * 0.38);
   const wobble = elasticWave(t, 8.5, [0.22], [0.3]) * 0.018;
   return {
     dx: Math.cos(ph * 0.88) * r + wobble,
@@ -435,8 +435,8 @@ function warmAmbientA(t) {
   const breathe = pulse * 0.85 + swell * 0.4;
   const ur = irregularFieldOffset(t * 0.42, 1.3);
   return {
-    dx: ens.sway * 0.002 + (ur.x / 3.4) * 0.0045,
-    dy: ens.breath * 0.0015 - (ur.y / 3.4) * 0.004,
+    dx: ens.sway * 0.0025 + (ur.x / 3.4) * 0.0056,
+    dy: ens.breath * 0.0019 - (ur.y / 3.4) * 0.005,
     scale: 1 + breathe * 0.062 + Math.sin(ph * 2.0) * 0.008,
     rotation: Math.sin(ph * 0.35) * 0.012 + ens.sway * 0.006,
     stretchX: 1 + breathe * 0.042 - swell * 0.012,
@@ -570,7 +570,7 @@ export function applyWarmArcDrift(cur, target, amp, phase, t) {
   const elasticPh = phase + elasticWave(t, 11, [0.2], [0.4]) * 0.85;
   const ampMod = amp * (1 + elasticPulse(t, 20) * 0.2);
   const out = applyArcDrift(cur, target, ampMod, elasticPh);
-  const ripple = elasticWave(t, 15, [0.25], [1.0]) * amp * 0.42;
+  const ripple = elasticWave(t, 15, [0.25], [1.0]) * amp * 0.52;
   return {
     ...out,
     centerX: out.centerX + Math.cos(elasticPh * 1.1) * ripple,
@@ -596,12 +596,12 @@ function greenSceneDrift(target, t, signalHero = false, landing = false) {
     centerX:
       target.centerX +
       (landing
-        ? (ur.x / 3.3) * 0.014
+        ? (ur.x / 3.3) * 0.018
         : Math.sin(phase) * (signalHero ? 0.014 : 0.009) + breathe),
     centerY:
       target.centerY +
       (landing
-        ? -(ur.y / 3.3) * 0.012
+        ? -(ur.y / 3.3) * 0.015
         : Math.cos(phase * 0.68) * (signalHero ? 0.012 : 0.007)),
     rotation: (target.rotation ?? 0) + wobble,
     stretchX:
@@ -796,8 +796,8 @@ export function applyWarmFieldDrift(id, target, phase, t) {
     const ur = irregularFieldOffset(t * 0.45, 1.3);
     return {
       ...target,
-      centerX: target.centerX + ens.sway * 0.003 + (ur.x / 3.3) * 0.005,
-      centerY: target.centerY + ens.breath * 0.0025 - (ur.y / 3.3) * 0.004,
+      centerX: target.centerX + ens.sway * 0.0038 + (ur.x / 3.3) * 0.0065,
+      centerY: target.centerY + ens.breath * 0.0032 - (ur.y / 3.3) * 0.0052,
       scale: target.scale * (1 + breathe * 0.038),
       rotation: (target.rotation ?? 0) + pulse * 0.008,
       stretchX: (target.stretchX ?? 1) * (1 + breathe * 0.028),
