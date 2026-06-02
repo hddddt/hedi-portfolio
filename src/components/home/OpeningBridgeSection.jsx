@@ -83,18 +83,21 @@ export function OpeningBridgeSection() {
   const prm = prefersReducedMotion;
   const heroNarrative = computeHeroScrollNarrative(p, prm);
   const open = heroNarrative.heroProgress;
+  const gateIntro = smoothstep(0, 0.3, p);
+  const gateSystem = smoothstep(0.3, 0.65, p);
+  const gateBridge = smoothstep(0.65, 1, p);
 
   /** Identity field “opening” — spatial expansion, not only tone */
-  const expand = smoothstep(0.04, 0.9, open);
-  const spreadField = smoothstep(0.05, 0.9, open);
+  const expand = smoothstep(0.28, 0.82, open);
+  const spreadField = smoothstep(0.3, 0.86, open);
 
-  const fieldDrive = prm ? open : smoothstep(0.02, 0.88, open);
-  const orbitDrive = prm ? fieldDrive : smoothstep(0.18, 0.94, open);
-  const descend = smoothstep(0.05, 0.84, open);
+  const fieldDrive = prm ? open : 0.18 * gateIntro + 0.82 * gateSystem;
+  const orbitDrive = prm ? fieldDrive : 0.12 * gateIntro + 0.88 * gateSystem;
+  const descend = smoothstep(0.32, 0.88, open);
   const nucleate = 1 - smoothstep(0, 0.34, open);
   const stretchBand = smoothstep(0.08, 0.52, open) * (1 - smoothstep(0.48, 0.9, open) * 0.35);
   const dilate = smoothstep(0.12, 0.74, open);
-  const recede = smoothstep(0.52, 0.98, open);
+  const recede = gateBridge;
   const friction = prm ? 0 : Math.min(0.45, Math.abs(fieldDrive - orbitDrive) * 2.2);
 
   /** Tonal plane: subtle deepen only (not the primary transition read) */
@@ -199,11 +202,22 @@ export function OpeningBridgeSection() {
 
   /** Phase 1–2: Hedi lifts off; thesis waits until hero fully gone (phase 3) */
   const heroSlideT = heroNarrative.fadeHero;
+  const heroBaseLiftVh = prm ? -1.5 : -3.2;
+  // Shared travel: slower story beat with momentum (slow start -> push -> settle).
+  const travelT = smoothstep(0.2, 0.98, heroSlideT);
+  const momentum = Math.sin(travelT * Math.PI) * (1 - travelT) * (prm ? 0.02 : 0.14);
+  const travelStory = Math.max(0, Math.min(1, travelT + momentum));
+  const sharedLiftVh = prm ? mix(0, -8.5, travelStory) : mix(0, -22, travelStory);
+  const narrativeGapVh = prm ? 8.5 : 28;
   const heroLiftStyle = {
-    transform: `translate3d(0, ${prm ? mix(0, -8, heroSlideT) : mix(0, -36, heroSlideT)}vh, 0)`,
+    transform: `translate3d(0, ${heroBaseLiftVh + sharedLiftVh}vh, 0)`,
+  };
+  const narrativeLiftStyle = {
+    transform: `translate3d(0, ${heroBaseLiftVh + sharedLiftVh + narrativeGapVh}vh, 0)`,
   };
   const heroOpacity = 1 - heroNarrative.fadeHero;
-  const narrativeOpacity = heroNarrative.fadeThesis;
+  const narrativeReveal = smoothstep(0.72, 1, gateBridge);
+  const narrativeOpacity = Math.max(heroNarrative.fadeThesis, narrativeReveal * 0.92);
 
   const orbitStopMo = !prm && p > 0.025 && p < OPENING_PHASE2_END + 0.02;
 
@@ -408,6 +422,7 @@ export function OpeningBridgeSection() {
                   <div
                     className="opening-card__scroll-rig__position opening-card__scroll-rig__narrative"
                     style={{
+                      ...narrativeLiftStyle,
                       opacity: narrativeOpacity,
                       visibility: narrativeOpacity < 0.03 ? 'hidden' : 'visible',
                     }}

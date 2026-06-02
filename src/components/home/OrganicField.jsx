@@ -256,12 +256,18 @@ function OrganicFieldCanvas({ inCard = false }) {
       if (
         capRaw != null &&
         lastCapRaw != null &&
-        Math.abs(capRaw - lastCapRaw) > 0.04
+        Math.abs(capRaw - lastCapRaw) > 0.028
       ) {
         capPulse = 1;
       }
       lastCapRaw = capRaw;
-      capPulse = smoothScalar(capPulse, 0, dt, MOTION_SMOOTH.capPulse);
+      const capActiveForMotion = capabilityFloatRef.current != null && ambKey === 'signal';
+      capPulse = smoothScalar(
+        capPulse,
+        0,
+        dt,
+        capActiveForMotion ? 11 : MOTION_SMOOTH.capPulse,
+      );
 
       const easedCap = easeCapabilityFloat(capRaw);
       const amb = ambientState(ambKey);
@@ -381,9 +387,23 @@ function OrganicFieldCanvas({ inCard = false }) {
 
       const idleSpring = idleMotion * idleMotion;
       const handoffDamp = capHandoff < 0.999 ? 0.46 : 1;
-      const smoothA = lerp(lerp(MOTION_SMOOTH.a, 1.72, idleSpring), 4.8, heroDrive) * handoffDamp;
-      const smoothB = lerp(lerp(MOTION_SMOOTH.b, 2.05, idleSpring), 3.8, heroDrive) * handoffDamp;
-      const smoothC = lerp(lerp(MOTION_SMOOTH.c, 2.48, idleSpring), 4.2, heroDrive) * handoffDamp;
+      const capSnapMotion = capActive != null && ambKey === 'signal';
+      const openingGather = inOpening && openingPresence ? openingPresence.gather ?? 0 : 0;
+      // Reduce visual lag during opening gather so process reads as immediate.
+      const openingSnapBoost = inOpening ? lerp(1, 2.9, openingGather) : 1;
+      const smoothA = capSnapMotion
+        ? 9.4 * handoffDamp
+        : lerp(lerp(MOTION_SMOOTH.a, 1.72, idleSpring), 4.8, heroDrive) *
+          handoffDamp *
+          openingSnapBoost;
+      const smoothB =
+        lerp(lerp(MOTION_SMOOTH.b, 2.05, idleSpring), 3.8, heroDrive) *
+        handoffDamp *
+        openingSnapBoost;
+      const smoothC =
+        lerp(lerp(MOTION_SMOOTH.c, 2.48, idleSpring), 4.2, heroDrive) *
+        handoffDamp *
+        openingSnapBoost;
 
       motion.a = smoothField(
         motion.a,

@@ -17,27 +17,27 @@ import {
 export { getVisualFloatIndex };
 
 const INDEX_LOCK_EPSILON = SCROLL_LOCK_RADIUS;
-const INACTIVE_BLUR_PX = 18;
-/** Peak blur during panel handoff — visible but never a resting state. */
-const CAP_TRANSIT_BLUR_PX = 10;
+const INACTIVE_BLUR_PX = 8;
+/** Peak blur during panel handoff — subtle for stable recordings. */
+const CAP_TRANSIT_BLUR_PX = 4;
 
 /** Narrow blur corridor — blur is transit only, not a resting state. */
 const CAP_OUTGOING_KEYS = [
   { t: 0, opacity: 1, blur: 0, scale: 1, y: 0 },
-  { t: 0.26, opacity: 1, blur: 0, scale: 1, y: 0 },
-  { t: 0.36, opacity: 0.82, blur: CAP_TRANSIT_BLUR_PX, scale: 0.98, y: 2 },
-  { t: 0.44, opacity: 0.38, blur: 8, scale: 0.96, y: 3 },
-  { t: 0.52, opacity: 0, blur: INACTIVE_BLUR_PX, scale: 0.93, y: 5 },
-  { t: 1, opacity: 0, blur: INACTIVE_BLUR_PX, scale: 0.93, y: 6 },
+  { t: 0.28, opacity: 1, blur: 0, scale: 1, y: 0 },
+  { t: 0.42, opacity: 0.84, blur: CAP_TRANSIT_BLUR_PX, scale: 0.993, y: 8 },
+  { t: 0.54, opacity: 0.42, blur: 3, scale: 0.988, y: 12 },
+  { t: 0.66, opacity: 0, blur: INACTIVE_BLUR_PX, scale: 0.985, y: 16 },
+  { t: 1, opacity: 0, blur: INACTIVE_BLUR_PX, scale: 0.985, y: 16 },
 ];
 
 const CAP_INCOMING_KEYS = [
-  { t: 0, opacity: 0, blur: INACTIVE_BLUR_PX, scale: 1.02, y: -4 },
-  { t: 0.44, opacity: 0.12, blur: INACTIVE_BLUR_PX, scale: 1.02, y: -3 },
-  { t: 0.52, opacity: 0.42, blur: 8, scale: 1.01, y: -1 },
-  { t: 0.6, opacity: 0.78, blur: CAP_TRANSIT_BLUR_PX, scale: 1.004, y: 0 },
-  { t: 0.7, opacity: 0.96, blur: 3, scale: 1, y: 0 },
-  { t: 0.82, opacity: 1, blur: 0, scale: 1, y: 0 },
+  { t: 0, opacity: 0, blur: INACTIVE_BLUR_PX, scale: 0.985, y: 16 },
+  { t: 0.4, opacity: 0.1, blur: INACTIVE_BLUR_PX, scale: 0.985, y: 14 },
+  { t: 0.52, opacity: 0.42, blur: 3, scale: 0.99, y: 10 },
+  { t: 0.66, opacity: 0.78, blur: CAP_TRANSIT_BLUR_PX, scale: 0.996, y: 5 },
+  { t: 0.78, opacity: 0.96, blur: 2, scale: 1, y: 2 },
+  { t: 0.9, opacity: 1, blur: 0, scale: 1, y: 0 },
   { t: 1, opacity: 1, blur: 0, scale: 1, y: 0 },
 ];
 

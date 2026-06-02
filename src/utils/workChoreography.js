@@ -21,21 +21,21 @@ export const WORK_VISUAL_STEP_VH = 40;
 
 /** Deck motion — active card lift at rest (px / scale / depth). */
 export const WORK_DECK = {
-  liftPx: 18,
-  liftScale: 0.042,
-  liftZPx: 28,
-  adjacentTiltDeg: 3.2,
-  adjacentScale: 0.86,
+  liftPx: 10,
+  liftScale: 0.012,
+  liftZPx: 12,
+  adjacentTiltDeg: 1.2,
+  adjacentScale: 0.94,
 };
 
 /** How many case cards peek above/below the center spine. */
 export const WORK_CANVAS_BAND = 1.15;
 
 export const WORK_PHASE = {
-  holdEnd: 0.2,
-  exitEnd: 0.42,
-  enterStart: 0.4,
-  enterEnd: 0.78,
+  holdEnd: 0.24,
+  exitEnd: 0.4,
+  enterStart: 0.48,
+  enterEnd: 0.74,
   stageSwitchAt: 0.5,
 };
 
@@ -188,8 +188,8 @@ function spineOpacity(absDist, dist = 0) {
 }
 
 function spineBlur(absDist) {
-  if (absDist < 0.12) return 0;
-  return Math.min(2.2, absDist * 1.4);
+  if (absDist < 0.2) return 0;
+  return Math.min(1.1, absDist * 0.8);
 }
 
 function spineScale(absDist) {
@@ -274,7 +274,7 @@ export function workVisualCrossfade(rawFloatIndex, panelIndex, reducedMotion = f
     return {
       opacity: 0,
       filter: undefined,
-      transform: `translate3d(-50%, calc(-50% + ${yPx.toFixed(2)}px), 0) scale(0.9)`,
+      transform: `translate3d(-50%, calc(-50% + ${yPx.toFixed(2)}px), 0) scale(0.94)`,
       visibility: 'hidden',
       pointerEvents: 'none',
       zIndex: 0,
@@ -284,9 +284,9 @@ export function workVisualCrossfade(rawFloatIndex, panelIndex, reducedMotion = f
   if (reducedMotion) {
     const on = Math.round(rawFloatIndex ?? 0) === panelIndex;
     return {
-      opacity: on ? 1 : absDist <= 1 ? 0.32 : 0,
+      opacity: on ? 1 : absDist <= 1 ? 0.42 : 0,
       filter: undefined,
-      transform: `translate3d(-50%, calc(-50% + ${yPx.toFixed(2)}px), 0) scale(${on ? 1 : 0.92})`,
+      transform: `translate3d(-50%, calc(-50% + ${yPx.toFixed(2)}px), 0) scale(${on ? 1 : 0.95})`,
       visibility: on || absDist <= 1 ? 'visible' : 'hidden',
       pointerEvents: on ? 'auto' : 'none',
       zIndex: on ? 30 : 10 - Math.round(absDist),
@@ -303,7 +303,7 @@ export function workVisualCrossfade(rawFloatIndex, panelIndex, reducedMotion = f
   const yFinal = yPx + liftY;
   const scaleFinal = scale + scaleExtra;
   const zIndex =
-    absDist < 0.38 ? 44 : dist > 0 && absDist <= 1.05 ? 38 - Math.round(absDist * 8) : 40 - Math.round(absDist * 12);
+    absDist < 0.38 ? 44 : dist > 0 && absDist <= 1.05 ? 38 - Math.round(absDist * 6) : 40 - Math.round(absDist * 9);
 
   return {
     opacity,
@@ -361,14 +361,14 @@ function workOutgoingCopy(t, part = 'title') {
     return { opacity: 1, y: 0, pointerEvents: true, zIndex: 20 };
   }
   if (t >= WORK_PHASE.exitEnd) {
-    return { opacity: 0, y: -10, pointerEvents: false, zIndex: 0 };
+      return { opacity: 0, y: -8, pointerEvents: false, zIndex: 0 };
   }
   const u = (t - WORK_PHASE.holdEnd) / (WORK_PHASE.exitEnd - WORK_PHASE.holdEnd);
   const opacity = lerp(1, 0, u);
   const partFade = part === 'title' ? 1 : Math.max(0, 1 - u * 1.15);
   return {
     opacity: opacity * partFade,
-    y: lerp(0, -10, u),
+    y: lerp(0, -8, u),
     pointerEvents: false,
     zIndex: 12,
   };
@@ -381,7 +381,7 @@ function workIncomingCopy(t, part = 'title') {
   if (part === 'tags') partDelay = 0.13;
 
   if (t < WORK_PHASE.enterStart + partDelay) {
-    return { opacity: 0, y: 12, pointerEvents: false, zIndex: 0 };
+    return { opacity: 0, y: 10, pointerEvents: false, zIndex: 0 };
   }
   if (t >= WORK_PHASE.enterEnd) {
     return { opacity: 1, y: 0, pointerEvents: true, zIndex: 20 };
@@ -392,7 +392,7 @@ function workIncomingCopy(t, part = 'title') {
   );
   return {
     opacity: lerp(0, 1, u),
-    y: lerp(12, 0, u),
+    y: lerp(10, 0, u),
     pointerEvents: u > 0.55,
     zIndex: 14,
   };
@@ -445,7 +445,7 @@ export function workCaseCopyLayerStyle(rawFloatIndex, panelIndex, reducedMotion 
   }
 
   return {
-    opacity: 1,
+    opacity: shell.opacity,
     filter: undefined,
     transform: 'none',
     visibility: 'visible',
@@ -521,10 +521,10 @@ export function workFrameEntryStyle(entryProgress, reducedMotion = false) {
   }
   const p = entryProgress;
   return motionStyle(phaseProgress(p, 0.08, 0.55), {
-    y: 28,
+    y: 20,
     scale: 0.985,
     opacity: 0,
-    blur: 6,
+    blur: 2,
   }, { y: 0, scale: 1, opacity: 1, blur: 0 });
 }
 

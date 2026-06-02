@@ -2,6 +2,12 @@
 
 html.home-scroll-page{
   scroll-snap-type:none;
+  overflow-y:auto;
+  scrollbar-width:none; /* Firefox: hide scrollbar, keep scroll behavior */
+}
+html.home-scroll-page::-webkit-scrollbar{
+  width:0;
+  height:0;
 }
 html.home-scroll-page body{
   overflow-y:visible;
@@ -52,7 +58,7 @@ html.home-scroll-page body{
   display:grid;
   grid-template-columns:1fr auto 1fr;
   align-items:center;
-  padding:clamp(14px,2.4vw,22px) clamp(18px,4vw,48px);
+  padding:clamp(10px,1.8vw,18px) clamp(18px,4vw,48px);
   mix-blend-mode:difference;
   color:#eae8e4;
   pointer-events:none;
@@ -73,6 +79,7 @@ html.home-scroll-page body{
   font-size:clamp(12px,0.95vw,13px);
   text-transform:none;
   color:inherit;
+  transform:translateY(-2px);
 }
 .home-header__nav{
   grid-column:3;
@@ -81,6 +88,7 @@ html.home-scroll-page body{
   flex-wrap:wrap;
   gap:clamp(14px,2.2vw,24px);
   justify-content:flex-end;
+  transform:translateY(-2px);
 }
 .home-header__link{
   font-family:var(--font-interface-metric);
@@ -190,6 +198,7 @@ html.home-scroll-page body{
 .opening-scroll{
   position:relative;
   width:100%;
+  margin:0;
   height:360vh;
   flex-shrink:0;
   box-sizing:border-box;
@@ -206,13 +215,18 @@ html.home-scroll-page body{
 .opening-sticky{
   position:sticky;
   top:0;
+  width:100%;
   min-height:100vh;
   height:100vh;
   max-height:100vh;
   display:flex;
   align-items:stretch;
   justify-content:stretch;
-  padding:clamp(6px,0.85vw,11px);
+  padding:
+    clamp(10px,1.2vw,16px)
+    clamp(4px,0.45vw,8px)
+    clamp(10px,1.2vw,16px)
+    clamp(10px,1.2vw,16px);
   box-sizing:border-box;
   overflow:visible;
 }

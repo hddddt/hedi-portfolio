@@ -40,6 +40,17 @@ function elasticCompress(u) {
   return Math.max(0, Math.min(1, easeIn + snap - settle));
 }
 
+/**
+ * Potential-like curve: explosive start, hard brake near end.
+ * Used to avoid slow middle-ground gathering.
+ */
+function potentialSnap(u) {
+  const t = Math.max(0, Math.min(1, u));
+  const edge = 0.2;
+  if (t < 0.5) return 0.5 * Math.pow(t * 2, edge);
+  return 1 - 0.5 * Math.pow((1 - t) * 2, edge);
+}
+
 /** Raw scroll segment boundaries (0–1 through .opening-scroll) */
 export const OPENING_PHASE1_END = 0.08;
 export const OPENING_PHASE2_END = 0.26;
@@ -81,47 +92,49 @@ export const HERO_SCROLL_DRIVE_END = 0.09;
  */
 export function computeOpeningScrollOrchestration(rawP) {
   const p = Math.max(0, Math.min(1, rawP));
+  const introReadEnd = 0.3;
+  const systemBuildEnd = 0.65;
+  const introRead = smoothstep(0, introReadEnd, p);
+  const systemBuild = smoothstep(introReadEnd, systemBuildEnd, p);
+  const bridgeReveal = smoothstep(systemBuildEnd, 1, p);
 
-  /** Phase 1 — idle → still, elastic impact on first scroll (short) */
-  const idleStillness = 1 - smoothstep(0.008, OPENING_PHASE1_END, p);
-  const scrollImpact = scrollBreathScalePulse(smoothstep(0.012, OPENING_PHASE1_END * 0.95, p));
+  /** Phase 1 — keep a stronger free idle field before gather fully takes over. */
+  const idleStillness = 1 - introRead * 0.96;
+  const scrollImpact = scrollBreathScalePulse(smoothstep(0.006, OPENING_PHASE1_END * 0.7, p));
 
   /** Phase 2 — narrative drive + blob gather */
-  const scrollDrive = easeScrollBreath(
-    Math.max(smoothstep(0.003, 0.07, p), smoothstep(0.008, OPENING_PHASE1_END + 0.04, p) * 0.78) *
-      (1 - smoothstep(OPENING_PHASE3_END, OPENING_EXIT_END, p) * 0.35),
-  );
+  const scrollDrive =
+    (0.24 * introRead + easeScrollBreath(systemBuild) * 0.76) *
+    (1 - bridgeReveal * 0.12);
 
   /** Blob hero timeline — fast intro → thesis convergence */
   let heroProgress;
-  if (p <= OPENING_PHASE1_END) {
-    heroProgress = smoothstep(0, OPENING_PHASE1_END, p) * 0.22;
-  } else if (p <= OPENING_PHASE2_END) {
-    const t = (p - OPENING_PHASE1_END) / (OPENING_PHASE2_END - OPENING_PHASE1_END);
-    heroProgress = 0.22 + easeScrollBreath(t) * (PHASE.thesisStart - 0.22);
+  if (p <= introReadEnd) {
+    heroProgress = smoothstep(0, introReadEnd, p) * 0.16;
+  } else if (p <= systemBuildEnd) {
+    heroProgress = 0.16 + potentialSnap(smoothstep(introReadEnd, systemBuildEnd, p)) * 0.6;
   } else if (p <= OPENING_PHASE3_END) {
-    heroProgress = PHASE.thesisStart;
+    heroProgress = 0.76;
   } else {
     const t = (p - OPENING_PHASE3_END) / (OPENING_EXIT_END - OPENING_PHASE3_END);
-    heroProgress = PHASE.thesisStart + easeScrollBreath(t) * (1 - PHASE.thesisStart);
+    heroProgress = 0.76 + easeScrollBreath(t) * 0.24;
   }
 
-  /** Gather — aggressive completion for stronger forward push */
-  const gather = smoothstep(0.002, OPENING_PHASE2_END - 0.095, p);
+  /** Gather — start almost immediately; complete early for a clear impact event */
+  const gather = potentialSnap(smoothstep(introReadEnd, systemBuildEnd, p));
 
-  /** Screen 1 — quick lift off, gone before thesis */
-  const fadeHero = smoothstep(0.015, OPENING_PHASE2_END - 0.03, p);
+  /** Screen 1 — handoff starts with gather and exits before thesis reveal */
+  const fadeHero = smoothstep(0.58, 0.9, p);
 
-  /** Screen 2 — right after Hedi leaves */
-  const fadeThesis =
-    p < OPENING_PHASE2_END - 0.008
-      ? 0
-      : smoothstep(OPENING_PHASE2_END, OPENING_PHASE3_END - 0.05, p);
+  /** Screen 2 — reveal only after gather has mostly settled */
+  const fadeThesis = smoothstep(0.66, 0.94, p);
 
-  /** Field shrink — starts earlier and finishes quicker with gather */
-  const shrinkLinear = smoothstep(OPENING_PHASE2_END - 0.155, OPENING_PHASE3_END - 0.18, p);
-  const shrinkElastic = elasticCompress(shrinkLinear);
-  const fieldScale = mix(1, 0.54, easeScrollBreath(shrinkElastic));
+  /** Field compresses hard during gather, then slightly releases in thesis settle. */
+  const compressLinear = potentialSnap(smoothstep(introReadEnd, systemBuildEnd, p));
+  const compressElastic = elasticCompress(compressLinear);
+  const compressedScale = mix(1, 0.46, easeScrollBreath(compressElastic));
+  const thesisRelease = smoothstep(systemBuildEnd + 0.02, 0.94, p);
+  const fieldScale = compressedScale + thesisRelease * 0.06;
 
   let phase = /** @type {HeroPhase} */ ('intro');
   if (p > OPENING_PHASE3_END) phase = 'exit';
@@ -141,7 +154,10 @@ export function computeOpeningScrollOrchestration(rawP) {
     fieldScale,
     fieldEnvelope: 1,
     converge: gather,
-    globalBlur: mix(14, 8, smoothstep(OPENING_PHASE1_END, OPENING_PHASE3_END, p)),
+    globalBlur:
+      p < systemBuildEnd
+        ? mix(16, 8.6, smoothstep(introReadEnd, systemBuildEnd, p))
+        : mix(8.6, 7.2, smoothstep(systemBuildEnd + 0.02, 1, p)),
   };
 }
 
@@ -187,39 +203,47 @@ const BLOB_STATES = {
   thesis: {
     a: {
       ...HERO_BLOB_INTRO.a,
-      centerX: 0.476,
-      centerY: 0.502,
-      scale: OPENING_SCROLL_SCALE.thesis.green,
+      centerX: 0.478,
+      centerY: 0.498,
+      scale: OPENING_SCROLL_SCALE.thesis.green * 1.16,
       opacity: INTRO_OPACITY.a,
-      rotation: HERO_GREEN_ROTATION,
+      stretchX: 1.08,
+      stretchY: 0.92,
+      rotation: HERO_GREEN_ROTATION * 1.05,
     },
     b: {
       ...HERO_BLOB_INTRO.b,
-      centerX: 0.519,
-      centerY: 0.47,
-      scale: OPENING_SCROLL_SCALE.thesis.blue,
+      centerX: 0.524,
+      centerY: 0.476,
+      scale: OPENING_SCROLL_SCALE.thesis.blue * 1.16,
       opacity: INTRO_OPACITY.b,
+      stretchX: 0.9,
+      stretchY: 1.08,
+      rotation: -0.26,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
-      centerX: 0.501,
-      centerY: 0.442,
-      scale: OPENING_SCROLL_SCALE.thesis.amber,
+      centerX: 0.502,
+      centerY: 0.462,
+      scale: OPENING_SCROLL_SCALE.thesis.amber * 1.16,
       opacity: INTRO_OPACITY.c,
+      stretchX: 1.14,
+      stretchY: 0.9,
+      rotation: 0.16,
     },
   },
 };
 
 const FOCUS = { x: 0.5, y: 0.48 };
 const CLUSTER_OFFSETS = {
-  a: { x: -0.016, y: 0.008 },
-  b: { x: 0.016, y: -0.004 },
-  c: { x: 0.002, y: -0.02 },
+  a: { x: -0.013, y: 0.009 },
+  b: { x: 0.014, y: 0.001 },
+  c: { x: 0.004, y: -0.012 },
 };
 const CLUSTER_SHAPE = {
-  a: { stretchX: 1.04, stretchY: 0.97, rotation: HERO_GREEN_ROTATION * 0.9 },
-  b: { stretchX: 1.03, stretchY: 0.92, rotation: -0.2 },
-  c: { stretchX: 1.01, stretchY: 1.0, rotation: 0.04 },
+  a: { stretchX: 1.14, stretchY: 0.86, rotation: HERO_GREEN_ROTATION * 1.08 },
+  b: { stretchX: 0.84, stretchY: 1.18, rotation: -0.34 },
+  c: { stretchX: 1.18, stretchY: 0.82, rotation: 0.24 },
 };
 
 function lerpBlobState(from, to, t) {
@@ -314,11 +338,11 @@ export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orc
   const impact = orch?.scrollImpact ?? 1;
   const stillness = orch?.idleStillness ?? 0;
   const impactGain = (1 - stillness) * Math.max(0, impact - 1) * 3.2;
-  const clusterProgress = easeScrollBreath(
-    smoothstep(PHASE.introEnd * 0.02, PHASE.thesisStart - 0.14, heroProgress),
+  const clusterProgress = potentialSnap(
+    easeScrollBreath(smoothstep(PHASE.introEnd * 0.0, PHASE.thesisStart - 0.44, heroProgress)),
   );
   const shapeProgress = easeScrollBreath(
-    smoothstep(PHASE.introEnd * 0.12, PHASE.thesisStart - 0.09, heroProgress),
+    smoothstep(PHASE.introEnd * 0.05, PHASE.thesisStart - 0.16, heroProgress),
   );
 
   const applyBlob = (id, state) => {
@@ -326,17 +350,17 @@ export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orc
     const shape = CLUSTER_SHAPE[id];
     const focusX = FOCUS.x + cluster.x;
     const focusY = FOCUS.y + cluster.y;
-    const gatherMix = gather * 0.36 + clusterProgress * 0.5;
+    const gatherMix = gather * 0.56 + clusterProgress * 0.6;
     const cx = mix(state.centerX, focusX, gatherMix);
-    const cy = mix(state.centerY, focusY, gather * 0.3 + clusterProgress * 0.54);
-    const gatherScale = 1 + gather * 0.04;
+    const cy = mix(state.centerY, focusY, gather * 0.5 + clusterProgress * 0.62);
+    const gatherScale = 1 + gather * 0.05;
     const impactScale = 1 + impactGain * 0.18;
     const radialX = (state.centerX - FOCUS.x) * impactGain * 0.22;
     const radialY = (state.centerY - FOCUS.y) * impactGain * 0.16;
-    const shapeMix = impactGain * 0.24 + shapeProgress * 0.34;
+    const shapeMix = impactGain * 0.28 + shapeProgress * 0.46;
     const stretchX = mix(state.stretchX, shape.stretchX, shapeMix);
     const stretchY = mix(state.stretchY, shape.stretchY, shapeMix);
-    const rotation = mix(state.rotation ?? 0, shape.rotation, shapeProgress * 0.45);
+    const rotation = mix(state.rotation ?? 0, shape.rotation, shapeProgress * 0.72);
     return {
       centerX: cx + radialX,
       centerY: cy + radialY,

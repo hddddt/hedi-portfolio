@@ -11,9 +11,9 @@ import { estimateFieldLinear } from '../data/fieldSizeHierarchy.js';
 
 /** @type {Record<GreenBreathingSection, { amplitude: number, speed: number, phase: number, opacityAmp: number, driftAmp: number }>} */
 export const GREEN_BREATHING = {
-  opening: { amplitude: 0.052, speed: 0.22, phase: 0.7, opacityAmp: 0.026, driftAmp: 0.01 },
-  capabilities: { amplitude: 0.025, speed: 0.18, phase: 1.3, opacityAmp: 0.012, driftAmp: 0.004 },
-  other: { amplitude: 0.012, speed: 0.15, phase: 2.1, opacityAmp: 0.008, driftAmp: 0.003 },
+  opening: { amplitude: 0.038, speed: 0.78, phase: 0.7, opacityAmp: 0.032, driftAmp: 0.005 },
+  capabilities: { amplitude: 0.028, speed: 0.74, phase: 1.3, opacityAmp: 0.024, driftAmp: 0.0035 },
+  other: { amplitude: 0.022, speed: 0.68, phase: 2.1, opacityAmp: 0.02, driftAmp: 0.003 },
 };
 
 const MAX_AREA_RATIO = 3;

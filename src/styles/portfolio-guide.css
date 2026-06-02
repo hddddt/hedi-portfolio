@@ -58,7 +58,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .portfolio-guide.is-trigger-subtle .portfolio-guide__trigger .guide-orb {
@@ -76,7 +76,7 @@
 
 .portfolio-guide__trigger:hover,
 .portfolio-guide__trigger:focus-visible {
-  transform: translateY(-1px) scale(1.03);
+  transform: translateY(-1px) scale(1.005);
   outline: none;
 }
 
@@ -197,7 +197,7 @@
 .portfolio-guide__panel {
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px) scale(0.98);
+  transform: translateY(16px) scale(0.985);
   transform-origin: right bottom;
   width: 100%;
   max-height: min(82vh, 760px);
@@ -205,9 +205,9 @@
   display: flex;
   flex-direction: column;
   transition:
-    opacity 220ms ease,
-    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 220ms ease;
+    opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .portfolio-guide__panel.is-open {
@@ -221,7 +221,7 @@
 .portfolio-guide__panel.is-closing {
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px) scale(0.98);
+  transform: translateY(16px) scale(0.985);
 }
 
 /* —— Shared panel shell —— */
@@ -436,11 +436,11 @@
 }
 
 .portfolio-guide.is-open .portfolio-guide__headline span:nth-child(1) {
-  animation: guide-line-in 280ms ease-out 90ms both;
+  animation: guide-line-in 320ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
 }
 
 .portfolio-guide.is-open .portfolio-guide__headline span:nth-child(2) {
-  animation: guide-line-in 280ms ease-out 160ms both;
+  animation: guide-line-in 320ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
 }
 
 .portfolio-guide__orb-inline {
@@ -469,19 +469,19 @@
 }
 
 .portfolio-guide.is-open .portfolio-guide__card-item:nth-child(1) {
-  animation: guide-card-in 280ms ease-out 170ms both;
+  animation: guide-card-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
 }
 
 .portfolio-guide.is-open .portfolio-guide__card-item:nth-child(2) {
-  animation: guide-card-in 280ms ease-out 220ms both;
+  animation: guide-card-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
 }
 
 .portfolio-guide.is-open .portfolio-guide__card-item:nth-child(3) {
-  animation: guide-card-in 280ms ease-out 270ms both;
+  animation: guide-card-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
 }
 
 .portfolio-guide.is-open .portfolio-guide__card-item:nth-child(4) {
-  animation: guide-card-in 280ms ease-out 320ms both;
+  animation: guide-card-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 260ms both;
 }
 
 .portfolio-guide__card {
@@ -498,15 +498,15 @@
   background: rgba(255, 255, 255, 0.018);
   cursor: pointer;
   transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    border-color 200ms ease,
+    background 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .portfolio-guide__card:hover,
 .portfolio-guide__card:focus-visible {
-  border-color: rgba(210, 255, 80, 0.22);
-  background: rgba(210, 255, 80, 0.038);
+  border-color: rgba(210, 255, 80, 0.18);
+  background: rgba(210, 255, 80, 0.026);
   transform: translateY(-1px);
   outline: none;
 }
@@ -570,16 +570,16 @@
   color: rgba(250, 248, 243, 0.42);
   opacity: 0.42;
   transition:
-    opacity 180ms ease,
-    color 180ms ease,
-    transform 180ms ease;
+    opacity 200ms ease,
+    color 200ms ease,
+    transform 200ms ease;
 }
 
 .portfolio-guide__card:hover .portfolio-guide__card-arrow,
 .portfolio-guide__card:focus-visible .portfolio-guide__card-arrow {
-  opacity: 0.88;
+  opacity: 0.72;
   color: rgba(250, 248, 243, 0.88);
-  transform: translateX(2px);
+  transform: translateX(1px);
 }
 
 /* Custom question — lighter command row */

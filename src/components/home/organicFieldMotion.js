@@ -28,10 +28,11 @@ const REST = {
 };
 
 const SIGNAL_ARC_GREEN = [
-  { x: 0.145, y: 0.285 },
-  { x: 0.108, y: 0.45 },
-  { x: 0.086, y: 0.605 },
-  { x: 0.15, y: 0.74 },
+  { x: 0.166, y: 0.28 },
+  { x: 0.112, y: 0.42 },
+  { x: 0.088, y: 0.56 },
+  { x: 0.096, y: 0.7 },
+  { x: 0.142, y: 0.82 },
 ];
 
 /** Pinned capability panels — matches homeCapabilities.length */
@@ -45,22 +46,22 @@ const SIGNAL_LAYOUT = {
     a: {
       opacity: 0.78,
       scale: SIGNAL_LAYOUT_SCALE.green,
-      dx: -0.028,
+      dx: -0.014,
       dy: 0,
       rotation: 0,
       stretchX: 1.06,
       stretchY: 0.94,
     },
     b: {
-      opacity: 0.58,
-      scale: SIGNAL_LAYOUT_SCALE.blue,
+      opacity: 0.5,
+      scale: SIGNAL_LAYOUT_SCALE.blue * 0.97,
       dx: 0,
       dy: 0,
       stretchX: 1.06,
       stretchY: 0.9,
       rotation: 0.1,
     },
-    c: { opacity: 0.32, scale: SIGNAL_LAYOUT_SCALE.amber, dx: 0, dy: 0 },
+    c: { opacity: 0.25, scale: SIGNAL_LAYOUT_SCALE.amber * 0.94, dx: 0, dy: 0 },
   },
 };
 
@@ -184,22 +185,22 @@ const LAYOUT = {
 
 const CYCLE = { a: 21, b: 14, c: 8.5 };
 
-export const ARC_AMP = { a: 0.014, b: 0.048, c: 0.074 };
+export const ARC_AMP = { a: 0.008, b: 0.022, c: 0.03 };
 
 /** Landing motion tempo — green slow, blue moderate, amber fastest */
 export const LANDING_MOTION_RATE = { a: 0.58, b: 0.92, c: 1.28 };
 
 /** Post-landing idle motion gain — arc, float, orbit */
-export const LANDING_MOTION_GAIN = 1.28;
+export const LANDING_MOTION_GAIN = 0.86;
 
 /** Per-field arc — green breathe, blue float, amber orbit */
 export const WARM_MOTION = {
-  timeScale: 1.32,
-  arcMult: 2.75,
-  landingArcMult: 3.85,
-  arcMultA: 0.36,
-  arcMultB: 1.18,
-  arcMultC: 1.22,
+  timeScale: 1.08,
+  arcMult: 1.22,
+  landingArcMult: 1.42,
+  arcMultA: 0.3,
+  arcMultB: 0.72,
+  arcMultC: 0.76,
 };
 
 /** Incommensurate drift — reads irregular, not repetitive back-and-forth. */
@@ -410,16 +411,32 @@ export function easeSmoothstep(t) {
   return c * c * (3 - 2 * c);
 }
 
-/** Scan along capability arc with dwell near each stop */
+/** Fast departure + fast arrival — steep at both ends of each segment */
+function decisiveTransit(t) {
+  const c = Math.max(0, Math.min(1, t));
+  const edge = 0.36;
+  if (c < 0.5) return 0.5 * Math.pow(2 * c, edge);
+  return 1 - 0.5 * Math.pow(2 * (1 - c), edge);
+}
+
+/** Pull scroll index toward nearest panel — fast settle at each stop */
+function snapTowardPanelIndex(clamped, snapWidth = 0.12, strength = 0.99) {
+  const nearest = Math.round(clamped);
+  const dist = Math.abs(clamped - nearest);
+  const pull = (1 - easeSmoothstep(Math.max(0, Math.min(1, dist / snapWidth)))) * strength;
+  return clamped + (nearest - clamped) * pull;
+}
+
+/** Scan along capability arc — short transitions, quick hold at each stop */
 export function easeCapabilityFloat(raw) {
   if (raw == null) return null;
-  const maxIdx = Math.max(1, SIGNAL_ARC_GREEN.length - 1);
+  const maxIdx = Math.max(1, CAPABILITY_PANEL_COUNT - 1);
   const clamped = Math.max(0, Math.min(maxIdx, raw));
   const i0 = Math.floor(clamped);
   const frac = clamped - i0;
-  const smoothFrac = frac * frac * (3 - 2 * frac);
-  const dwell = Math.sin(frac * Math.PI) * 0.14;
-  return i0 + smoothFrac * (1 - dwell * 0.4) + dwell * 0.12;
+  const dwell = Math.pow(Math.sin(frac * Math.PI), 0.42);
+  const slowed = frac * (1 - dwell * 0.82);
+  return snapTowardPanelIndex(i0 + slowed, 0.11, 0.99);
 }
 
 /** Normalized 0→1 progress through the Capabilities pinned track */
@@ -440,16 +457,34 @@ export function signalGreenCapabilityProgress(
 export function signalGreenScrollAttenuation(progress) {
   const raw = Math.max(0, Math.min(1, progress));
   const t = easeScrollBreath(raw);
-  const breath = scrollBreathScalePulse(raw);
+  const breath = 1 + (scrollBreathScalePulse(raw) - 1) * 0.18;
   return {
-    // Make capability scroll response more readable: stronger shrink + larger drift.
-    scaleMult: (1.0 + (0.72 - 1.0) * t) * breath,
-    dx: -0.022 - 0.082 * t,
-    dy: -0.012 - 0.048 * t,
+    // Calm retreat envelope for recording: subtle drift, controlled shrink/fade.
+    scaleMult: (1.18 + (0.96 - 1.18) * t) * breath,
+    opacityMult: 0.86 + (0.7 - 0.86) * t,
+    dx: -0.002 - 0.008 * t,
+    dy: -0.002 - 0.01 * t,
   };
 }
 
-function anchorAlongStops(stops, floatIndex) {
+/**
+ * Soft magnetic settling toward nearest capability stop.
+ * No hard snapping; preserves continuous interpolation.
+ */
+const CAP_MAGNETIC_STRENGTH = 0.99;
+
+function magneticCapabilityFloat(
+  raw,
+  panelCount = CAPABILITY_PANEL_COUNT,
+  strength = CAP_MAGNETIC_STRENGTH,
+) {
+  if (raw == null) return 0;
+  const maxIdx = Math.max(1, panelCount - 1);
+  const fi = Math.max(0, Math.min(maxIdx, raw));
+  return snapTowardPanelIndex(fi, 0.18, strength);
+}
+
+function anchorAlongStops(stops, floatIndex, decisive = false) {
   if (!stops?.length) return { x: 0.5, y: 0.5 };
   if (stops.length === 1) return stops[0];
   const maxIdx = stops.length - 1;
@@ -457,15 +492,15 @@ function anchorAlongStops(stops, floatIndex) {
   const i0 = Math.floor(fi);
   const i1 = Math.min(maxIdx, i0 + 1);
   const t = fi - i0;
-  const eased = t * t * (3 - 2 * t);
+  const eased = decisive ? decisiveTransit(t) : t * t * (3 - 2 * t);
   return {
     x: stops[i0].x + (stops[i1].x - stops[i0].x) * eased,
     y: stops[i0].y + (stops[i1].y - stops[i0].y) * eased,
   };
 }
 
-function signalGreenAnchor(floatIndex, panelCount = SIGNAL_ARC_GREEN.length) {
-  return anchorAlongStops(SIGNAL_ARC_GREEN, floatIndex ?? 0);
+function signalGreenAnchor(floatIndex) {
+  return anchorAlongStops(SIGNAL_ARC_GREEN, floatIndex ?? 0, true);
 }
 
 function scrollDepthIndex(depthFloat) {
@@ -491,7 +526,9 @@ function depthRestForScroll(depthIndex) {
 }
 
 function signalRestForCapability(capabilityFloat) {
-  const green = signalGreenAnchor(capabilityFloat ?? 0);
+  const green = signalGreenAnchor(
+    magneticCapabilityFloat(capabilityFloat ?? 0, CAPABILITY_PANEL_COUNT),
+  );
   return {
     a: green,
     b: SIGNAL_ACCENT_B,
@@ -502,11 +539,12 @@ function signalRestForCapability(capabilityFloat) {
 
 function ambientA(t, signalMode = false) {
   const ph = (t / CYCLE.a) * TAU;
-  const rotAmp = signalMode ? 0.038 : 0.012;
-  const stretchAmp = signalMode ? 0.05 : 0.014;
+  const rotAmp = signalMode ? 0.022 : 0.012;
+  const stretchAmp = signalMode ? 0.028 : 0.014;
+  const drift = signalMode ? 0.45 : 1;
   return {
-    dx: Math.sin(ph) * 0.006 + Math.sin(ph * 0.41) * 0.003,
-    dy: Math.cos(ph * 0.79) * 0.006 + Math.sin(ph * 0.23) * 0.003,
+    dx: (Math.sin(ph) * 0.006 + Math.sin(ph * 0.41) * 0.003) * drift,
+    dy: (Math.cos(ph * 0.79) * 0.006 + Math.sin(ph * 0.23) * 0.003) * drift,
     scale: 1,
     rotation: Math.sin(ph * 0.72) * rotAmp + Math.cos(ph * 1.15) * rotAmp * 0.65,
     stretchX: 1 + Math.sin(ph * 0.55) * stretchAmp,
@@ -517,20 +555,86 @@ function ambientA(t, signalMode = false) {
 /** Green volume read during capability arc travel — turn + foreshorten between stops */
 function signalGreenVolumeMotion(capabilityFloat, capPulse, chapterMorph) {
   if (capabilityFloat == null) {
-    return { rotation: 0, stretchX: 1, stretchY: 1 };
+    return {
+      rotation: 0,
+      stretchX: 1,
+      stretchY: 1,
+      scaleMult: 1,
+      dx: 0,
+      dy: 0,
+      opacityMult: 1,
+      driftDamp: 1,
+    };
   }
-  const fi = capabilityFloat;
-  const frac = fi - Math.floor(fi);
-  const seg = Math.sin(frac * Math.PI);
+
+  const panelCount = CAPABILITY_PANEL_COUNT;
+  const maxIdx = Math.max(1, panelCount - 1);
+  const fiRaw = magneticCapabilityFloat(
+    Math.max(0, Math.min(maxIdx, capabilityFloat)),
+    panelCount,
+  );
+  const nearest = Math.round(fiRaw);
+  const from = Math.floor(fiRaw);
+  const to = Math.min(maxIdx, from + 1);
+  const localT = fiRaw - from;
+  const transit = decisiveTransit(localT);
+  const moveBoost = 1 - decisiveTransit(localT);
+
+  // Snap into hold quickly once near panel center.
+  const settleDist = Math.abs(fiRaw - nearest);
+  const hold = 1 - Math.pow(Math.max(0, Math.min(1, settleDist / 0.1)), 3.6);
+
+  const poses = [
+    { dx: -0.006, dy: 0.008, rot: -0.018, sx: 1.03, sy: 1.04, op: 0.88, sc: 1.04 },
+    { dx: -0.01, dy: 0.002, rot: 0.022, sx: 1.02, sy: 0.98, op: 0.84, sc: 1.01 },
+    { dx: -0.014, dy: -0.008, rot: 0.032, sx: 0.98, sy: 1.03, op: 0.8, sc: 0.99 },
+    { dx: -0.009, dy: -0.014, rot: -0.018, sx: 1.03, sy: 0.98, op: 0.76, sc: 0.97 },
+    { dx: -0.004, dy: -0.018, rot: 0.014, sx: 0.99, sy: 1.02, op: 0.72, sc: 0.96 },
+  ];
+  const pFrom = poses[from] ?? poses[0];
+  const pTo = poses[to] ?? poses[poses.length - 1];
+  const pNear = poses[nearest] ?? pFrom;
+
+  const movePose = {
+    dx: lerpNum(pFrom.dx, pTo.dx, transit),
+    dy: lerpNum(pFrom.dy, pTo.dy, transit),
+    rot: lerpNum(pFrom.rot, pTo.rot, transit),
+    sx: lerpNum(pFrom.sx, pTo.sx, transit),
+    sy: lerpNum(pFrom.sy, pTo.sy, transit),
+    op: lerpNum(pFrom.op, pTo.op, transit),
+    sc: lerpNum(pFrom.sc, pTo.sc, transit),
+  };
+  const activePose = {
+    dx: lerpNum(movePose.dx, pNear.dx, hold),
+    dy: lerpNum(movePose.dy, pNear.dy, hold),
+    rot: lerpNum(movePose.rot, pNear.rot, hold),
+    sx: lerpNum(movePose.sx, pNear.sx, hold),
+    sy: lerpNum(movePose.sy, pNear.sy, hold),
+    op: lerpNum(movePose.op, pNear.op, hold),
+    sc: lerpNum(movePose.sc, pNear.sc, hold),
+  };
+
+  const seg = Math.sin(localT * Math.PI);
   const morph = 1 - easeSmoothstep(chapterMorph ?? 1);
-  const pulse = (capPulse ?? 0) * 0.62;
-  const rot = seg * 0.58 + fi * 0.16 + pulse * 0.32;
-  const depthTilt = Math.cos(frac * TAU + fi * 0.42) * 0.18;
-  const squash = 1 + seg * 0.2 * (0.55 + morph * 0.45) + pulse * 0.14;
+  const pulse = (capPulse ?? 0) * 0.28;
+  const phaseByPanel = [0.4, -0.55, 0.72, -0.82, 0.64][nearest] ?? 0;
+  const shapeBeat = Math.sin(localT * TAU + phaseByPanel) * (1 - hold) * 0.03;
+  const rot =
+    (seg * 0.08 + fiRaw * 0.01 + pulse * 0.04 + shapeBeat * 0.35 + activePose.rot) *
+    (1 + moveBoost * 0.32);
+  const depthTilt =
+    (Math.cos(localT * TAU + fiRaw * 0.42 + phaseByPanel) * 0.022 + shapeBeat * 0.2) *
+    (1 + moveBoost * 0.24);
+  const squash = 1 + seg * 0.055 * (0.55 + morph * 0.45) + pulse * 0.03;
   return {
     rotation: rot * (0.7 + morph * 0.3),
-    stretchX: (1 + depthTilt) / squash,
-    stretchY: squash * (1 - depthTilt * 0.7),
+    stretchX: ((1 + depthTilt + shapeBeat * 0.6) / squash) * activePose.sx,
+    stretchY: (squash * (1 - depthTilt * 0.7 - shapeBeat * 0.42)) * activePose.sy,
+    scaleMult: activePose.sc,
+    dx: activePose.dx,
+    dy: activePose.dy - hold * 0.004,
+    opacityMult: activePose.op,
+    driftDamp: 1 - hold * 0.74,
   };
 }
 
@@ -1092,17 +1196,34 @@ export function computeMotionTargets(
   const fieldB = mergeFieldMotion(layout.b, ambB);
   const fieldC = mergeFieldMotion(layout.c, ambC);
 
-  let greenVol = { rotation: 0, stretchX: 1, stretchY: 1 };
+  let greenVol = {
+    rotation: 0,
+    stretchX: 1,
+    stretchY: 1,
+    scaleMult: 1,
+    dx: 0,
+    dy: 0,
+    opacityMult: 1,
+    driftDamp: 1,
+  };
   if (isSignal && capabilityFloat != null && !reducedMotion) {
     greenVol = signalGreenVolumeMotion(capabilityFloat, capPulse, opts.chapterMorph ?? 1);
   }
 
   let targets = {
     a: {
-      centerX: posA.x + layout.a.dx + ambA.dx * workGreenAmbDamp * aLead,
-      centerY: posA.y + layout.a.dy + ambA.dy * workGreenAmbDamp * aLead,
-      scale: layout.a.scale * (1 + (ambA.scale - 1) * aLead),
-      opacity: layout.a.opacity,
+      centerX:
+        posA.x +
+        layout.a.dx +
+        ambA.dx * workGreenAmbDamp * aLead * (greenVol.driftDamp ?? 1) +
+        (greenVol.dx ?? 0),
+      centerY:
+        posA.y +
+        layout.a.dy +
+        ambA.dy * workGreenAmbDamp * aLead * (greenVol.driftDamp ?? 1) +
+        (greenVol.dy ?? 0),
+      scale: layout.a.scale * (1 + (ambA.scale - 1) * aLead) * (greenVol.scaleMult ?? 1),
+      opacity: layout.a.opacity * (greenVol.opacityMult ?? 1),
       stretchX: fieldA.stretchX * greenVol.stretchX,
       stretchY: fieldA.stretchY * greenVol.stretchY,
       rotation: fieldA.rotation + greenVol.rotation,
@@ -1174,6 +1295,7 @@ export function computeMotionTargets(
         centerX: targets.a.centerX + atten.dx,
         centerY: targets.a.centerY + atten.dy,
         scale: targets.a.scale * atten.scaleMult,
+        opacity: targets.a.opacity * (atten.opacityMult ?? 1),
       },
     };
   }

@@ -118,6 +118,7 @@ export function CapabilityDialSection({ trackRef }) {
   const [chapterPinned, setChapterPinned] = useState(false);
   const [panelTransit, setPanelTransit] = useState(false);
   const chapterPinnedRef = useRef(false);
+  const forceFirstPanelOnEntryRef = useRef(false);
   const prevActiveIdRef = useRef(null);
   /** Last settled panel — scroll may not jump more than ±1 from this anchor */
   const stepAnchorRef = useRef(0);
@@ -244,10 +245,11 @@ export function CapabilityDialSection({ trackRef }) {
 
     const rawFi = measureCapabilityFloatIndex(rect, n);
     const target = Math.min(n - 1, Math.max(0, Math.round(rawFi)));
+    const enteringFromOpening = prevId === 'home-landing' || prevId == null;
     const fromBelow =
       prevId === 'home-work-narrative' ||
       prevId === 'home-life-archive' ||
-      rawFi >= 0.35;
+      (!enteringFromOpening && rawFi >= 0.35);
 
     const applyPanel = (index) => {
       stepAnchorRef.current = index;
@@ -256,6 +258,7 @@ export function CapabilityDialSection({ trackRef }) {
     };
 
     if (fromBelow) {
+      forceFirstPanelOnEntryRef.current = false;
       applyPanel(target);
       if (Math.abs(rawFi - target) > 0.06) {
         scrollToPanel(target, isChapterStickyPinned(rect) ? 'auto' : 'smooth');
@@ -263,6 +266,7 @@ export function CapabilityDialSection({ trackRef }) {
       return undefined;
     }
 
+    forceFirstPanelOnEntryRef.current = true;
     applyPanel(0);
     if (rect.top > PIN_TOP_TOLERANCE_PX) {
       const raf = requestAnimationFrame(() => {
@@ -289,10 +293,11 @@ export function CapabilityDialSection({ trackRef }) {
         chapterPinnedRef.current = true;
         setChapterPinned(true);
         let target = Math.min(n - 1, Math.max(0, Math.round(rawFi)));
-        if (rawFi < 0.42) target = 0;
+        if (forceFirstPanelOnEntryRef.current || rawFi < 0.42) target = 0;
         stepAnchorRef.current = target;
         setFloatIndex(target);
         setPanelIndex(target);
+        forceFirstPanelOnEntryRef.current = false;
         if (Math.abs(rawFi - target) > PANEL_SNAP_EPSILON && !scrollTweenRef.current?.isRunning()) {
           scrollToPanel(target, 'auto');
           return;
@@ -301,6 +306,7 @@ export function CapabilityDialSection({ trackRef }) {
       if (rect.top > window.innerHeight * 0.5) {
         chapterPinnedRef.current = false;
         setChapterPinned(false);
+        forceFirstPanelOnEntryRef.current = false;
       }
 
       if (isPinned && n > 1 && !scrollTweenRef.current?.isRunning()) {
@@ -589,9 +595,6 @@ export function CapabilityDialSection({ trackRef }) {
           }
         >
           <div className="cap-dial__chip-group">
-            <p className="cap-dial__chip-group-label" style={layers.chipLabelPrimary}>
-              Primary
-            </p>
             <ul
               className="cap-dial__chips cap-dial__chips--primary"
               aria-label={`${cap.headline} primary outputs`}
@@ -608,9 +611,6 @@ export function CapabilityDialSection({ trackRef }) {
             </ul>
           </div>
           <div className="cap-dial__chip-group cap-dial__chip-group--secondary">
-            <p className="cap-dial__chip-group-label" style={layers.chipLabelSecondary}>
-              Secondary
-            </p>
             <ul
               className="cap-dial__chips cap-dial__chips--secondary"
               aria-label={`${cap.headline} supporting methods`}
