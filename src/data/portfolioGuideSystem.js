@@ -31,8 +31,7 @@ export const GUIDE_DECISION_AREAS = {
 export const GUIDE_ENTRY = {
   label: '05 · PORTFOLIO GUIDE',
   title: 'Find your way in.',
-  subtitle:
-    'Ask about the thinking, work, and expanded role behind this portfolio.',
+  subtitle: 'Ask what you want to know about Hedi.',
   freeInputLabel: 'ASK YOUR OWN QUESTION',
   freeInputHelper: 'work · method · AI direction · role boundary',
   freeInputPlaceholder: 'Type your question...',

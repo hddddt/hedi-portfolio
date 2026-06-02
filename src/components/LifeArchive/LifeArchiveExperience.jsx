@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
+import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { lifePhotoMetadata } from '../../data/lifePhotoMetadata.js';
 import { LIFE_ARCHIVE_COPY } from '../../data/lifeArchiveViews.js';
 import { rotationFromId, scaleFromId } from '../../utils/lifeArchiveInteraction.js';
@@ -59,9 +60,12 @@ function ArchiveGuidePresence({ hovered, emotionalTone, onHoverStart, onHoverEnd
 
 export function LifeArchiveExperience() {
   const { handoff, reducedMotion } = usePovArchiveHandoff();
+  const { activeId } = useNarrativeScroll();
+  const inArchiveChapter = activeId === 'home-life-archive';
+  const revealProgress = inArchiveChapter ? 1 : handoff;
   const entrance = useMemo(
-    () => beyondWorkEntranceLayers(handoff, reducedMotion),
-    [handoff, reducedMotion],
+    () => beyondWorkEntranceLayers(revealProgress, reducedMotion),
+    [revealProgress, reducedMotion],
   );
   const fieldRef = useRef(null);
   const scrollerRef = useRef(null);
@@ -223,13 +227,13 @@ export function LifeArchiveExperience() {
                         zIndex: index + 1,
                         ...(index < STAGGERED_CARD_COUNT
                           ? archiveFragmentStyle(
-                              handoff,
+                              revealProgress,
                               index,
                               STAGGERED_CARD_COUNT,
                               reducedMotion,
                             )
                           : archiveFragmentSettleStyle(
-                              handoff,
+                              revealProgress,
                               index - STAGGERED_CARD_COUNT,
                               lifePhotoMetadata.length - STAGGERED_CARD_COUNT,
                               reducedMotion,

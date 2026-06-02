@@ -442,9 +442,10 @@ export function signalGreenScrollAttenuation(progress) {
   const t = easeScrollBreath(raw);
   const breath = scrollBreathScalePulse(raw);
   return {
-    scaleMult: (0.96 + (0.80 - 0.96) * t) * breath,
-    dx: -0.03 - 0.038 * t,
-    dy: -0.02 - 0.018 * t,
+    // Make capability scroll response more readable: stronger shrink + larger drift.
+    scaleMult: (1.0 + (0.72 - 1.0) * t) * breath,
+    dx: -0.022 - 0.082 * t,
+    dy: -0.012 - 0.048 * t,
   };
 }
 

@@ -26,8 +26,6 @@ import '../../styles/portfolio-guide.css';
 
 const SCROLL_SHOW_THRESHOLD = 1.2;
 const TEASER_HIDE_SCROLL_RATIO = 1.02;
-const TEASER_DISMISSED_KEY = 'guideTeaserDismissed';
-const TEASER_OPENED_KEY = 'guideTeaserOpened';
 const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
 const LANDING_TEASER_DELAY_MS = 1400;
 const LANDING_MICRO_ANIM_MS = 520;
@@ -224,11 +222,6 @@ export function PortfolioGuide() {
     setOpen(true);
     setTeaserVisible(false);
     setTeaserOpened(true);
-    try {
-      sessionStorage.setItem(TEASER_OPENED_KEY, 'true');
-    } catch {
-      // noop
-    }
     setView('questions');
     setResultFlowId(null);
     setDisplayQuestion('');
@@ -367,11 +360,6 @@ export function PortfolioGuide() {
   const dismissTeaser = () => {
     setTeaserDismissed(true);
     setTeaserVisible(false);
-    try {
-      sessionStorage.setItem(TEASER_DISMISSED_KEY, 'true');
-    } catch {
-      // noop
-    }
   };
 
   useEffect(
@@ -391,16 +379,6 @@ export function PortfolioGuide() {
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    try {
-      setTeaserDismissed(sessionStorage.getItem(TEASER_DISMISSED_KEY) === 'true');
-      setTeaserOpened(sessionStorage.getItem(TEASER_OPENED_KEY) === 'true');
-    } catch {
-      setTeaserDismissed(false);
-      setTeaserOpened(false);
-    }
   }, []);
 
   useEffect(() => {

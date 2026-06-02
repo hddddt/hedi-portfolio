@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const ProjectAccessContext = createContext(null);
+const PROJECT_UNLOCKED_KEY = 'portfolioProjectUnlocked';
 
 /** Client-side gate for portfolio case details — use server auth for confidential work. */
 export function ProjectAccessProvider({ children }) {
@@ -8,8 +9,22 @@ export function ProjectAccessProvider({ children }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingCaseId, setPendingCaseId] = useState(null);
 
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(PROJECT_UNLOCKED_KEY) === 'true';
+      if (saved) setUnlocked(true);
+    } catch {
+      // Ignore storage failures (private mode / disabled storage).
+    }
+  }, []);
+
   const persistUnlock = useCallback(() => {
     setUnlocked(true);
+    try {
+      window.sessionStorage.setItem(PROJECT_UNLOCKED_KEY, 'true');
+    } catch {
+      // Ignore storage failures.
+    }
   }, []);
 
   const requestAccess = useCallback(

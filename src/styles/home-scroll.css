@@ -638,11 +638,11 @@ html.home-scroll-page body{
   display:inline-block;
 }
 .opening-card__sub{
-  margin-top:clamp(12px,1.8vw,20px);
+  margin-top:clamp(16px,2.2vw,26px);
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:clamp(4px,0.65vw,8px);
+  gap:clamp(2px,0.35vw,5px);
   max-width:min(28rem,92vw);
   margin-left:auto;
   margin-right:auto;
@@ -650,37 +650,39 @@ html.home-scroll-page body{
 }
 .opening-card__sub-role{
   font-family:var(--font-editorial);
-  font-size:clamp(12.5px,1.05vw,15.5px);
-  font-weight:600;
-  letter-spacing:0.06em;
+  font-size:clamp(13.5px,1.14vw,16.4px);
+  font-weight:620;
+  letter-spacing:0.045em;
+  line-height:1.24;
   text-transform:none;
-  color:rgba(10,9,8,.72);
+  color:#11100f;
 }
 .opening-card__sub-lead{
   font-family:var(--font-editorial);
-  font-size:clamp(12px,0.98vw,14.5px);
-  line-height:1.5;
-  font-weight:400;
+  font-size:clamp(12.4px,1.02vw,15px);
+  line-height:1.42;
+  font-weight:460;
   letter-spacing:0.01em;
-  color:rgba(10,9,8,.58);
+  color:#1a1816;
   max-width:32ch;
 }
 .opening-card__sub-for{
-  color:rgba(10,9,8,.45);
+  color:rgba(20,17,15,.74);
   font-weight:400;
 }
 .opening-card__sub-ai{
-  font-weight:600;
-  color:rgba(12,88,58,.92);
-  letter-spacing:0.02em;
+  font-weight:620;
+  color:rgba(170,220,60,.98);
+  letter-spacing:0.015em;
+  text-shadow:0 0 0.3px rgba(170,220,60,.36);
 }
 .opening-card__sub-join{
   font-weight:400;
-  color:rgba(10,9,8,.42);
+  color:rgba(20,17,15,.7);
 }
 .opening-card__sub-work{
-  font-weight:500;
-  color:rgba(10,9,8,.55);
+  font-weight:520;
+  color:rgba(20,17,15,.84);
 }
 .opening-card__title{
   margin:0;
