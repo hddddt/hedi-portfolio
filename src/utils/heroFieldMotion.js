@@ -32,6 +32,14 @@ const PHASE = {
   thesisStart: 0.7,
 };
 
+function elasticCompress(u) {
+  const t = Math.max(0, Math.min(1, u));
+  const easeIn = t * t * (3 - 2 * t);
+  const snap = Math.sin(t * Math.PI) * (1 - t) * 0.22;
+  const settle = Math.sin(t * Math.PI * 2.35) * (1 - t) * 0.11;
+  return Math.max(0, Math.min(1, easeIn + snap - settle));
+}
+
 /** Raw scroll segment boundaries (0–1 through .opening-scroll) */
 export const OPENING_PHASE1_END = 0.08;
 export const OPENING_PHASE2_END = 0.26;
@@ -98,8 +106,8 @@ export function computeOpeningScrollOrchestration(rawP) {
     heroProgress = PHASE.thesisStart + easeScrollBreath(t) * (1 - PHASE.thesisStart);
   }
 
-  /** Gather — completes early in phase 2 */
-  const gather = smoothstep(0.003, OPENING_PHASE2_END - 0.04, p);
+  /** Gather — aggressive completion for stronger forward push */
+  const gather = smoothstep(0.002, OPENING_PHASE2_END - 0.095, p);
 
   /** Screen 1 — quick lift off, gone before thesis */
   const fadeHero = smoothstep(0.015, OPENING_PHASE2_END - 0.03, p);
@@ -110,9 +118,10 @@ export function computeOpeningScrollOrchestration(rawP) {
       ? 0
       : smoothstep(OPENING_PHASE2_END, OPENING_PHASE3_END - 0.05, p);
 
-  /** Field shrink — starts mid phase 2, settles before phase 3 hold ends */
-  const shrinkLinear = smoothstep(OPENING_PHASE2_END - 0.12, OPENING_PHASE3_END - 0.08, p);
-  const fieldScale = mix(1, 0.56, easeScrollBreath(shrinkLinear));
+  /** Field shrink — starts earlier and finishes quicker with gather */
+  const shrinkLinear = smoothstep(OPENING_PHASE2_END - 0.155, OPENING_PHASE3_END - 0.18, p);
+  const shrinkElastic = elasticCompress(shrinkLinear);
+  const fieldScale = mix(1, 0.54, easeScrollBreath(shrinkElastic));
 
   let phase = /** @type {HeroPhase} */ ('intro');
   if (p > OPENING_PHASE3_END) phase = 'exit';
@@ -154,23 +163,23 @@ const BLOB_STATES = {
   transition: {
     a: {
       ...HERO_BLOB_INTRO.a,
-      centerX: 0.4,
-      centerY: 0.495,
+      centerX: 0.47,
+      centerY: 0.5,
       scale: OPENING_SCROLL_SCALE.transition.green,
       opacity: INTRO_OPACITY.a,
       rotation: HERO_GREEN_ROTATION,
     },
     b: {
       ...HERO_BLOB_INTRO.b,
-      centerX: 0.63,
-      centerY: 0.43,
+      centerX: 0.525,
+      centerY: 0.468,
       scale: OPENING_SCROLL_SCALE.transition.blue,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
-      centerX: 0.54,
-      centerY: 0.34,
+      centerX: 0.498,
+      centerY: 0.43,
       scale: OPENING_SCROLL_SCALE.transition.amber,
       opacity: INTRO_OPACITY.c,
     },
@@ -178,23 +187,23 @@ const BLOB_STATES = {
   thesis: {
     a: {
       ...HERO_BLOB_INTRO.a,
-      centerX: 0.41,
-      centerY: 0.5,
+      centerX: 0.476,
+      centerY: 0.502,
       scale: OPENING_SCROLL_SCALE.thesis.green,
       opacity: INTRO_OPACITY.a,
       rotation: HERO_GREEN_ROTATION,
     },
     b: {
       ...HERO_BLOB_INTRO.b,
-      centerX: 0.57,
-      centerY: 0.46,
+      centerX: 0.519,
+      centerY: 0.47,
       scale: OPENING_SCROLL_SCALE.thesis.blue,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
-      centerX: 0.5,
-      centerY: 0.4,
+      centerX: 0.501,
+      centerY: 0.442,
       scale: OPENING_SCROLL_SCALE.thesis.amber,
       opacity: INTRO_OPACITY.c,
     },
@@ -202,6 +211,16 @@ const BLOB_STATES = {
 };
 
 const FOCUS = { x: 0.5, y: 0.48 };
+const CLUSTER_OFFSETS = {
+  a: { x: -0.016, y: 0.008 },
+  b: { x: 0.016, y: -0.004 },
+  c: { x: 0.002, y: -0.02 },
+};
+const CLUSTER_SHAPE = {
+  a: { stretchX: 1.04, stretchY: 0.97, rotation: HERO_GREEN_ROTATION * 0.9 },
+  b: { stretchX: 1.03, stretchY: 0.92, rotation: -0.2 },
+  c: { stretchX: 1.01, stretchY: 1.0, rotation: 0.04 },
+};
 
 function lerpBlobState(from, to, t) {
   const u = Math.max(0, Math.min(1, t));
@@ -291,34 +310,49 @@ export function computeOpeningFieldPresence(rawP, prm = false) {
  */
 export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orch = null) {
   const states = blobStatesAtProgress(heroProgress);
-  const gather = orch?.gather ?? smoothstep(PHASE.introEnd * 0.55, PHASE.thesisStart + 0.06, heroProgress);
+  const gather = orch?.gather ?? smoothstep(PHASE.introEnd * 0.5, PHASE.thesisStart + 0.02, heroProgress);
   const impact = orch?.scrollImpact ?? 1;
   const stillness = orch?.idleStillness ?? 0;
   const impactGain = (1 - stillness) * Math.max(0, impact - 1) * 3.2;
+  const clusterProgress = easeScrollBreath(
+    smoothstep(PHASE.introEnd * 0.02, PHASE.thesisStart - 0.14, heroProgress),
+  );
+  const shapeProgress = easeScrollBreath(
+    smoothstep(PHASE.introEnd * 0.12, PHASE.thesisStart - 0.09, heroProgress),
+  );
 
-  const applyBlob = (state) => {
-    const cx = mix(state.centerX, FOCUS.x, gather * 0.44);
-    const cy = mix(state.centerY, FOCUS.y, gather * 0.36);
-    const gatherScale = 1 + gather * 0.06;
+  const applyBlob = (id, state) => {
+    const cluster = CLUSTER_OFFSETS[id];
+    const shape = CLUSTER_SHAPE[id];
+    const focusX = FOCUS.x + cluster.x;
+    const focusY = FOCUS.y + cluster.y;
+    const gatherMix = gather * 0.36 + clusterProgress * 0.5;
+    const cx = mix(state.centerX, focusX, gatherMix);
+    const cy = mix(state.centerY, focusY, gather * 0.3 + clusterProgress * 0.54);
+    const gatherScale = 1 + gather * 0.04;
     const impactScale = 1 + impactGain * 0.18;
     const radialX = (state.centerX - FOCUS.x) * impactGain * 0.22;
     const radialY = (state.centerY - FOCUS.y) * impactGain * 0.16;
+    const shapeMix = impactGain * 0.24 + shapeProgress * 0.34;
+    const stretchX = mix(state.stretchX, shape.stretchX, shapeMix);
+    const stretchY = mix(state.stretchY, shape.stretchY, shapeMix);
+    const rotation = mix(state.rotation ?? 0, shape.rotation, shapeProgress * 0.45);
     return {
       centerX: cx + radialX,
       centerY: cy + radialY,
       scale: state.scale * gatherScale * impactScale,
       opacity: state.opacity,
-      stretchX: mix(state.stretchX, state.stretchX * 1.08, impactGain * 0.35 + gather * 0.08),
-      stretchY: mix(state.stretchY, state.stretchY * 0.94, impactGain * 0.28 + gather * 0.06),
-      rotation: state.rotation ?? 0,
+      stretchX,
+      stretchY,
+      rotation,
       flow: 0,
     };
   };
 
   return {
-    a: applyBlob(states.a),
-    b: applyBlob(states.b),
-    c: applyBlob(states.c),
+    a: applyBlob('a', states.a),
+    b: applyBlob('b', states.b),
+    c: applyBlob('c', states.c),
     flowB: 0,
   };
 }

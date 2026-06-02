@@ -2,7 +2,7 @@
  * Green field (a) breathing — restrained sine pulse layered on semantic + scroll scale.
  *
  * finalGreenScale = semanticScale * scrollScale * breathingScale
- * breathingScale = 1 + sin(time * speed + phase) * amplitude  (clamped vs blue)
+ * breathingScale = 1 + sin(time * speed + phase) * amplitude
  */
 
 import { estimateFieldLinear } from '../data/fieldSizeHierarchy.js';
@@ -47,9 +47,16 @@ export function computeGreenBreathing(t, section, reducedMotion = false, opts = 
   if (section === 'capabilities' && opts.scrollDrive != null) {
     amplitude *= 1 - Math.min(1, Math.max(0, opts.scrollDrive)) * 0.4;
   }
-  const wave = Math.sin(t * cfg.speed + cfg.phase);
-  const opacityWave = Math.sin(t * cfg.speed * 0.78 + cfg.phase + 1.2);
-  const driftPhase = t * cfg.speed * 0.62 + cfg.phase * 0.5;
+  const speedWarp =
+    section === 'opening'
+      ? 1 +
+        Math.sin(t * 0.071 + cfg.phase * 0.9) * 0.06 +
+        Math.sin(t * 0.113 + cfg.phase * 1.7) * 0.03
+      : 1;
+  const localSpeed = cfg.speed * speedWarp;
+  const wave = Math.sin(t * localSpeed + cfg.phase);
+  const opacityWave = Math.sin(t * localSpeed * 0.78 + cfg.phase + 1.2);
+  const driftPhase = t * localSpeed * 0.62 + cfg.phase * 0.5;
   return {
     scale: 1 + wave * amplitude,
     opacityDelta: opacityWave * cfg.opacityAmp,
@@ -73,6 +80,10 @@ export function clampGreenBreathingScale(
   ambKey = 'warm',
   stretches = {},
 ) {
+  if (ambKey === 'signal') {
+    // Capabilities: do not enforce blue/green ratio clamp.
+    return Math.max(0.88, Math.min(1.2, breathingScale));
+  }
   const radiiKey = ambKey === 'signal' ? 'signal' : 'warm';
   const gBase = estimateFieldLinear(
     'a',

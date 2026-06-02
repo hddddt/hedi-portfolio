@@ -30,12 +30,12 @@ export const GUIDE_DECISION_AREAS = {
 
 export const GUIDE_ENTRY = {
   label: '05 · PORTFOLIO GUIDE',
-  title: 'Start from what you want to understand.',
+  title: 'Find your way in.',
   subtitle:
-    'A faster way into the beliefs, work, method, and expanded design boundary behind the portfolio.',
-  freeInputLabel: 'YOUR OWN QUESTION',
-  freeInputHelper: 'Ask about her work, thinking, AI direction, or background.',
-  freeInputPlaceholder: 'What would you like to know?',
+    'Ask about the thinking, work, and expanded role behind this portfolio.',
+  freeInputLabel: 'ASK YOUR OWN QUESTION',
+  freeInputHelper: 'work · method · AI direction · role boundary',
+  freeInputPlaceholder: 'Type your question...',
 };
 
 export const GUIDE_SYSTEM = {
@@ -52,17 +52,14 @@ export const GUIDE_SYSTEM = {
 
 export const GUIDE_RESULT_SECTIONS = {
   youAsked: 'You asked',
-  read: 'Read',
-  understand: 'Understand',
-  go: 'Go',
-  guide: 'Guide',
-  evidence: 'Go',
-  goToWork: 'Go',
+  takeaway: 'Takeaway',
+  shortMeaning: 'Short meaning',
+  focus: 'Focus',
+  relatedPaths: 'Related paths',
   askFromAngle: 'Ask from your angle',
-  askFromAngleHelper: 'Belief · work · method · expanded boundary',
+  askFromAngleHelper: 'belief · work · method · boundary',
   followUp: 'Follow-up',
   whereToLook: 'Where to look',
-  sources: 'Sources',
 };
 
 /** Maps flow id → decision area (including legacy follow-up flows). */

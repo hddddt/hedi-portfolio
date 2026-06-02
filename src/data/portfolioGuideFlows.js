@@ -27,6 +27,7 @@ import {
  * @property {string} [understand]
  * @property {string} guideTitle
  * @property {string} [guideSubline]
+ * @property {string} [focus]
  * @property {GuideKeyPoint[]} keyPoints
  * @property {GuideKeyPoint[]} [framingBlocks]
  * @property {GuideProblemBlock[]} [problemBlocks]
@@ -36,12 +37,36 @@ import {
  * @property {{ id: string, citation: string }[]} [sources]
  */
 
-/** @type {{ id: string, num: string, flowId: string }[]} */
+/** @type {{ id: string, num: string, flowId: string, title: string, descriptor: string }[]} */
 export const GUIDE_ENTRY_QUESTIONS = [
-  { id: 'entry-01', num: '01', flowId: 'aiBeliefDesign' },
-  { id: 'entry-02', num: '02', flowId: 'aiProblemDomain' },
-  { id: 'entry-03', num: '03', flowId: 'ambiguityToStructure' },
-  { id: 'entry-04', num: '04', flowId: 'designerTrajectory' },
+  {
+    id: 'entry-01',
+    num: '01',
+    flowId: 'aiBeliefDesign',
+    title: 'Belief',
+    descriptor: 'AI, design, and responsibility',
+  },
+  {
+    id: 'entry-02',
+    num: '02',
+    flowId: 'aiProblemDomain',
+    title: 'Work',
+    descriptor: 'Turning AI capability into usable systems',
+  },
+  {
+    id: 'entry-03',
+    num: '03',
+    flowId: 'ambiguityToStructure',
+    title: 'Method',
+    descriptor: 'From ambiguity to structure',
+  },
+  {
+    id: 'entry-04',
+    num: '04',
+    flowId: 'designerTrajectory',
+    title: 'Expanded Role',
+    descriptor: 'Where design moves in AI systems',
+  },
 ];
 
 export const GUIDE_CUSTOM_INPUT_PLACEHOLDER = GUIDE_ENTRY.freeInputPlaceholder;
@@ -57,23 +82,24 @@ export const GUIDE_FLOWS = {
     decisionArea: 'beliefStance',
     question: 'What does she believe about AI and design?',
     read: 'AI expands what systems can do.\nDesign defines where people still belong.',
-    understand:
-      'AI can generate, summarize, recommend, and act.\n\nBut people still need to understand it, question it, interrupt it, and take responsibility around it.\n\nHer work sits at that relationship:\njudgment · handoff · control · traceability · completion',
+    understand: 'Judgment.\nControl.\nResponsibility.\nCompletion.',
+    focus: 'judgment · handoff · control · traceability · completion',
     guideTitle: 'AI expands what systems can do.',
     guideSubline: 'Design defines where people still belong.',
     keyPoints: [],
+    evidenceLabel: 'RELATED PATHS',
     evidence: [
       {
         step: '01',
         label: 'Point of View',
-        description: 'Why AI systems still need human judgment and responsibility.',
+        description: 'The position behind the portfolio.',
         action: { type: 'section', id: 'home-approach' },
       },
       {
         step: '02',
-        label: 'Capabilities',
-        description: 'How this belief becomes operating design layers.',
-        action: { type: 'section', id: 'home-capabilities' },
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Human control inside automation.',
+        action: { type: 'case', id: 'case03' },
       },
     ],
     followUps: [
@@ -89,41 +115,33 @@ export const GUIDE_FLOWS = {
   aiProblemDomain: {
     id: 'aiProblemDomain',
     decisionArea: 'problemDomain',
-    question: 'What AI problems does she actually work on?',
-    read: 'She works beyond AI capability.',
+    question: 'What AI work does she actually do?',
+    read: 'She designs how AI capability becomes usable work.',
     understand:
-      'The question is not only whether AI can answer, analyze, recommend, or act.\n\nThe harder problems appear after capability enters real work:\nwhat happens next,\nwho reviews the result,\nwhere humans stay in control,\nhow tools and agents coordinate,\nand how work actually gets completed.',
-    guideTitle: 'She works beyond AI capability.',
+      'From output to workflow.\nFrom automation to control.\nFrom possibility to operating structure.',
+    focus: 'workflow · decision · handoff · control · completion',
+    guideTitle: 'She designs how AI capability becomes usable work.',
     guideSubline: '',
     keyPoints: [],
+    evidenceLabel: 'RELATED PATHS',
     evidence: [
       {
         step: '01',
         label: 'Case 01 · Conversational AI',
-        description:
-          'AI can respond — but work still needs routing, recovery, continuation, and handoff.',
+        description: 'AI responses → workflow continuation.',
         action: { type: 'case', id: 'case01' },
       },
       {
         step: '02',
         label: 'Case 02 · Contract Intelligence',
-        description:
-          'AI can analyze — but judgment still needs review states, sources, and auditability.',
+        description: 'AI analysis → traceable review decisions.',
         action: { type: 'case', id: 'case02' },
       },
       {
         step: '03',
         label: 'Case 03 · Supply Chain Agents',
-        description:
-          'AI can automate — but control boundaries and human intervention still need design.',
+        description: 'Automation → human-in-the-loop control.',
         action: { type: 'case', id: 'case03' },
-      },
-      {
-        step: '04',
-        label: 'Case 04 · AI Companion',
-        description:
-          'AI can interact — but continuity beyond isolated sessions still needs structure.',
-        action: { type: 'case', id: 'case04' },
       },
     ],
     followUps: [
@@ -140,31 +158,26 @@ export const GUIDE_FLOWS = {
     id: 'ambiguityToStructure',
     decisionArea: 'methodLogic',
     question: 'How does she move from ambiguity to structure?',
-    read: 'She starts where the AI brief is still vague.',
+    read: 'She starts before the interface.',
     understand:
-      'Before moving into screens, she looks for what the work is missing:\n\nownership,\nhandoff,\nreview logic,\ncontrol boundaries,\nworkflow continuation,\nor decision structure.\n\nThen she turns that ambiguity into flows, states, handoff logic, decision models, escalation paths, or interaction structures.',
-    guideTitle: 'She starts where the AI brief is still vague.',
+      'What is the task?\nWhere is the handoff?\nWhen should AI stop?\nWho owns the decision?',
+    focus: 'framing · workflow · states · escalation · rules',
+    guideTitle: 'She starts before the interface.',
     guideSubline: '',
     keyPoints: [],
+    evidenceLabel: 'RELATED PATHS',
     evidence: [
       {
         step: '01',
-        label: 'Capabilities',
-        description: 'AI problem framing · workflow design · traceability · control.',
-        action: { type: 'section', id: 'home-capabilities' },
-      },
-      {
-        step: '02',
-        label: 'Method lens · Conversational AI',
-        description:
-          'Three conversational AI projects abstracted into routing, recovery, continuation, and handoff.',
+        label: 'Case 01 · Conversational AI',
+        description: 'Support ambiguity → routing and recovery logic.',
         action: { type: 'case', id: 'case01' },
       },
       {
-        step: '03',
-        label: 'Method lens · Supply Chain Agents',
-        description: 'A control model for agentic workflows.',
-        action: { type: 'case', id: 'case03' },
+        step: '02',
+        label: 'Case 02 · Contract Intelligence',
+        description: 'Review ambiguity → decision states and ownership.',
+        action: { type: 'case', id: 'case02' },
       },
     ],
     followUps: [
@@ -177,32 +190,33 @@ export const GUIDE_FLOWS = {
   designerTrajectory: {
     id: 'designerTrajectory',
     decisionArea: 'trajectory',
-    question: 'How is her designer boundary expanding in the AI era?',
-    read:
-      'AI expands the designer\u2019s boundary beyond interface.\n\nHer work moves into systems, workflows, and buildable logic.',
+    question: 'How is the design role expanding in AI systems?',
+    read: 'Design moves from shaping interfaces to shaping operating conditions.',
     understand:
-      'In AI work, design no longer stops at screens.\n\nThe boundary expands into:\nhow systems behave,\nhow workflows continue,\nhow humans and AI share control,\nand how ideas become buildable.\n\nHer background across software, industrial design, HMI, and enterprise systems gives her a wider surface to work from.',
-    guideTitle: 'AI expands the designer\u2019s boundary beyond interface.',
-    guideSubline: 'Systems, workflows, and buildable logic.',
+      'Where AI acts.\nWhere people decide.\nHow work continues.\nHow responsibility stays visible.',
+    focus: 'AI workflow · human-in-the-loop · governance by design · operational UX',
+    guideTitle: 'Design moves from shaping interfaces to shaping operating conditions.',
+    guideSubline: '',
     keyPoints: [],
+    evidenceLabel: 'RELATED PATHS',
     evidence: [
       {
         step: '01',
-        label: 'Capabilities',
-        description: 'Expanded skills across framing, workflow, traceability, and control.',
-        action: { type: 'section', id: 'home-capabilities' },
+        label: 'Case 03 · Supply Chain Agents',
+        description: 'Automation → human-in-the-loop control.',
+        action: { type: 'case', id: 'case03' },
       },
       {
         step: '02',
-        label: 'Me',
-        description: 'The background behind this wider design role.',
-        action: { type: 'section', id: 'home-life-archive' },
+        label: 'Case 02 · Contract Intelligence',
+        description: 'AI decisions → traceability and accountability.',
+        action: { type: 'case', id: 'case02' },
       },
       {
         step: '03',
-        label: 'Point of View',
-        description: 'Her view on design judgment in AI systems.',
-        action: { type: 'section', id: 'home-approach' },
+        label: 'Case 01 · Conversational AI',
+        description: 'Responses → handoff and continuation.',
+        action: { type: 'case', id: 'case01' },
       },
     ],
     followUps: [
@@ -869,7 +883,7 @@ export function getFlowPresentation(flow) {
     framingBlocks,
     problemBlocks,
     keyPoints: hasAlternateLayout || hasReadUnderstand ? [] : flow.keyPoints.slice(0, 3),
-    evidenceLabel: flow.evidenceLabel ?? GUIDE_RESULT_SECTIONS.go,
+    evidenceLabel: flow.evidenceLabel ?? GUIDE_RESULT_SECTIONS.relatedPaths,
     whereToLook: flow.evidence.slice(0, 6),
   };
 }

@@ -30,6 +30,8 @@ const TEASER_DISMISSED_KEY = 'guideTeaserDismissed';
 const TEASER_OPENED_KEY = 'guideTeaserOpened';
 const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
 const LANDING_TEASER_DELAY_MS = 1400;
+const LANDING_MICRO_ANIM_MS = 520;
+const TEASER_AUTO_FADE_MS = 460;
 const ENTRANCE_ANIM_MS = 1650;
 const ORB_MOOD_CLICK_MS = 1400;
 
@@ -85,20 +87,6 @@ function GuideFollowUpAnswer({ answer, onEvidencePointerEnter, onEvidencePointer
   );
 }
 
-function scrollToId(id) {
-  const el = document.getElementById(id);
-  if (!el) return false;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  return true;
-}
-
-function openPovSourcesFromGuide() {
-  scrollToId('point-of-view');
-  window.setTimeout(() => {
-    window.dispatchEvent(new CustomEvent('portfolio-guide-open-sources'));
-  }, 480);
-}
-
 const GUIDE_TRIGGER_MODE =
   typeof import.meta.env.VITE_GUIDE_TRIGGER_MODE === 'string'
     ? import.meta.env.VITE_GUIDE_TRIGGER_MODE.toLowerCase()
@@ -123,6 +111,8 @@ export function PortfolioGuide() {
   const panelRef = useRef(null);
   const panelBodyRef = useRef(null);
   const teaserTimerRef = useRef(null);
+  const landingMicroTimerRef = useRef(null);
+  const teaserFadeTimerRef = useRef(null);
   const entrancePlayedRef = useRef(false);
 
   const [scrollVisible, setScrollVisible] = useState(false);
@@ -131,6 +121,7 @@ export function PortfolioGuide() {
   const [closing, setClosing] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [teaserVisible, setTeaserVisible] = useState(false);
+  const [teaserAutoFade, setTeaserAutoFade] = useState(false);
   const [teaserDismissed, setTeaserDismissed] = useState(false);
   const [teaserOpened, setTeaserOpened] = useState(false);
   const [view, setView] = useState('questions');
@@ -143,6 +134,7 @@ export function PortfolioGuide() {
   const [orbSignalTick, setOrbSignalTick] = useState(0);
   const [orbMood, setOrbMood] = useState('neutral');
   const [entranceAnimate, setEntranceAnimate] = useState(false);
+  const [landingMicroAnimate, setLandingMicroAnimate] = useState(false);
   const orbMoodTimerRef = useRef(0);
   const previewTargetIdRef = useRef(null);
 
@@ -385,6 +377,8 @@ export function PortfolioGuide() {
   useEffect(
     () => () => {
       window.clearTimeout(orbMoodTimerRef.current);
+      window.clearTimeout(landingMicroTimerRef.current);
+      window.clearTimeout(teaserFadeTimerRef.current);
     },
     [],
   );
@@ -410,18 +404,48 @@ export function PortfolioGuide() {
   }, []);
 
   useEffect(() => {
-    if (teaserDismissed || teaserOpened || !isLanding || isFullMode) {
+    if (teaserDismissed || teaserOpened || isFullMode) {
       setTeaserVisible(false);
+      setTeaserAutoFade(false);
+      setLandingMicroAnimate(false);
       if (teaserTimerRef.current) window.clearTimeout(teaserTimerRef.current);
+      if (landingMicroTimerRef.current) window.clearTimeout(landingMicroTimerRef.current);
+      if (teaserFadeTimerRef.current) window.clearTimeout(teaserFadeTimerRef.current);
       return;
     }
+
+    if (!isLanding) {
+      if (teaserTimerRef.current) window.clearTimeout(teaserTimerRef.current);
+      if (landingMicroTimerRef.current) window.clearTimeout(landingMicroTimerRef.current);
+      if (teaserVisible && !teaserAutoFade) {
+        setTeaserAutoFade(true);
+        teaserFadeTimerRef.current = window.setTimeout(() => {
+          setTeaserVisible(false);
+          setTeaserAutoFade(false);
+        }, TEASER_AUTO_FADE_MS);
+      } else if (!teaserVisible) {
+        setTeaserAutoFade(false);
+      }
+      return;
+    }
+
+    if (teaserFadeTimerRef.current) window.clearTimeout(teaserFadeTimerRef.current);
+    setTeaserAutoFade(false);
+    setLandingMicroAnimate(true);
+    landingMicroTimerRef.current = window.setTimeout(() => {
+      setLandingMicroAnimate(false);
+    }, LANDING_MICRO_ANIM_MS);
+
     teaserTimerRef.current = window.setTimeout(() => {
       setTeaserVisible(true);
-    }, LANDING_TEASER_DELAY_MS);
+    }, LANDING_MICRO_ANIM_MS + Math.max(200, LANDING_TEASER_DELAY_MS - 700));
+
     return () => {
       if (teaserTimerRef.current) window.clearTimeout(teaserTimerRef.current);
+      if (landingMicroTimerRef.current) window.clearTimeout(landingMicroTimerRef.current);
+      if (teaserFadeTimerRef.current) window.clearTimeout(teaserFadeTimerRef.current);
     };
-  }, [isLanding, teaserDismissed, teaserOpened, isFullMode]);
+  }, [isLanding, teaserDismissed, teaserOpened, teaserVisible, teaserAutoFade, isFullMode]);
 
   const shouldShowRoot = scrollVisible || teaserVisible || isLanding || open;
   const greetingActive = isLanding && !open && (entranceAnimate || teaserVisible) && teaserInViewportZone;
@@ -471,7 +495,11 @@ export function PortfolioGuide() {
       {open && !isFullMode ? <div className="portfolio-guide__backdrop" onClick={closePanel} aria-hidden="true" /> : null}
 
       {teaserVisible && teaserInViewportZone && !open && !isFullMode ? (
-        <div className="portfolio-guide__teaser" role="status" aria-live="polite">
+        <div
+          className={`portfolio-guide__teaser${teaserAutoFade ? ' is-auto-fade' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           <button
             type="button"
             className="portfolio-guide__teaser-close"
@@ -527,7 +555,10 @@ export function PortfolioGuide() {
                   <li key={item.id} className="portfolio-guide__card-item">
                     <button type="button" className="portfolio-guide__card" onClick={() => handleEntryQuestion(item)}>
                       <span className="portfolio-guide__card-kicker">{item.num}</span>
-                      <span className="portfolio-guide__card-title">{getGuideQuestionForEntry(item.flowId)}</span>
+                      <span className="portfolio-guide__card-copy">
+                        <span className="portfolio-guide__card-title">{item.title}</span>
+                        <span className="portfolio-guide__card-desc">{item.descriptor}</span>
+                      </span>
                       <span className="portfolio-guide__card-arrow" aria-hidden="true">
                         →
                       </span>
@@ -551,10 +582,10 @@ export function PortfolioGuide() {
                 className="portfolio-guide__result"
                 aria-label="Guide evaluation"
               >
-                <div className="portfolio-guide__result-context">
+                <div className="portfolio-guide__result-nav">
                   <button
                     type="button"
-                    className="portfolio-guide__back"
+                    className="portfolio-guide__back portfolio-guide__back--nav"
                     onClick={() => {
                       setView('questions');
                       setResultFlowId(null);
@@ -564,37 +595,37 @@ export function PortfolioGuide() {
                   >
                     ← Back
                   </button>
+                </div>
+                <div className="portfolio-guide__result-context">
                   <p className="portfolio-guide__result-label">{GUIDE_RESULT_SECTIONS.youAsked}</p>
                   <p className="portfolio-guide__result-question">{resultFlow?.question}</p>
                 </div>
 
                 <div className="portfolio-guide__result-card">
-                  {resultPresentation?.hasReadUnderstand ? (
-                    <>
-                      <p className="portfolio-guide__layer-label">{GUIDE_RESULT_SECTIONS.read}</p>
-                      <div className="portfolio-guide__read">
-                        {resultPresentation.readParagraphs.map((para) => (
-                          <p key={para.slice(0, 48)}>{para}</p>
-                        ))}
-                      </div>
-                      <p className="portfolio-guide__layer-label portfolio-guide__layer-label--understand">
-                        {GUIDE_RESULT_SECTIONS.understand}
+                  <p className="portfolio-guide__result-answer-label">{GUIDE_RESULT_SECTIONS.takeaway}</p>
+                  <div className="portfolio-guide__read">
+                    {(resultPresentation?.readParagraphs?.length
+                      ? resultPresentation.readParagraphs
+                      : [resultFlow?.guideTitle].filter(Boolean)
+                    ).map((line) => (
+                      <p key={line.slice(0, 48)}>{line}</p>
+                    ))}
+                  </div>
+                  {resultPresentation?.understandParagraphs?.length ? (
+                    <div className="portfolio-guide__understand">
+                      {resultPresentation.understandParagraphs.map((line) => (
+                        <p key={line.slice(0, 48)}>{line}</p>
+                      ))}
+                    </div>
+                  ) : null}
+                  {resultFlow?.focus ? (
+                    <div className="portfolio-guide__focus">
+                      <p className="portfolio-guide__layer-label portfolio-guide__layer-label--focus">
+                        {GUIDE_RESULT_SECTIONS.focus}
                       </p>
-                      <div className="portfolio-guide__understand">
-                        {resultPresentation.understandParagraphs.map((para) => (
-                          <p key={para.slice(0, 48)}>{para}</p>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="portfolio-guide__result-answer-label">{GUIDE_RESULT_SECTIONS.guide}</p>
-                      <p className="portfolio-guide__result-claim">{resultFlow?.guideTitle}</p>
-                      {resultFlow?.guideSubline ? (
-                        <p className="portfolio-guide__result-support">{resultFlow.guideSubline}</p>
-                      ) : null}
-                    </>
-                  )}
+                      <p className="portfolio-guide__focus-line">{resultFlow.focus}</p>
+                    </div>
+                  ) : null}
 
                   {resultPresentation?.framingBlocks?.length ? (
                     <div className="portfolio-guide__framing" aria-label="Work map">
@@ -644,7 +675,7 @@ export function PortfolioGuide() {
                   >
                     <p className="portfolio-guide__path-module-head">
                       <span className="portfolio-guide__path-module-title">
-                        {resultPresentation?.evidenceLabel ?? GUIDE_RESULT_SECTIONS.evidence}
+                        {resultPresentation?.evidenceLabel ?? GUIDE_RESULT_SECTIONS.relatedPaths}
                       </span>
                     </p>
                     <ol className="portfolio-guide__path-track">
@@ -680,13 +711,6 @@ export function PortfolioGuide() {
                     onEvidenceClick={handleEvidenceClick}
                   />
                 ) : null}
-
-                <div className="portfolio-guide__sources portfolio-guide__sources--compact">
-                  <button type="button" className="portfolio-guide__sources-btn" onClick={openPovSourcesFromGuide}>
-                    {GUIDE_RESULT_SECTIONS.sources}
-                    {resultFlow?.sources?.length ? ` · ${resultFlow.sources.length}` : ''} →
-                  </button>
-                </div>
               </section>
             ) : null}
 
@@ -758,7 +782,7 @@ export function PortfolioGuide() {
           <button
             ref={triggerRef}
             type="button"
-            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}`}
+            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}${landingMicroAnimate ? ' is-landing-micro' : ''}`}
             aria-label="Open portfolio guide"
             aria-expanded={open}
             onClick={togglePanel}

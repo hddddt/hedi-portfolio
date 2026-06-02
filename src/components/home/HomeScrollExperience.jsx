@@ -93,7 +93,6 @@ function HomeScrollInner() {
         chapterLabel="Point of View"
         ambientKey="depth"
         ariaLabel="Point of View"
-        hideRibbon
       >
         <ApproachSection />
       </NarrativeChapter>

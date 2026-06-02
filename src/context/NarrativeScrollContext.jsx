@@ -74,8 +74,8 @@ export function NarrativeScrollProvider({ chapters, children }) {
       if (r.bottom < 48 || r.top > vh - 24) continue;
       let d;
       if (ch.id === 'home-capabilities' || ch.id === 'home-work-narrative') {
-        /* Tall sticky tracks — pin line; only ignore when scrolled past */
-        if (r.top < -vh * 0.12) continue;
+        /* Tall sticky tracks — Capabilities must stay addressable while scrolling back up. */
+        if (ch.id === 'home-work-narrative' && r.top < -vh * 0.12) continue;
         d = Math.abs(r.top) + Math.max(0, r.top) * 0.4;
       } else {
         const mid = (r.top + r.bottom) / 2;

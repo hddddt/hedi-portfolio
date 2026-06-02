@@ -51,14 +51,14 @@ export const FIELD_SIGNAL_RADII_MULT = {
 
 /** Capabilities / signal layout motion scales (before orb × ambient scaleMult) */
 export const SIGNAL_LAYOUT_SCALE = {
-  green: 1.1,
+  green: 1.44,
   blue: 0.98,
   amber: 0.92,
 };
 
 /** Capabilities orb scene multipliers */
 export const CAPABILITIES_ORB_SCALE = {
-  green: 1.0,
+  green: 1.16,
   blue: 1.0,
   amber: 0.88,
 };

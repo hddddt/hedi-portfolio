@@ -28,9 +28,9 @@ const REST = {
 };
 
 const SIGNAL_ARC_GREEN = [
-  { x: 0.19, y: 0.2 },
-  { x: 0.13, y: 0.38 },
-  { x: 0.09, y: 0.56 },
+  { x: 0.145, y: 0.285 },
+  { x: 0.108, y: 0.45 },
+  { x: 0.086, y: 0.605 },
   { x: 0.15, y: 0.74 },
 ];
 
@@ -254,9 +254,18 @@ function aperiodicFieldOffset(t, seed, amp = 1) {
   return { x, y, rot, scale };
 }
 
+/**
+ * Landing-only micro time warp — slow, smooth, non-repeating.
+ * Adds slight per-field rate mismatch for organic randomness.
+ */
+function landingRateWarp(t, seed, amp = 0.08) {
+  const drift = aperiodicChannel(t * 0.12 + seed * 1.7, seed + 3.4, amp);
+  return 1 + drift;
+}
+
 /** Green — slow anchor drift only; scale pulse lives in greenFieldBreathing.js */
 function landingGreenBreathMotion(t) {
-  const rate = LANDING_MOTION_RATE.a;
+  const rate = LANDING_MOTION_RATE.a * landingRateWarp(t, 1.3, 0.085);
   const gain = LANDING_MOTION_GAIN;
   const off = aperiodicFieldOffset(t * 0.52 * rate, 1.7, 0.42);
   const off2 = aperiodicFieldOffset(t * 0.38 * rate + 3.2, 5.4, 0.34);
@@ -273,7 +282,7 @@ function landingGreenBreathMotion(t) {
 
 /** Blue — gentle float, readable drift near green */
 function landingBlueFloatMotion(t) {
-  const rate = LANDING_MOTION_RATE.b;
+  const rate = LANDING_MOTION_RATE.b * landingRateWarp(t, 2.9, 0.095);
   const gain = LANDING_MOTION_GAIN;
   const greenRest = WARM_REST.a;
   const base = WARM_REST.b;
@@ -310,7 +319,7 @@ function landingClusterCentroid() {
 
 /** Amber — orbits green / blue; faster than others but smooth, not jumpy */
 function landingAmberWanderMotion(t) {
-  const rate = LANDING_MOTION_RATE.c;
+  const rate = LANDING_MOTION_RATE.c * landingRateWarp(t, 4.7, 0.11);
   const gain = LANDING_MOTION_GAIN;
   const base = WARM_REST.c;
   const centroid = landingClusterCentroid();
@@ -434,8 +443,8 @@ export function signalGreenScrollAttenuation(progress) {
   const breath = scrollBreathScalePulse(raw);
   return {
     scaleMult: (0.96 + (0.80 - 0.96) * t) * breath,
-    dx: -0.038 - 0.042 * t,
-    dy: -0.032 - 0.018 * t,
+    dx: -0.03 - 0.038 * t,
+    dy: -0.02 - 0.018 * t,
   };
 }
 
