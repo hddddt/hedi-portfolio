@@ -7,11 +7,7 @@
  * HERO_OPENING_PALETTE below is reference / docs only.
  */
 
-import {
-  OPENING_LINEAR_SCALE,
-  OPENING_SCROLL_SCALE,
-  openingOrbRole,
-} from './fieldSizeHierarchy.js';
+import { OPENING_LINEAR_SCALE, OPENING_SCROLL_SCALE } from './fieldSizeHierarchy.js';
 
 /**
  * Reference RGBA (docs / CSS). Landing WebGL colors: organicFieldGl.js mesh*Hero.
@@ -26,19 +22,19 @@ export const HERO_OPENING_PALETTE = {
 /** Opening green blob — 25° counterclockwise (shader applies -rotation) */
 export const HERO_GREEN_ROTATION = -(25 * Math.PI) / 180;
 
-/** Landing orb weights — scale from fieldSizeHierarchy (blue = 1.0) */
+/** Landing — balanced low-opacity spectrum (all supporting = slow ambient drift) */
 export const HERO_LANDING_ORBS = {
-  green: openingOrbRole('green', 'dominant'),
-  blue: openingOrbRole('blue', 'supporting'),
-  yellow: openingOrbRole('amber', 'latent'),
+  green: { tier: 'supporting', opacity: 0.56, scale: OPENING_LINEAR_SCALE.green, stretchX: 1.02, stretchY: 0.98 },
+  blue: { tier: 'supporting', opacity: 0.52, scale: OPENING_LINEAR_SCALE.blue, stretchX: 1.06, stretchY: 0.84 },
+  yellow: { tier: 'supporting', opacity: 0.48, scale: OPENING_LINEAR_SCALE.amber, stretchX: 1, stretchY: 1.02 },
 };
 
 /** Rest positions + layout multipliers for warm / landing motion */
 export const HERO_LANDING_FIELD = {
   rest: {
-    a: { x: 0.37, y: 0.48 },
-    b: { x: 0.71, y: 0.39 },
-    c: { x: 0.58, y: 0.31 },
+    a: { x: 0.28, y: 0.54 },
+    b: { x: 0.76, y: 0.68 },
+    c: { x: 0.54, y: 0.76 },
   },
   layout: {
     a: {
@@ -74,8 +70,8 @@ export const HERO_LANDING_FIELD = {
 /** Scroll narrative blob anchors at hero intro */
 export const HERO_BLOB_INTRO = {
   a: {
-    centerX: 0.38,
-    centerY: 0.49,
+    centerX: 0.28,
+    centerY: 0.54,
     scale: OPENING_SCROLL_SCALE.intro.green,
     opacity: 0.92,
     stretchX: 1.06,
@@ -83,27 +79,27 @@ export const HERO_BLOB_INTRO = {
     rotation: HERO_GREEN_ROTATION,
   },
   b: {
-    centerX: 0.7,
-    centerY: 0.4,
+    centerX: 0.76,
+    centerY: 0.7,
     scale: OPENING_SCROLL_SCALE.intro.blue,
-    opacity: 0.78,
+    opacity: 0.84,
     stretchX: 1.06,
     stretchY: 0.84,
     rotation: -0.32,
   },
   c: {
-    centerX: 0.6,
-    centerY: 0.24,
+    centerX: 0.52,
+    centerY: 0.8,
     scale: OPENING_SCROLL_SCALE.intro.amber,
-    opacity: 0.58,
+    opacity: 0.64,
     stretchX: 1,
     stretchY: 1.02,
   },
 };
 
 export const HERO_WARM_AMBIENT = {
-  opacityMult: 1,
-  scaleMult: 1.03,
+  opacityMult: 1.04,
+  scaleMult: 1.06,
   extraC: 1.02,
 };
 

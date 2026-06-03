@@ -24,15 +24,15 @@ export function LifeArchiveGrid({ activeFilter, onFilterChange }) {
   const isFullArchive = photos.length === lifePhotoMetadata.length;
 
   return (
-    <div className="life-archive-grid">
-      <p className="life-archive-grid__stream-label" aria-live="polite">
+    <div className="life-archive-grid motion-reveal-group">
+      <p className="life-archive-grid__stream-label motion-reveal-child" aria-live="polite">
         {isFullArchive
           ? `Signal stream · ${photos.length} indexed · life_01–life_50`
           : `${photos.length} signals · filtered · chronological order preserved`}
       </p>
 
       <div
-        className="life-archive-grid__filters life-archive-grid__filters--secondary"
+        className="life-archive-grid__filters life-archive-grid__filters--secondary motion-reveal-child"
         role="toolbar"
         aria-label="Optional cluster filter"
       >
@@ -55,7 +55,7 @@ export function LifeArchiveGrid({ activeFilter, onFilterChange }) {
       </div>
 
       <div
-        className={`life-archive-grid__masonry${isFullArchive ? ' life-archive-grid__masonry--full' : ''}`}
+        className={`life-archive-grid__masonry motion-reveal-child${isFullArchive ? ' life-archive-grid__masonry--full' : ''}`}
         key={activeFilter}
       >
         {photos.map((photo, index) => (

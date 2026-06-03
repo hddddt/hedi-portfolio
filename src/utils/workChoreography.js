@@ -4,39 +4,56 @@ import {
   lerp,
 } from './scrollStateMachine.js';
 import {
-  SCROLL_LOCK_RADIUS,
+  easeInOutCubic,
   TRACK_PANEL_VH,
   TRACK_RELEASE_VH,
 } from './scrollTrack.js';
 
 export { getVisualFloatIndex };
 
-const INDEX_LOCK_EPSILON = SCROLL_LOCK_RADIUS;
+const INDEX_LOCK_EPSILON = 0.14;
 
 /** Scroll budget after pin before case index advances — triptych settles on case 1 first. */
-export const WORK_TRACK_LEAD_IN_VH = 55;
+export const WORK_TRACK_LEAD_IN_VH = 20;
+
+/** Tail scroll after last case — keep small so exit is deliberate, not inertial drift. */
+export const WORK_TRACK_RELEASE_VH = 64;
 
 /** Vertical spacing on the center spine — sync with `--work-step-vh` in CSS. */
-export const WORK_VISUAL_STEP_VH = 40;
+export const WORK_VISUAL_STEP_VH = 32;
 
 /** Deck motion — active card lift at rest (px / scale / depth). */
 export const WORK_DECK = {
   liftPx: 10,
-  liftScale: 0.012,
+  liftScale: 0.02,
   liftZPx: 12,
-  adjacentTiltDeg: 1.2,
-  adjacentScale: 0.94,
+  activeScaleBoost: 0.028,
+  adjacentTiltDeg: 0.9,
+  adjacentScale: 0.82,
+  previewOpacity: 0.2,
+  previewBlur: 1.2,
 };
 
 /** How many case cards peek above/below the center spine. */
-export const WORK_CANVAS_BAND = 1.15;
+export const WORK_CANVAS_BAND = 1.05;
 
+/** Unified scroll phases — sequential chapter entry into first case evidence. */
+export const WORK_SCROLL = {
+  approachEnd: 0.06,
+  pinEnd: 0.16,
+  readEnd: 0.54,
+};
+
+/** @deprecated Alias — prefer WORK_SCROLL */
 export const WORK_PHASE = {
-  holdEnd: 0.24,
-  exitEnd: 0.4,
-  enterStart: 0.48,
-  enterEnd: 0.74,
-  stageSwitchAt: 0.5,
+  approachEnd: WORK_SCROLL.approachEnd,
+  pinEnd: WORK_SCROLL.pinEnd,
+  readEnd: WORK_SCROLL.readEnd,
+  holdEnd: WORK_SCROLL.approachEnd,
+  exitEnd: 0.48,
+  enterStart: WORK_SCROLL.pinEnd,
+  enterEnd: WORK_SCROLL.readEnd,
+  stageSwitchAt: WORK_SCROLL.pinEnd,
 };
 
 export function workPanelDistance(rawFloatIndex, panelIndex) {
@@ -51,9 +68,27 @@ function workTrackMetricsFromRect(rect) {
   return { vh, total, leadIn, caseTravel };
 }
 
-export function workTrackHeightVh(panelCount, extraReleaseVh = TRACK_RELEASE_VH) {
+export function workTrackHeightVh(panelCount, extraReleaseVh = WORK_TRACK_RELEASE_VH) {
   if (panelCount <= 0) return TRACK_PANEL_VH;
-  return WORK_TRACK_LEAD_IN_VH + panelCount * TRACK_PANEL_VH + extraReleaseVh;
+  if (panelCount <= 1) return WORK_TRACK_LEAD_IN_VH + extraReleaseVh;
+  return WORK_TRACK_LEAD_IN_VH + (panelCount - 1) * TRACK_PANEL_VH + extraReleaseVh;
+}
+
+function workCaseStep(caseTravel, panelCount) {
+  const intervals = Math.max(1, panelCount - 1);
+  return caseTravel / intervals;
+}
+
+/**
+ * Visual case index from programmatic step transition (0–1 tween progress).
+ * @param {number} transitionProgress linear 0–1 from scroll tween
+ */
+export function workTransitionDisplayIndex(fromIndex, toIndex, transitionProgress) {
+  const from = fromIndex;
+  const to = toIndex;
+  const p = Math.max(0, Math.min(1, transitionProgress));
+  const eased = easeInOutCubic(p);
+  return from + (to - from) * eased;
 }
 
 export function measureWorkFloatIndex(rect, panelCount) {
@@ -61,7 +96,7 @@ export function measureWorkFloatIndex(rect, panelCount) {
   const { total, leadIn, caseTravel } = workTrackMetricsFromRect(rect);
   const traveled = Math.min(Math.max(-rect.top, 0), total);
   if (traveled <= leadIn) return 0;
-  const step = caseTravel / panelCount;
+  const step = workCaseStep(caseTravel, panelCount);
   return Math.min(panelCount - 1, (traveled - leadIn) / Math.max(1, step));
 }
 
@@ -71,7 +106,7 @@ export function workTrackScrollOffset(trackEl, panelIndex, panelCount) {
   const total = Math.max(1, trackEl.offsetHeight - vh);
   const leadIn = (WORK_TRACK_LEAD_IN_VH / 100) * vh;
   const caseTravel = Math.max(1, total - leadIn);
-  const step = caseTravel / panelCount;
+  const step = workCaseStep(caseTravel, panelCount);
   const clamped = Math.min(panelCount - 1, Math.max(0, panelIndex));
   if (clamped === 0) return 0;
   return leadIn + clamped * step;
@@ -87,6 +122,11 @@ export function workTrackScrollTargetY(trackEl, panelIndex, panelCount) {
     window.scrollY +
     workTrackScrollOffset(trackEl, clamped, panelCount)
   );
+}
+
+/** Capabilities exit → Work chapter: pin track with case 1 (index 0) settled on the spine. */
+export function workFirstCaseScrollY(trackEl, panelCount) {
+  return workTrackScrollTargetY(trackEl, 0, panelCount);
 }
 
 /** Center spine index — holds with left/right copy during transition phases. */
@@ -112,7 +152,7 @@ export function getWorkTransitionContext(rawFloatIndex, panelCount = 99) {
     return { from: 0, to: 0, t: 0, locked: 0, stage: 0 };
   }
   const nearest = Math.round(v);
-  if (Math.abs(v - nearest) < SCROLL_LOCK_RADIUS) {
+  if (Math.abs(v - nearest) < INDEX_LOCK_EPSILON) {
     const locked = Math.min(maxIdx, Math.max(0, nearest));
     return { from: locked, to: locked, t: 0, locked, stage: locked };
   }
@@ -123,12 +163,12 @@ export function getWorkTransitionContext(rawFloatIndex, panelCount = 99) {
   return { from, to, t, locked: null, stage };
 }
 
-/** Accent / glow — settled case index. */
+/** Accent / glow — settled case index (tracks evidence focus). */
 export function workStageIndex(rawFloatIndex, panelCount) {
   if (panelCount <= 1) return 0;
   const ctx = getWorkTransitionContext(rawFloatIndex, panelCount);
   if (ctx.locked != null) return ctx.locked;
-  return ctx.t < WORK_PHASE.exitEnd ? ctx.from : ctx.to;
+  return ctx.t < WORK_SCROLL.pinEnd ? ctx.from : ctx.to;
 }
 
 function workPanelRole(panelIndex, ctx) {
@@ -173,12 +213,13 @@ export function scrollWorkToCase(trackEl, caseIndex, caseCount, behavior = 'auto
 
 function spineOpacity(absDist, dist = 0) {
   if (absDist <= 0.35) {
-    return lerp(1, 0.88, absDist / 0.35);
+    return lerp(1, 0.9, absDist / 0.35);
   }
   if (absDist <= 1.15) {
-    const base = lerp(0.88, 0.42, (absDist - 0.35) / 0.8);
-    /* Next case below the active card — keep a readable dim preview while scrolling */
-    if (dist > 0 && absDist <= 1.08) return Math.max(base, 0.46);
+    const base = lerp(0.88, 0.3, (absDist - 0.35) / 0.8);
+    if (dist > 0 && absDist <= 1.08) {
+      return Math.max(base, WORK_DECK.previewOpacity);
+    }
     return base;
   }
   if (absDist <= WORK_CANVAS_BAND) {
@@ -187,9 +228,13 @@ function spineOpacity(absDist, dist = 0) {
   return 0;
 }
 
-function spineBlur(absDist) {
+function spineBlur(absDist, dist = 0) {
   if (absDist < 0.2) return 0;
-  return Math.min(1.1, absDist * 0.8);
+  const base = Math.min(1.1, absDist * 0.72);
+  if (dist > 0.35 && absDist <= 1.12) {
+    return Math.max(base, WORK_DECK.previewBlur);
+  }
+  return base;
 }
 
 function spineScale(absDist) {
@@ -232,7 +277,7 @@ export function workSettledIndex(rawFloatIndex, panelCount) {
   if (panelCount <= 1) return 0;
   const ctx = getWorkTransitionContext(rawFloatIndex, panelCount);
   if (ctx.locked != null) return ctx.locked;
-  return ctx.t < WORK_PHASE.exitEnd ? ctx.from : ctx.to;
+  return ctx.t < WORK_SCROLL.pinEnd ? ctx.from : ctx.to;
 }
 
 export function workCaseInCanvasBand(rawFloatIndex, panelIndex, panelCount, radius = WORK_CANVAS_BAND) {
@@ -294,23 +339,46 @@ export function workVisualCrossfade(rawFloatIndex, panelIndex, reducedMotion = f
   }
 
   const opacity = spineOpacity(absDist, dist);
-  const blur = spineBlur(absDist);
+  let blur = spineBlur(absDist, dist);
+  const isNextPreview = dist > 0.32 && dist < 1.15 && absDist > 0.35;
   const scale = spineScale(absDist);
   const ctx = getWorkTransitionContext(rawFloatIndex, panelCount);
+  const role = workPanelRole(panelIndex, ctx);
   const isLockedActive = ctx.locked === panelIndex;
   const { liftY, scaleExtra, liftZ } = deckLift(absDist, isLockedActive);
   const tiltX = deckTilt(dist, absDist);
-  const yFinal = yPx + liftY;
-  const scaleFinal = scale + scaleExtra;
+  let yFinal = yPx + liftY;
+  let scaleFinal = scale + scaleExtra;
+  let opacityFinal = opacity;
+  if (isLockedActive && absDist < 0.28) {
+    scaleFinal += WORK_DECK.activeScaleBoost;
+  }
+
+  if (ctx.locked == null) {
+    if (role === 'incoming') {
+      const env = visualIncomingEnvelope(ctx.t);
+      opacityFinal *= env.opacityMul;
+      scaleFinal *= env.scaleMul;
+      blur += env.blurExtra;
+      yFinal += env.yExtra;
+    } else if (role === 'outgoing') {
+      const env = visualOutgoingEnvelope(ctx.t);
+      opacityFinal *= env.opacityMul;
+      scaleFinal *= env.scaleMul;
+      blur += env.blurExtra;
+      yFinal += env.yExtra;
+    }
+  }
+
   const zIndex =
     absDist < 0.38 ? 44 : dist > 0 && absDist <= 1.05 ? 38 - Math.round(absDist * 6) : 40 - Math.round(absDist * 9);
 
   return {
-    opacity,
+    opacity: opacityFinal,
     filter: blur > 0.12 ? `blur(${blur.toFixed(2)}px)` : undefined,
     transform: `translate3d(-50%, calc(-50% + ${yFinal.toFixed(2)}px), ${liftZ.toFixed(1)}px) scale(${scaleFinal.toFixed(4)}) rotateX(${tiltX.toFixed(2)}deg)`,
-    visibility: opacity > 0.05 ? 'visible' : 'hidden',
-    pointerEvents: absDist < 0.4 ? 'auto' : 'none',
+    visibility: opacityFinal > 0.05 ? 'visible' : 'hidden',
+    pointerEvents: absDist < 0.4 && opacityFinal > 0.45 ? 'auto' : 'none',
     zIndex,
   };
 }
@@ -322,33 +390,37 @@ export function workRailOnesFlipStyle(rawFloatIndex, digitIndex, panelCount) {
     const on = digitIndex === ctx.locked;
     return {
       opacity: on ? 1 : 0,
-      transform: on ? 'translate3d(0, 0, 0) rotateX(0deg)' : 'translate3d(0, 10px, 0) rotateX(-48deg)',
+      transform: on ? 'translate3d(0, 0, 0) rotateX(0deg) scale(1)' : 'translate3d(0, 10px, 0) rotateX(-48deg) scale(0.88)',
       visibility: on ? 'visible' : 'hidden',
     };
   }
 
+  const { pinEnd } = WORK_SCROLL;
+  const textFadeEnd = pinEnd + 0.13;
+  const indexEnterEnd = pinEnd + 0.14;
+
   if (digitIndex === ctx.from) {
-    if (ctx.t >= WORK_PHASE.exitEnd) {
-      return { opacity: 0, visibility: 'hidden', transform: 'translate3d(0, -12px, 0) rotateX(48deg)' };
+    if (ctx.t >= textFadeEnd) {
+      return { opacity: 0, visibility: 'hidden', transform: 'translate3d(0, -12px, 0) rotateX(48deg) scale(0.88)' };
     }
-    const u = ctx.t < WORK_PHASE.holdEnd
+    const u = ctx.t < pinEnd
       ? 0
-      : (ctx.t - WORK_PHASE.holdEnd) / (WORK_PHASE.exitEnd - WORK_PHASE.holdEnd);
+      : (ctx.t - pinEnd) / (textFadeEnd - pinEnd);
     return {
       opacity: lerp(1, 0, u),
-      transform: `translate3d(0, ${lerp(0, -14, u).toFixed(2)}px, 0) rotateX(${lerp(0, 52, u).toFixed(2)}deg)`,
+      transform: `translate3d(0, ${lerp(0, -14, u).toFixed(2)}px, 0) rotateX(${lerp(0, 52, u).toFixed(2)}deg) scale(${lerp(0.9, 0.86, u).toFixed(3)})`,
       visibility: u < 0.98 ? 'visible' : 'hidden',
     };
   }
 
   if (digitIndex === ctx.to) {
-    if (ctx.t < WORK_PHASE.enterStart) {
-      return { opacity: 0, visibility: 'hidden', transform: 'translate3d(0, 14px, 0) rotateX(-52deg)' };
+    if (ctx.t < pinEnd + 0.03) {
+      return { opacity: 0, visibility: 'hidden', transform: 'translate3d(0, 16px, 0) rotateX(-52deg) scale(0.88)' };
     }
-    const u = Math.min(1, (ctx.t - WORK_PHASE.enterStart) / (WORK_PHASE.enterEnd - WORK_PHASE.enterStart));
+    const u = Math.min(1, (ctx.t - (pinEnd + 0.03)) / (indexEnterEnd - (pinEnd + 0.03)));
     return {
       opacity: lerp(0, 1, u),
-      transform: `translate3d(0, ${lerp(14, 0, u).toFixed(2)}px, 0) rotateX(${lerp(-52, 0, u).toFixed(2)}deg)`,
+      transform: `translate3d(0, ${lerp(16, 0, u).toFixed(2)}px, 0) rotateX(${lerp(-52, 0, u).toFixed(2)}deg) scale(${lerp(0.88, 0.9, u).toFixed(3)})`,
       visibility: u > 0.02 ? 'visible' : 'hidden',
     };
   }
@@ -357,44 +429,97 @@ export function workRailOnesFlipStyle(rawFloatIndex, digitIndex, panelCount) {
 }
 
 function workOutgoingCopy(t, part = 'title') {
-  if (t < WORK_PHASE.holdEnd) {
+  const { approachEnd, pinEnd, readEnd } = WORK_SCROLL;
+  const textFadeEnd = pinEnd + 0.13;
+
+  if (t < pinEnd) {
     return { opacity: 1, y: 0, pointerEvents: true, zIndex: 20 };
   }
-  if (t >= WORK_PHASE.exitEnd) {
-      return { opacity: 0, y: -8, pointerEvents: false, zIndex: 0 };
+  if (t >= textFadeEnd) {
+    return { opacity: 0, y: -10, pointerEvents: false, zIndex: 0 };
   }
-  const u = (t - WORK_PHASE.holdEnd) / (WORK_PHASE.exitEnd - WORK_PHASE.holdEnd);
+  const u = (t - pinEnd) / (textFadeEnd - pinEnd);
   const opacity = lerp(1, 0, u);
-  const partFade = part === 'title' ? 1 : Math.max(0, 1 - u * 1.15);
+  const partFade =
+    part === 'title'
+      ? Math.max(0, 1 - u * 0.92)
+      : part === 'aiLayer' || part === 'intro'
+        ? Math.max(0, 1 - u * 1.02)
+        : part === 'thesis'
+          ? Math.max(0, 1 - u * 1.08)
+          : part === 'signals' || part === 'bullets'
+            ? Math.max(0, 1 - u * 1.12)
+            : Math.max(0, 1 - u * 1.16);
+  void approachEnd;
+  void readEnd;
   return {
     opacity: opacity * partFade,
-    y: lerp(0, -8, u),
+    y: lerp(0, -10, u),
     pointerEvents: false,
     zIndex: 12,
   };
 }
 
 function workIncomingCopy(t, part = 'title') {
-  let partDelay = 0;
-  if (part === 'intro') partDelay = 0.05;
-  if (part === 'bullets') partDelay = 0.09;
-  if (part === 'tags') partDelay = 0.13;
+  const { pinEnd, readEnd } = WORK_SCROLL;
+  const readSpan = readEnd - pinEnd;
+  const delays = {
+    title: 0.03,
+    aiLayer: 0.07,
+    intro: 0.07,
+    thesis: 0.11,
+    signals: 0.15,
+    bullets: 0.15,
+    tags: 0.19,
+  };
+  const partDelay = delays[part] ?? delays.title;
+  const start = pinEnd + partDelay;
+  const end = Math.min(readEnd, start + readSpan * 0.42);
 
-  if (t < WORK_PHASE.enterStart + partDelay) {
-    return { opacity: 0, y: 10, pointerEvents: false, zIndex: 0 };
+  if (t < start) {
+    return { opacity: 0, y: 18, pointerEvents: false, zIndex: 0 };
   }
-  if (t >= WORK_PHASE.enterEnd) {
+  if (t >= end) {
     return { opacity: 1, y: 0, pointerEvents: true, zIndex: 20 };
   }
-  const u = Math.min(
-    1,
-    (t - WORK_PHASE.enterStart - partDelay) / Math.max(0.1, WORK_PHASE.enterEnd - WORK_PHASE.enterStart - partDelay),
-  );
+  const u = smoothstep01((t - start) / Math.max(0.08, end - start));
+  const yStart = part === 'title' ? 22 : part === 'tags' ? 14 : 18;
   return {
-    opacity: lerp(0, 1, u),
-    y: lerp(10, 0, u),
+    opacity: u,
+    y: lerp(yStart, 0, u),
     pointerEvents: u > 0.55,
     zIndex: 14,
+  };
+}
+
+function visualIncomingEnvelope(t) {
+  const { approachEnd, pinEnd } = WORK_SCROLL;
+  if (t < approachEnd) {
+    return { opacityMul: 0.08, scaleMul: 0.96, blurExtra: 8, yExtra: 28 };
+  }
+  if (t < pinEnd) {
+    const u = smoothstep01((t - approachEnd) / (pinEnd - approachEnd));
+    return {
+      opacityMul: lerp(0.08, 1, u),
+      scaleMul: lerp(0.97, 1, u),
+      blurExtra: lerp(8, 0, u),
+      yExtra: lerp(24, 0, u),
+    };
+  }
+  return { opacityMul: 1, scaleMul: 1, blurExtra: 0, yExtra: 0 };
+}
+
+function visualOutgoingEnvelope(t) {
+  const { readEnd } = WORK_SCROLL;
+  if (t < readEnd) {
+    return { opacityMul: 1, scaleMul: 1, blurExtra: 0, yExtra: 0 };
+  }
+  const u = smoothstep01((t - readEnd) / (1 - readEnd));
+  return {
+    opacityMul: lerp(1, 0.38, u),
+    scaleMul: lerp(1, 0.93, u),
+    blurExtra: lerp(0, 2.8, u),
+    yExtra: lerp(0, 20, u),
   };
 }
 
@@ -462,6 +587,8 @@ export function workCaseCopyPartStyle(rawFloatIndex, panelIndex, part, reducedMo
     return { opacity: 0, transform: 'translate3d(0, 0, 0)', filter: undefined };
   }
 
+  const partKey = part === 'intro' ? 'aiLayer' : part === 'bullets' ? 'signals' : part;
+
   if (reducedMotion) {
     const on = Math.round(rawFloatIndex ?? 0) === panelIndex;
     return { opacity: on ? 1 : 0, transform: 'none', filter: undefined };
@@ -478,9 +605,9 @@ export function workCaseCopyPartStyle(rawFloatIndex, panelIndex, part, reducedMo
     role === 'active'
       ? { opacity: 1, y: 0 }
       : role === 'outgoing'
-        ? workOutgoingCopy(ctx.t, part)
+        ? workOutgoingCopy(ctx.t, partKey)
         : role === 'incoming'
-          ? workIncomingCopy(ctx.t, part)
+          ? workIncomingCopy(ctx.t, partKey)
           : { opacity: 0, y: 0 };
 
   if (shell.opacity <= 0.03) {
@@ -515,17 +642,150 @@ export function getWorkCaseOffset(caseId) {
   return WORK_CASE_OFFSETS[caseId] ?? { x: 0, y: 40, rotate: 0 };
 }
 
+/** Rail container — transform only; never dim opacity (digits stay readable). */
+export function workRailScrollStyle(rawFloatIndex, panelCount, reducedMotion = false) {
+  if (reducedMotion) {
+    return { transform: 'translateY(0) scale(1)' };
+  }
+  const ctx = getWorkTransitionContext(rawFloatIndex, panelCount);
+  if (ctx.locked != null) {
+    return { transform: 'translateY(0) scale(1)' };
+  }
+  const { pinEnd } = WORK_SCROLL;
+  const t = ctx.t;
+  if (t < pinEnd) {
+    return { transform: 'translateY(2px) scale(0.98)' };
+  }
+  const u = smoothstep01((t - pinEnd) / 0.12);
+  return {
+    transform: `translateY(${lerp(2, 0, u).toFixed(1)}px) scale(${lerp(0.98, 1, u).toFixed(3)})`,
+  };
+}
+
+export function workAtmosphereStrength(rawFloatIndex, panelCount, entryProgress = 1, inChapterEntry = false) {
+  if (inChapterEntry) {
+    return Math.min(1, 0.42 + entryProgress * 0.58);
+  }
+  const ctx = getWorkTransitionContext(rawFloatIndex, panelCount);
+  if (ctx.locked != null) return 1;
+  const { approachEnd, readEnd } = WORK_SCROLL;
+  if (ctx.t < approachEnd) {
+    return lerp(0.72, 0.88, ctx.t / approachEnd);
+  }
+  if (ctx.t < readEnd) {
+    return lerp(0.88, 1, (ctx.t - approachEnd) / (readEnd - approachEnd));
+  }
+  return lerp(1, 0.78, (ctx.t - readEnd) / (1 - readEnd));
+}
+
 export function workFrameEntryStyle(entryProgress, reducedMotion = false) {
   if (reducedMotion) {
     return { opacity: 1, transform: 'none', filter: undefined };
   }
-  const p = entryProgress;
-  return motionStyle(phaseProgress(p, 0.08, 0.55), {
-    y: 20,
-    scale: 0.985,
+  return motionStyle(phaseProgress(entryProgress, 0, WORK_SCROLL.approachEnd), {
+    y: 6,
     opacity: 0,
-    blur: 2,
-  }, { y: 0, scale: 1, opacity: 1, blur: 0 });
+  }, { y: 0, opacity: 1 });
+}
+
+export function workChapterEntryRail(entryProgress, reducedMotion = false) {
+  if (reducedMotion) return { opacity: 1, transform: 'scale(1)', filter: undefined };
+  return motionStyle(phaseProgress(entryProgress, 0.02, 0.12), {
+    opacity: 0,
+    x: -10,
+    scale: 0.88,
+    blur: 3,
+  }, { opacity: 1, x: 0, scale: 1, blur: 0 });
+}
+
+export function workChapterEntryVisual(entryProgress, reducedMotion = false) {
+  if (reducedMotion) {
+    return {
+      opacity: 1,
+      filter: undefined,
+      transform: 'translate3d(-50%, -50%, 0) scale(1)',
+      visibility: 'visible',
+      pointerEvents: 'auto',
+      zIndex: 44,
+    };
+  }
+  const layer = motionStyle(phaseProgress(entryProgress, 0.1, 0.3), {
+    opacity: 0,
+    scale: 0.965,
+    blur: 10,
+    y: 28,
+  }, { opacity: 1, scale: 1, blur: 0, y: 0 });
+  const match = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px/.exec(layer.transform ?? '');
+  const y = match ? Number(match[2]) : 0;
+  const scaleMatch = /scale\(([\d.]+)\)/.exec(layer.transform ?? '');
+  const scale = scaleMatch ? Number(scaleMatch[1]) : 1;
+  return {
+    opacity: layer.opacity,
+    filter: layer.filter,
+    transform: `translate3d(-50%, calc(-50% + ${y.toFixed(2)}px), 0) scale(${scale.toFixed(4)})`,
+    visibility: (layer.opacity ?? 0) > 0.05 ? 'visible' : 'hidden',
+    pointerEvents: (layer.opacity ?? 0) > 0.35 ? 'auto' : 'none',
+    zIndex: 44,
+  };
+}
+
+/** @param {'title'|'aiLayer'|'thesis'|'signals'|'tags'} part */
+export function workChapterEntryCopy(entryProgress, part, reducedMotion = false) {
+  if (reducedMotion) return { opacity: 1, transform: 'none', filter: undefined };
+  const windows = {
+    title: [0.24, 0.38],
+    aiLayer: [0.28, 0.42],
+    thesis: [0.34, 0.48],
+    signals: [0.38, 0.52],
+    tags: [0.42, 0.56],
+  };
+  const introPart = part === 'intro' ? 'aiLayer' : part;
+  const [start, end] = windows[introPart] ?? windows.title;
+  const y = introPart === 'title' ? 22 : introPart === 'tags' ? 14 : 18;
+  return motionStyle(phaseProgress(entryProgress, start, end), {
+    y,
+    opacity: 0,
+    blur: introPart === 'title' || introPart === 'aiLayer' ? 4 : 0,
+  }, { y: 0, opacity: 1, blur: 0 });
+}
+
+function parseHex(hex) {
+  const h = String(hex).replace('#', '');
+  if (h.length !== 6) return [42, 42, 42];
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+export function lerpAccentHex(fromHex, toHex, t) {
+  const u = Math.max(0, Math.min(1, t));
+  const a = parseHex(fromHex);
+  const b = parseHex(toHex);
+  const mix = (i) => Math.round(lerp(a[i], b[i], u));
+  const to2 = (n) => n.toString(16).padStart(2, '0');
+  return `#${to2(mix(0))}${to2(mix(1))}${to2(mix(2))}`;
+}
+
+export function workChapterAccent(rawFloatIndex, accents, panelCount) {
+  if (!accents?.length || panelCount <= 1) {
+    return accents?.[0] ?? '#3d5c56';
+  }
+  const ctx = getWorkTransitionContext(rawFloatIndex, panelCount);
+  const from = accents[ctx.from] ?? accents[0];
+  const to = accents[ctx.to] ?? from;
+  if (ctx.locked != null) return accents[ctx.locked] ?? from;
+  if (ctx.t < WORK_SCROLL.approachEnd) {
+    return lerpAccentHex(from, to, smoothstep01(ctx.t / WORK_SCROLL.approachEnd) * 0.32);
+  }
+  if (ctx.t < WORK_SCROLL.pinEnd) {
+    const u =
+      0.32 +
+      smoothstep01((ctx.t - WORK_SCROLL.approachEnd) / (WORK_SCROLL.pinEnd - WORK_SCROLL.approachEnd)) * 0.38;
+    return lerpAccentHex(from, to, u);
+  }
+  return lerpAccentHex(from, to, smoothstep01((ctx.t - WORK_SCROLL.pinEnd) / (1 - WORK_SCROLL.pinEnd)));
 }
 
 export function workCopyLayers(entryProgress, reducedMotion = false) {

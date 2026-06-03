@@ -6,7 +6,9 @@ export function LifeArchiveSection({ framingLine }) {
   return (
     <div className="life-archive">
       <div className="life-archive__atmosphere" aria-hidden="true" />
-      {framingLine ? <p className="life-archive__framing-line">{framingLine}</p> : null}
+      {framingLine ? (
+        <p className="life-archive__framing-line motion-reveal">{framingLine}</p>
+      ) : null}
       <LifeArchiveExperience />
     </div>
   );

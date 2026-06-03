@@ -25,24 +25,24 @@ import {
 /** @type {Record<string, Record<FieldHue, FieldPresenceTarget>>} */
 export const FIELD_SCENE_TARGETS = {
   opening: {
-    green: { opacity: 0.92, scale: OPENING_LINEAR_SCALE.green },
-    blue: { opacity: 0.78, scale: OPENING_LINEAR_SCALE.blue },
-    amber: { opacity: 0.58, scale: OPENING_LINEAR_SCALE.amber },
+    green: { opacity: 0.44, scale: OPENING_LINEAR_SCALE.green },
+    blue: { opacity: 0.4, scale: OPENING_LINEAR_SCALE.blue },
+    amber: { opacity: 0.36, scale: OPENING_LINEAR_SCALE.amber },
   },
   openingThesis: {
-    green: { opacity: 0.92, scale: OPENING_SCROLL_SCALE.thesis.green },
-    blue: { opacity: 0.78, scale: OPENING_SCROLL_SCALE.thesis.blue },
-    amber: { opacity: 0.58, scale: OPENING_SCROLL_SCALE.thesis.amber },
+    green: { opacity: 0.82, scale: OPENING_SCROLL_SCALE.thesis.green },
+    blue: { opacity: 0.72, scale: OPENING_SCROLL_SCALE.thesis.blue },
+    amber: { opacity: 0.48, scale: OPENING_SCROLL_SCALE.thesis.amber },
   },
   capabilities: {
     green: { opacity: 0.78, scale: SIGNAL_LAYOUT_SCALE.green },
-    blue: { opacity: 0.58, scale: SIGNAL_LAYOUT_SCALE.blue },
-    amber: { opacity: 0.32, scale: SIGNAL_LAYOUT_SCALE.amber },
+    blue: { opacity: 0.26, scale: SIGNAL_LAYOUT_SCALE.blue * 0.88 },
+    amber: { opacity: 0.2, scale: SIGNAL_LAYOUT_SCALE.amber * 0.82 },
   },
   work: {
-    green: { opacity: 0.46, scale: 1.0 },
-    blue: { opacity: 0.34, scale: 0.96 },
-    amber: { opacity: 0.20, scale: 0.86 },
+    green: { opacity: 0.38, scale: 0.92 },
+    blue: { opacity: 0.3, scale: 0.86 },
+    amber: { opacity: 0.26, scale: 0.8 },
   },
   pov: {
     green: { opacity: 0.18, scale: 0.92 },
@@ -50,9 +50,14 @@ export const FIELD_SCENE_TARGETS = {
     amber: { opacity: 0.22, scale: 0.86 },
   },
   me: {
-    green: { opacity: 0.10, scale: 0.86 },
-    blue: { opacity: 0.16, scale: 0.90 },
+    green: { opacity: 0.1, scale: 0.86 },
+    blue: { opacity: 0.16, scale: 0.9 },
     amber: { opacity: 0.72, scale: 1.02 },
+  },
+  contact: {
+    green: { opacity: 0.4, scale: 0.78 },
+    blue: { opacity: 0.38, scale: 0.76 },
+    amber: { opacity: 0.42, scale: 0.8 },
   },
 };
 

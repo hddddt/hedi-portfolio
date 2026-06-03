@@ -7,7 +7,13 @@ export function PortfolioGuideOrbSync({ open }) {
 
   useEffect(() => {
     setGuideOpen(open);
-    return () => setGuideOpen(false);
+    const root = document.documentElement;
+    if (open) root.classList.add('guide-intelligence-open');
+    else root.classList.remove('guide-intelligence-open');
+    return () => {
+      setGuideOpen(false);
+      root.classList.remove('guide-intelligence-open');
+    };
   }, [open, setGuideOpen]);
 
   return null;

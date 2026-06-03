@@ -55,6 +55,25 @@ export function measureChapterEntryProgress(rect, vh) {
 }
 
 /**
+ * Capabilities chapter entry — only after opening white plate scrolls; ramps as sticky top pins.
+ * @param {DOMRect} trackRect `.capability-scroll`
+ * @param {DOMRect | null | undefined} stickyRect `.capability-sticky`
+ * @param {number} vh
+ * @param {number} [capExitMask] screen-2 exit mask arm 0–1
+ */
+export function measureCapabilitiesChapterEntry(trackRect, stickyRect, vh, capExitMask = 0) {
+  if (!trackRect || vh < 1) return 0;
+  const gate = smoothstep(0.12, 0.4, capExitMask ?? 0);
+  if (gate < 0.001) return 0;
+
+  const top = stickyRect?.top ?? trackRect.top;
+  const bottom = stickyRect?.bottom ?? trackRect.bottom;
+  if (top > vh * 0.16 || bottom < vh * 0.52) return 0;
+  if (top <= 2) return gate;
+  return gate * smoothstep(vh * 0.16, 2, top);
+}
+
+/**
  * Section scroll through sticky track (0 at pin, 1 at end).
  * @param {DOMRect} rect
  */

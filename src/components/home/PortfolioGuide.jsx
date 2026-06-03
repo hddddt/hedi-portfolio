@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useShortcutHandleIdlePeek } from '../../hooks/useShortcutHandleIdlePeek.js';
+import { usePortfolioShortcutSurface } from '../../hooks/usePortfolioShortcutSurface.js';
+import { useScrollActivityPause } from '../../hooks/useScrollActivityPause.js';
+import { useShortcutProximity } from '../../hooks/useShortcutProximity.js';
+import { createPortal } from 'react-dom';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { PortfolioGuideOrbSync } from './PortfolioGuideOrbSync.jsx';
-import { GuideOrbWithHat } from './GuideOrb.jsx';
 import {
   getGuideFlow,
   getFlowPresentation,
   getGuideQuestionForEntry,
-  GUIDE_CUSTOM_INPUT_PLACEHOLDER,
-  GUIDE_ENTRY_QUESTIONS,
 } from '../../data/portfolioGuideFlows.js';
-import { GUIDE_ENTRY, GUIDE_RESULT_SECTIONS } from '../../data/portfolioGuideSystem.js';
+import {
+  GUIDE_RESULT_SECTIONS,
+  SHORTCUT_ENTRY,
+  SHORTCUT_KEY_ANGLES,
+  SHORTCUT_PROOF_POINTS,
+  SHORTCUT_SECTIONS,
+} from '../../data/portfolioGuideSystem.js';
+import { ShortcutAngleResult } from './ShortcutAngleResult.jsx';
 import {
   getFreeGuideAnswer,
   matchExplicitPresetFlowId,
@@ -22,16 +31,19 @@ import {
   previewTarget,
   scrollToGuideTarget,
 } from '../../utils/portfolioGuideTarget.js';
+import { ShortcutMarkerArt } from './ShortcutMarker.jsx';
 import '../../styles/portfolio-guide.css';
+import '../../styles/portfolio-shortcut-marker.css';
 
-const SCROLL_SHOW_THRESHOLD = 1.2;
-const TEASER_HIDE_SCROLL_RATIO = 1.02;
+const SCROLL_SHOW_THRESHOLD = 0.08;
+const OPENING_SCROLL_SHOW_VH = 2.85;
 const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
-const LANDING_TEASER_DELAY_MS = 1400;
-const LANDING_MICRO_ANIM_MS = 520;
-const TEASER_AUTO_FADE_MS = 460;
-const ENTRANCE_ANIM_MS = 1650;
 const ORB_MOOD_CLICK_MS = 1400;
+const PANEL_CLOSE_MS = 420;
+const PANEL_PULL_MS = 480;
+const GUIDE_PROCESSING_MS = 520;
+const PANEL_ENTER_MS = 880;
+const PEEK_COOLDOWN_MS = 3200;
 
 /**
  * @param {{
@@ -41,9 +53,18 @@ const ORB_MOOD_CLICK_MS = 1400;
  *   onEvidenceClick: (event: React.MouseEvent, action: { type: string, id: string }) => void,
  * }} props
  */
-function GuideFollowUpAnswer({ answer, onEvidencePointerEnter, onEvidencePointerLeave, onEvidenceClick }) {
+function GuideFollowUpAnswer({
+  answer,
+  onEvidencePointerEnter,
+  onEvidencePointerLeave,
+  onEvidenceClick,
+  pathsRevealing = false,
+}) {
   return (
-    <div className="portfolio-guide__followup-answer" aria-live="polite">
+    <div
+      className={`portfolio-guide__followup-answer${pathsRevealing ? ' is-paths-revealing' : ''}`}
+      aria-live="polite"
+    >
       <p className="portfolio-guide__result-block-label">{GUIDE_RESULT_SECTIONS.followUp}</p>
       <p className="portfolio-guide__followup-title">{answer.title}</p>
       <p className="portfolio-guide__followup-short">{answer.shortAnswer}</p>
@@ -94,6 +115,8 @@ export function PortfolioGuide() {
   const { activeId } = useNarrativeScroll();
   const { setGuideOpen } = useOrbScene();
   const isLanding = activeId === 'home-landing';
+  const isOpeningChapter =
+    activeId === 'home-landing' || activeId === 'home-capabilities';
   const isSectionGuide = activeId === 'home-life-archive';
   const isFullMode = false;
   const triggerHidden = GUIDE_TRIGGER_MODE === 'hidden';
@@ -108,21 +131,16 @@ export function PortfolioGuide() {
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
   const panelBodyRef = useRef(null);
-  const teaserTimerRef = useRef(null);
-  const landingMicroTimerRef = useRef(null);
-  const teaserFadeTimerRef = useRef(null);
-  const entrancePlayedRef = useRef(false);
-
   const [scrollVisible, setScrollVisible] = useState(false);
-  const [teaserInViewportZone, setTeaserInViewportZone] = useState(true);
+  const [openingScrollVisible, setOpeningScrollVisible] = useState(true);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [teaserVisible, setTeaserVisible] = useState(false);
-  const [teaserAutoFade, setTeaserAutoFade] = useState(false);
-  const [teaserDismissed, setTeaserDismissed] = useState(false);
-  const [teaserOpened, setTeaserOpened] = useState(false);
-  const [view, setView] = useState('questions');
+  const [pressed, setPressed] = useState(false);
+  const [pulling, setPulling] = useState(false);
+  const pullTimerRef = useRef(0);
+  const [view, setView] = useState('home');
+  const [angleResultId, setAngleResultId] = useState(null);
   const [customQuestion, setCustomQuestion] = useState('');
   const [resultFlowId, setResultFlowId] = useState(null);
   const [displayQuestion, setDisplayQuestion] = useState('');
@@ -131,10 +149,18 @@ export function PortfolioGuide() {
   const [followUpReading, setFollowUpReading] = useState(false);
   const [orbSignalTick, setOrbSignalTick] = useState(0);
   const [orbMood, setOrbMood] = useState('neutral');
-  const [entranceAnimate, setEntranceAnimate] = useState(false);
-  const [landingMicroAnimate, setLandingMicroAnimate] = useState(false);
+  const [panelEntering, setPanelEntering] = useState(false);
+  const [resultProcessing, setResultProcessing] = useState(false);
+  const [pathsRevealing, setPathsRevealing] = useState(false);
+  const [followUpPathsRevealing, setFollowUpPathsRevealing] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const panelEnterTimerRef = useRef(0);
+  const pathsRevealTimerRef = useRef(0);
+  const processingTimerRef = useRef(0);
   const orbMoodTimerRef = useRef(0);
   const previewTargetIdRef = useRef(null);
+  const peekCooldownTimerRef = useRef(0);
+  const [peekCooldown, setPeekCooldown] = useState(false);
 
   const resultFlow = useMemo(
     () => (resultFlowId ? getGuideFlow(resultFlowId, displayQuestion) : null),
@@ -197,10 +223,27 @@ export function PortfolioGuide() {
     }
   }, []);
 
+  const bumpPeekCooldown = useCallback(() => {
+    setPeekCooldown(true);
+    window.clearTimeout(peekCooldownTimerRef.current);
+    peekCooldownTimerRef.current = window.setTimeout(() => setPeekCooldown(false), PEEK_COOLDOWN_MS);
+  }, []);
+
   const closePanel = useCallback(() => {
     if (!open) return;
+    bumpPeekCooldown();
     clearTrackedPreview();
     resetOrbMood();
+    setPanelEntering(false);
+    setResultProcessing(false);
+    setPathsRevealing(false);
+    setFollowUpPathsRevealing(false);
+    window.clearTimeout(panelEnterTimerRef.current);
+    window.clearTimeout(pathsRevealTimerRef.current);
+    window.clearTimeout(processingTimerRef.current);
+    setPulling(true);
+    window.clearTimeout(pullTimerRef.current);
+    pullTimerRef.current = window.setTimeout(() => setPulling(false), PANEL_PULL_MS);
     setClosing(true);
     window.setTimeout(() => {
       setOpen(false);
@@ -208,8 +251,8 @@ export function PortfolioGuide() {
       if (!isFullMode) {
         triggerRef.current?.focus();
       }
-    }, 180);
-  }, [open, isFullMode, resetOrbMood, clearTrackedPreview]);
+    }, PANEL_CLOSE_MS);
+  }, [open, isFullMode, resetOrbMood, clearTrackedPreview, bumpPeekCooldown]);
 
   const clearFollowUpState = useCallback(() => {
     setFollowUpInput('');
@@ -218,21 +261,32 @@ export function PortfolioGuide() {
   }, []);
 
   const openPanel = useCallback(() => {
+    bumpPeekCooldown();
     setClosing(false);
+    setPulling(true);
+    window.clearTimeout(pullTimerRef.current);
+    pullTimerRef.current = window.setTimeout(() => setPulling(false), PANEL_PULL_MS);
     setOpen(true);
-    setTeaserVisible(false);
-    setTeaserOpened(true);
-    setView('questions');
+    setView('home');
+    setAngleResultId(null);
     setResultFlowId(null);
     setDisplayQuestion('');
+    setResultProcessing(false);
+    setPathsRevealing(false);
+    setFollowUpPathsRevealing(false);
     clearFollowUpState();
+    setPanelEntering(false);
+    window.clearTimeout(panelEnterTimerRef.current);
     pulseOrb();
     flashOrbMood('warm');
     window.requestAnimationFrame(() => {
-      const first = panelRef.current?.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])');
-      first?.focus();
+      setPanelEntering(true);
+      panelEnterTimerRef.current = window.setTimeout(() => {
+        setPanelEntering(false);
+      }, PANEL_ENTER_MS);
+      panelRef.current?.querySelector('.portfolio-guide__angle-card')?.focus();
     });
-  }, [pulseOrb, flashOrbMood, clearFollowUpState]);
+  }, [pulseOrb, flashOrbMood, clearFollowUpState, bumpPeekCooldown]);
 
   const togglePanel = useCallback(
     (e) => {
@@ -278,32 +332,83 @@ export function PortfolioGuide() {
       if (!targetId.startsWith('case-')) {
         activateGuideTarget(targetId);
       }
+      closePanel();
     },
-    [flashOrbMood],
+    [flashOrbMood, closePanel],
   );
+
+  const triggerPathsReveal = useCallback((forFollowUp = false) => {
+    window.clearTimeout(pathsRevealTimerRef.current);
+    if (forFollowUp) {
+      setFollowUpPathsRevealing(false);
+      window.requestAnimationFrame(() => {
+        setFollowUpPathsRevealing(true);
+        pathsRevealTimerRef.current = window.setTimeout(() => {
+          setFollowUpPathsRevealing(false);
+        }, 900);
+      });
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      setPathsRevealing(true);
+      pathsRevealTimerRef.current = window.setTimeout(() => {
+        setPathsRevealing(false);
+      }, 900);
+    });
+  }, []);
 
   const showFlowResult = useCallback(
     (flowId, question) => {
       const flow = getGuideFlow(flowId, question);
       if (!flow) return;
-      setResultFlowId(flow.id);
-      setDisplayQuestion(flow.question);
-      clearFollowUpState();
-      setView('result');
+      setResultProcessing(true);
+      setPathsRevealing(false);
       pulseOrb('strong');
       flashOrbMood('warm');
-      saveGuideLog(flow.question, flow.id);
+      window.clearTimeout(processingTimerRef.current);
+      processingTimerRef.current = window.setTimeout(() => {
+        setResultFlowId(flow.id);
+        setDisplayQuestion(flow.question);
+        clearFollowUpState();
+        setView('flow');
+        setAngleResultId(null);
+        setResultProcessing(false);
+        saveGuideLog(flow.question, flow.id);
+        window.requestAnimationFrame(() => {
+          panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+          triggerPathsReveal(false);
+        });
+      }, GUIDE_PROCESSING_MS);
+    },
+    [saveGuideLog, pulseOrb, flashOrbMood, clearFollowUpState, triggerPathsReveal],
+  );
+
+  const showAngleResult = useCallback(
+    (angleId) => {
+      pulseOrb();
+      flashOrbMood('warm');
+      setAngleResultId(angleId);
+      setResultFlowId(null);
+      clearFollowUpState();
+      setView('angle');
+      setResultProcessing(false);
       window.requestAnimationFrame(() => {
         panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       });
     },
-    [saveGuideLog, pulseOrb, flashOrbMood, clearFollowUpState],
+    [pulseOrb, flashOrbMood, clearFollowUpState],
   );
 
-  const handleEntryQuestion = (entry) => {
-    flashOrbMood('warm');
-    showFlowResult(entry.flowId, getGuideQuestionForEntry(entry.flowId));
-  };
+  const returnHome = useCallback(() => {
+    setView('home');
+    setAngleResultId(null);
+    setResultFlowId(null);
+    setDisplayQuestion('');
+    clearFollowUpState();
+    window.requestAnimationFrame(() => {
+      panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, [clearFollowUpState]);
 
   const scrollPanelToFollowUp = useCallback(() => {
     const body = panelBodyRef.current;
@@ -317,15 +422,24 @@ export function PortfolioGuide() {
     (question) => {
       pulseOrb();
       flashOrbMood('warm');
+      setFollowUpAnswer(null);
+      setFollowUpPathsRevealing(false);
       setFollowUpReading(true);
-      window.setTimeout(() => {
-        setFollowUpAnswer(getFreeGuideAnswer(question, resultFlowId));
+      window.clearTimeout(processingTimerRef.current);
+      processingTimerRef.current = window.setTimeout(() => {
+        const answer = getFreeGuideAnswer(question, resultFlowId);
+        setFollowUpAnswer(answer);
         setFollowUpReading(false);
         saveGuideLog(question, 'free');
-        window.requestAnimationFrame(scrollPanelToFollowUp);
-      }, 280);
+        window.requestAnimationFrame(() => {
+          scrollPanelToFollowUp();
+          if (answer.whereToLook?.length) {
+            triggerPathsReveal(true);
+          }
+        });
+      }, GUIDE_PROCESSING_MS);
     },
-    [resultFlowId, pulseOrb, flashOrbMood, saveGuideLog, scrollPanelToFollowUp],
+    [resultFlowId, pulseOrb, flashOrbMood, saveGuideLog, scrollPanelToFollowUp, triggerPathsReveal],
   );
 
   const handleFollowUpSubmit = (e) => {
@@ -357,91 +471,80 @@ export function PortfolioGuide() {
     runFreeQuestionAnswer(question);
   };
 
-  const dismissTeaser = () => {
-    setTeaserDismissed(true);
-    setTeaserVisible(false);
-  };
-
   useEffect(
     () => () => {
       window.clearTimeout(orbMoodTimerRef.current);
-      window.clearTimeout(landingMicroTimerRef.current);
-      window.clearTimeout(teaserFadeTimerRef.current);
+      window.clearTimeout(panelEnterTimerRef.current);
+      window.clearTimeout(pathsRevealTimerRef.current);
+      window.clearTimeout(processingTimerRef.current);
+      window.clearTimeout(pullTimerRef.current);
+      window.clearTimeout(peekCooldownTimerRef.current);
     },
     [],
   );
 
   useEffect(() => {
     const onScroll = () => {
-      setScrollVisible(window.scrollY > window.innerHeight * SCROLL_SHOW_THRESHOLD);
-      setTeaserInViewportZone(window.scrollY < window.innerHeight * TEASER_HIDE_SCROLL_RATIO);
+      const y = window.scrollY;
+      const vh = window.innerHeight;
+      setScrollVisible(y > vh * SCROLL_SHOW_THRESHOLD);
+      setOpeningScrollVisible(y < vh * OPENING_SCROLL_SHOW_VH);
     };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  useEffect(() => {
-    if (teaserDismissed || teaserOpened || isFullMode) {
-      setTeaserVisible(false);
-      setTeaserAutoFade(false);
-      setLandingMicroAnimate(false);
-      if (teaserTimerRef.current) window.clearTimeout(teaserTimerRef.current);
-      if (landingMicroTimerRef.current) window.clearTimeout(landingMicroTimerRef.current);
-      if (teaserFadeTimerRef.current) window.clearTimeout(teaserFadeTimerRef.current);
-      return;
-    }
+  const shouldShowRoot = open || isLanding || scrollVisible || openingScrollVisible;
+  const surfaceBg = usePortfolioShortcutSurface(activeId);
+  const scrollActive = useScrollActivityPause(420);
+  const proximityNear = useShortcutProximity({
+    enabled: shouldShowRoot && !open && !triggerHidden,
+  });
 
-    if (!isLanding) {
-      if (teaserTimerRef.current) window.clearTimeout(teaserTimerRef.current);
-      if (landingMicroTimerRef.current) window.clearTimeout(landingMicroTimerRef.current);
-      if (teaserVisible && !teaserAutoFade) {
-        setTeaserAutoFade(true);
-        teaserFadeTimerRef.current = window.setTimeout(() => {
-          setTeaserVisible(false);
-          setTeaserAutoFade(false);
-        }, TEASER_AUTO_FADE_MS);
-      } else if (!teaserVisible) {
-        setTeaserAutoFade(false);
-      }
-      return;
-    }
+  const idlePeek = useShortcutHandleIdlePeek({
+    enabled: shouldShowRoot && !triggerHidden && !isFullMode,
+    paused:
+      open ||
+      closing ||
+      pulling ||
+      hovered ||
+      pressed ||
+      scrollActive ||
+      peekCooldown ||
+      panelEntering,
+    boost: isOpeningChapter,
+  });
 
-    if (teaserFadeTimerRef.current) window.clearTimeout(teaserFadeTimerRef.current);
-    setTeaserAutoFade(false);
-    setLandingMicroAnimate(true);
-    landingMicroTimerRef.current = window.setTimeout(() => {
-      setLandingMicroAnimate(false);
-    }, LANDING_MICRO_ANIM_MS);
-
-    teaserTimerRef.current = window.setTimeout(() => {
-      setTeaserVisible(true);
-    }, LANDING_MICRO_ANIM_MS + Math.max(200, LANDING_TEASER_DELAY_MS - 700));
-
-    return () => {
-      if (teaserTimerRef.current) window.clearTimeout(teaserTimerRef.current);
-      if (landingMicroTimerRef.current) window.clearTimeout(landingMicroTimerRef.current);
-      if (teaserFadeTimerRef.current) window.clearTimeout(teaserFadeTimerRef.current);
-    };
-  }, [isLanding, teaserDismissed, teaserOpened, teaserVisible, teaserAutoFade, isFullMode]);
-
-  const shouldShowRoot = scrollVisible || teaserVisible || isLanding || open;
-  const greetingActive = isLanding && !open && (entranceAnimate || teaserVisible) && teaserInViewportZone;
+  const markerState = open
+    ? 'open'
+    : closing
+      ? 'closing'
+      : pulling
+        ? 'opening'
+        : hovered
+          ? 'hover'
+          : idlePeek
+            ? 'peeking'
+            : proximityNear
+              ? 'proximity'
+              : 'idle';
 
   useEffect(() => {
-    if (!shouldShowRoot || entrancePlayedRef.current) return undefined;
-    entrancePlayedRef.current = true;
-    setEntranceAnimate(true);
-    const t = window.setTimeout(() => setEntranceAnimate(false), ENTRANCE_ANIM_MS);
-    return () => window.clearTimeout(t);
-  }, [shouldShowRoot]);
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => setReducedMotion(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   useEffect(() => () => clearTrackedPreview(), [clearTrackedPreview]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = (e) => {
-      if (rootRef.current?.contains(e.target)) return;
+      if (panelRef.current?.contains(e.target)) return;
+      if (triggerRef.current?.contains(e.target)) return;
       closePanel();
     };
     const onKeyDown = (e) => {
@@ -464,112 +567,181 @@ export function PortfolioGuide() {
     return null;
   }
 
-  return (
+  const shell = (
     <div
       ref={rootRef}
-      className={`portfolio-guide${shouldShowRoot ? ' is-visible' : ''}${open ? ' is-open' : ''}${entranceAnimate ? ' is-entering' : ''}${isFullMode ? ' is-full-mode' : ''}${triggerSubtle ? ' is-trigger-subtle' : ''}`}
+        className={[
+        'portfolio-guide',
+        shouldShowRoot ? 'is-visible' : '',
+        open ? 'is-open' : '',
+        closing ? 'is-closing' : '',
+        pulling ? 'is-pulling' : '',
+        isFullMode ? 'is-full-mode' : '',
+        triggerSubtle ? 'is-trigger-subtle' : '',
+        hovered ? 'is-handle-hovered' : '',
+        surfaceBg === 'light' ? 'is-light-backdrop' : '',
+        isOpeningChapter ? 'is-opening-chapter' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       <PortfolioGuideOrbSync open={open} />
-      {open && !isFullMode ? <div className="portfolio-guide__backdrop" onClick={closePanel} aria-hidden="true" /> : null}
-
-      {teaserVisible && teaserInViewportZone && !open && !isFullMode ? (
+      {open && !isFullMode ? (
         <div
-          className={`portfolio-guide__teaser${teaserAutoFade ? ' is-auto-fade' : ''}`}
-          role="status"
-          aria-live="polite"
-        >
-          <button
-            type="button"
-            className="portfolio-guide__teaser-close"
-            onClick={dismissTeaser}
-            aria-label="Dismiss guide teaser"
-          >
-            ×
-          </button>
-          <p className="portfolio-guide__teaser-line">Hi.</p>
-          <p className="portfolio-guide__teaser-line">Need a faster way in?</p>
-          <button type="button" className="portfolio-guide__teaser-cta" onClick={openPanel}>
-            Open guide →
-          </button>
-        </div>
+          className={`portfolio-guide__backdrop${open && !closing ? ' is-active' : ''}`}
+          onClick={closePanel}
+          aria-hidden="true"
+        />
       ) : null}
 
-      <div className="portfolio-guide__panel-wrap">
-        <div ref={panelRef} className={panelClass} role="dialog" aria-label="Portfolio guide" aria-hidden={!open}>
+      <div
+        className={`portfolio-guide__drawer-seam${open && !closing ? ' is-visible' : ''}${pulling ? ' is-pulling' : ''}`}
+        aria-hidden="true"
+      />
+      <aside
+        className={`portfolio-guide__drawer${open || closing ? ' is-mounted' : ''}`}
+        aria-hidden={!open && !closing}
+      >
+        <div
+          ref={panelRef}
+          className={panelClass}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Portfolio Shortcut"
+        >
           <div
-            className={`portfolio-guide__module${view === 'result' ? ' portfolio-guide__module--result' : ''}`}
+            className={[
+              'portfolio-guide__module',
+              view === 'flow' ? 'portfolio-guide__module--result' : '',
+              view === 'angle' ? 'portfolio-guide__module--angle' : '',
+              panelEntering ? 'is-entering' : '',
+              resultProcessing || followUpReading ? 'is-processing' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
           >
-            <header className="portfolio-guide__head">
-              <div className="portfolio-guide__head-copy">
-                <p className="portfolio-guide__section-label">{GUIDE_ENTRY.label}</p>
-                {view === 'questions' ? (
-                  <h3 className="portfolio-guide__headline">
-                    <span>{GUIDE_ENTRY.title}</span>
-                    <span>{GUIDE_ENTRY.subtitle}</span>
-                  </h3>
-                ) : null}
+            {(resultProcessing || followUpReading) && (
+              <div className="portfolio-guide__processing" aria-live="polite" aria-busy="true">
+                <span className="portfolio-guide__processing-dot" aria-hidden="true" />
+                <span className="portfolio-guide__processing-label">
+                  {resultProcessing ? 'Finding evidence' : 'Searching'}
+                </span>
               </div>
-              <div
-                className={`portfolio-guide__orb-inline${view === 'result' ? ' portfolio-guide__orb-inline--pulse' : ''}`}
-                aria-hidden="true"
-              >
-                <GuideOrbWithHat
-                  size={26}
-                  bright
-                  followCursor={false}
-                  blink={orbSignalTick % 2 === 1}
-                  alive
-                  mood={orbMood}
-                  scrollReactive
-                  thinking={followUpReading}
-                />
+            )}
+            <header className="portfolio-guide__head portfolio-guide__enter-stage portfolio-guide__enter-stage--title">
+              <div className="portfolio-guide__head-copy">
+                <h2 className="portfolio-guide__headline">{SHORTCUT_ENTRY.label}</h2>
+                {view === 'home' ? (
+                  <p className="portfolio-guide__tagline">{SHORTCUT_ENTRY.tagline}</p>
+                ) : null}
               </div>
             </header>
 
-            <div ref={panelBodyRef} className="portfolio-guide__panel-body">
-            {view === 'questions' ? (
-              <ul className="portfolio-guide__cards" aria-label="Portfolio guide entry questions">
-                {GUIDE_ENTRY_QUESTIONS.map((item) => (
-                  <li key={item.id} className="portfolio-guide__card-item">
-                    <button type="button" className="portfolio-guide__card" onClick={() => handleEntryQuestion(item)}>
-                      <span className="portfolio-guide__card-kicker">{item.num}</span>
-                      <span className="portfolio-guide__card-copy">
-                        <span className="portfolio-guide__card-title">{item.title}</span>
-                        <span className="portfolio-guide__card-desc">{item.descriptor}</span>
-                      </span>
-                      <span className="portfolio-guide__card-arrow" aria-hidden="true">
-                        →
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <div
+              ref={panelBodyRef}
+              className={`portfolio-guide__panel-body${resultProcessing ? ' is-processing' : ''}`}
+            >
+            {view === 'home' ? (
+              <>
+                <section
+                  className="portfolio-guide__angles portfolio-guide__enter-stage portfolio-guide__enter-stage--paths"
+                  role="group"
+                  aria-label={SHORTCUT_SECTIONS.keyAngles}
+                >
+                  <p className="portfolio-guide__block-label portfolio-guide__block-label--primary">
+                    {SHORTCUT_SECTIONS.keyAngles}
+                  </p>
+                  <ul className="portfolio-guide__angle-list">
+                    {SHORTCUT_KEY_ANGLES.map((angle, angleIndex) => (
+                      <li key={angle.id} className="portfolio-guide__angle-item">
+                        <button
+                          type="button"
+                          className="portfolio-guide__angle-card"
+                          style={{ '--angle-i': angleIndex }}
+                          onClick={() => showAngleResult(angle.id)}
+                          disabled={followUpReading || resultProcessing}
+                        >
+                          <span className="portfolio-guide__angle-card-copy">
+                            <span className="portfolio-guide__angle-card-title">{angle.title}</span>
+                            <span className="portfolio-guide__angle-card-sub">{angle.subtitle}</span>
+                          </span>
+                          <span className="portfolio-guide__angle-card-arrow" aria-hidden="true">
+                            →
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section
+                  className="portfolio-guide__evidence-block portfolio-guide__enter-stage portfolio-guide__enter-stage--evidence"
+                  aria-label={SHORTCUT_SECTIONS.proofPoints}
+                >
+                  <p className="portfolio-guide__block-label portfolio-guide__block-label--secondary">
+                    {SHORTCUT_SECTIONS.proofPoints}
+                  </p>
+                  <ul className="portfolio-guide__cards">
+                    {SHORTCUT_PROOF_POINTS.map((item, cardIndex) => (
+                      <li
+                        key={item.id}
+                        className="portfolio-guide__card-item"
+                        style={{ '--card-i': cardIndex }}
+                      >
+                        <button
+                          type="button"
+                          className="portfolio-guide__card portfolio-guide__card--evidence"
+                          onPointerEnter={() => handleEvidencePointerEnter(item.action)}
+                          onPointerLeave={() => handleEvidencePointerLeave(item.action)}
+                          onClick={(event) => handleEvidenceClick(event, item.action)}
+                        >
+                          <span className="portfolio-guide__card-kicker">{item.num}</span>
+                          <span className="portfolio-guide__card-copy">
+                            <span className="portfolio-guide__card-title">{item.title}</span>
+                            <span className="portfolio-guide__card-desc">{item.signal}</span>
+                          </span>
+                          <span className="portfolio-guide__card-arrow" aria-hidden="true">
+                            ↗
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
             ) : null}
 
-            {view === 'questions' && followUpAnswer ? (
+            {view === 'home' && followUpAnswer ? (
               <GuideFollowUpAnswer
                 answer={followUpAnswer}
+                pathsRevealing={followUpPathsRevealing}
                 onEvidencePointerEnter={handleEvidencePointerEnter}
                 onEvidencePointerLeave={handleEvidencePointerLeave}
                 onEvidenceClick={handleEvidenceClick}
               />
             ) : null}
 
-            {view === 'result' ? (
+            {view === 'angle' && angleResultId ? (
+              <ShortcutAngleResult
+                angleId={angleResultId}
+                onBack={returnHome}
+                onEvidencePointerEnter={handleEvidencePointerEnter}
+                onEvidencePointerLeave={handleEvidencePointerLeave}
+                onEvidenceClick={handleEvidenceClick}
+                onRouteClick={handleEvidenceClick}
+              />
+            ) : null}
+
+            {view === 'flow' ? (
               <section
                 className="portfolio-guide__result"
-                aria-label="Guide evaluation"
+                aria-label="Search result"
               >
                 <div className="portfolio-guide__result-nav">
                   <button
                     type="button"
                     className="portfolio-guide__back portfolio-guide__back--nav"
-                    onClick={() => {
-                      setView('questions');
-                      setResultFlowId(null);
-                      setDisplayQuestion('');
-                      clearFollowUpState();
-                    }}
+                    onClick={returnHome}
                   >
                     ← Back
                   </button>
@@ -649,7 +821,17 @@ export function PortfolioGuide() {
 
                 {whereToLook.length ? (
                   <div
-                    className={`portfolio-guide__path-module portfolio-guide__path-module--nav${resultPresentation?.framingBlocks?.length || resultPresentation?.problemBlocks?.length ? ' portfolio-guide__path-module--after-framing' : ' portfolio-guide__path-module--compact'}${resultPresentation?.hasReadUnderstand ? ' portfolio-guide__path-module--after-read' : ''}`}
+                    className={[
+                      'portfolio-guide__path-module',
+                      'portfolio-guide__path-module--nav',
+                      resultPresentation?.framingBlocks?.length || resultPresentation?.problemBlocks?.length
+                        ? 'portfolio-guide__path-module--after-framing'
+                        : 'portfolio-guide__path-module--compact',
+                      resultPresentation?.hasReadUnderstand ? 'portfolio-guide__path-module--after-read' : '',
+                      pathsRevealing ? 'is-revealing' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     <p className="portfolio-guide__path-module-head">
                       <span className="portfolio-guide__path-module-title">
@@ -661,7 +843,7 @@ export function PortfolioGuide() {
                         <li key={`${item.step}-${item.label}`} className="portfolio-guide__path-track-item">
                           <button
                             type="button"
-                            className="portfolio-guide__path-node"
+                            className="portfolio-guide__path-node portfolio-guide__evidence-row"
                             onPointerEnter={() => handleEvidencePointerEnter(item.action)}
                             onPointerLeave={() => handleEvidencePointerLeave(item.action)}
                             onClick={(event) => handleEvidenceClick(event, item.action)}
@@ -672,7 +854,7 @@ export function PortfolioGuide() {
                               <span className="portfolio-guide__path-desc">{item.description}</span>
                             </span>
                             <span className="portfolio-guide__path-open" aria-hidden="true">
-                              ↗
+                              Jump ↗
                             </span>
                           </button>
                         </li>
@@ -684,6 +866,7 @@ export function PortfolioGuide() {
                 {followUpAnswer ? (
                   <GuideFollowUpAnswer
                     answer={followUpAnswer}
+                    pathsRevealing={followUpPathsRevealing}
                     onEvidencePointerEnter={handleEvidencePointerEnter}
                     onEvidencePointerLeave={handleEvidencePointerLeave}
                     onEvidenceClick={handleEvidenceClick}
@@ -692,96 +875,121 @@ export function PortfolioGuide() {
               </section>
             ) : null}
 
-            {followUpReading ? (
-              <p className="portfolio-guide__reading" aria-live="polite">
-                Reading question...
-              </p>
-            ) : null}
             </div>
 
-            <footer className="portfolio-guide__panel-footer">
-              {view === 'questions' ? (
-                <div className="portfolio-guide__free-ask">
-                  <p className="portfolio-guide__free-ask-label">{GUIDE_ENTRY.freeInputLabel}</p>
-                  <p className="portfolio-guide__angle-helper">{GUIDE_ENTRY.freeInputHelper}</p>
-                  <form className="portfolio-guide__free-ask-form" onSubmit={handleCustomSubmit}>
-                    <input
-                      id="portfolio-guide-custom"
-                      value={customQuestion}
-                      onChange={(e) => setCustomQuestion(e.target.value)}
-                      className="portfolio-guide__free-ask-field"
-                      placeholder={GUIDE_CUSTOM_INPUT_PLACEHOLDER}
-                      aria-label="Ask your own evaluation question"
-                      disabled={followUpReading}
-                    />
-                    <button
-                      type="submit"
-                      className="portfolio-guide__free-ask-submit"
-                      aria-label="Submit question"
-                      disabled={followUpReading}
-                    >
-                      Go
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div className="portfolio-guide__angle-input portfolio-guide__angle-input--footer">
-                  <p className="portfolio-guide__result-block-label">
-                    {GUIDE_RESULT_SECTIONS.askFromAngle}
-                  </p>
-                  <p className="portfolio-guide__angle-helper">{GUIDE_RESULT_SECTIONS.askFromAngleHelper}</p>
-                  <form className="portfolio-guide__angle-form" onSubmit={handleFollowUpSubmit}>
-                    <input
-                      value={followUpInput}
-                      onChange={(e) => setFollowUpInput(e.target.value)}
-                      className="portfolio-guide__angle-field"
-                      placeholder={GUIDE_ENTRY.freeInputPlaceholder}
-                      aria-label="Ask a follow-up question"
-                      disabled={followUpReading}
-                    />
-                    <button
-                      type="submit"
-                      className="portfolio-guide__angle-submit"
-                      aria-label="Submit follow-up question"
-                      disabled={followUpReading}
-                    >
-                      Go
-                    </button>
-                  </form>
-                </div>
-              )}
-            </footer>
+            {view === 'home' || view === 'angle' ? (
+              <footer className="portfolio-guide__panel-footer portfolio-guide__enter-stage portfolio-guide__enter-stage--search">
+                <p className="portfolio-guide__block-label portfolio-guide__block-label--footer">
+                  {SHORTCUT_SECTIONS.search}
+                </p>
+                <form
+                  className="portfolio-guide__search-form portfolio-guide__search-form--secondary"
+                  onSubmit={handleCustomSubmit}
+                >
+                  <input
+                    id="portfolio-shortcut-search"
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    className="portfolio-guide__search-field"
+                    placeholder={SHORTCUT_ENTRY.freeInputPlaceholder}
+                    aria-label={SHORTCUT_ENTRY.freeInputPlaceholder}
+                    disabled={followUpReading}
+                  />
+                  <button
+                    type="submit"
+                    className="portfolio-guide__search-submit portfolio-guide__search-submit--find"
+                    aria-label={SHORTCUT_ENTRY.submitLabel}
+                    disabled={followUpReading}
+                  >
+                    <span className="portfolio-guide__search-submit-label">{SHORTCUT_ENTRY.submitLabel}</span>
+                  </button>
+                </form>
+              </footer>
+            ) : null}
+
+            {view === 'flow' ? (
+              <footer className="portfolio-guide__panel-footer portfolio-guide__enter-stage portfolio-guide__enter-stage--refine">
+                <form
+                  className="portfolio-guide__search-form portfolio-guide__search-form--compact portfolio-guide__search-form--secondary"
+                  onSubmit={handleFollowUpSubmit}
+                >
+                  <input
+                    value={followUpInput}
+                    onChange={(e) => setFollowUpInput(e.target.value)}
+                    className="portfolio-guide__search-field"
+                    placeholder={SHORTCUT_ENTRY.freeInputPlaceholder}
+                    aria-label={SHORTCUT_ENTRY.freeInputPlaceholder}
+                    disabled={followUpReading}
+                  />
+                  <button
+                    type="submit"
+                    className="portfolio-guide__search-submit portfolio-guide__search-submit--find"
+                    aria-label={SHORTCUT_ENTRY.submitLabel}
+                    disabled={followUpReading}
+                  >
+                    <span className="portfolio-guide__search-submit-label">{SHORTCUT_ENTRY.submitLabel}</span>
+                  </button>
+                </form>
+              </footer>
+            ) : null}
           </div>
         </div>
-      </div>
+      </aside>
 
-      {!open && !isFullMode && !triggerHidden ? (
-        <div className="portfolio-guide__trigger-wrap">
-          <button
-            ref={triggerRef}
-            type="button"
-            className={`portfolio-guide__trigger${entranceAnimate ? ' is-entrance-once' : ''}${landingMicroAnimate ? ' is-landing-micro' : ''}`}
-            aria-label="Open portfolio guide"
-            aria-expanded={open}
-            onClick={togglePanel}
-            onPointerEnter={() => setHovered(true)}
-            onPointerLeave={() => setHovered(false)}
-            onFocus={() => setHovered(true)}
-            onBlur={() => setHovered(false)}
-          >
-            <GuideOrbWithHat
-              size={46}
-              bright={hovered}
-              followCursor
-              blink={orbSignalTick % 2 === 1}
-              alive
-              mood={orbMood}
-              scrollReactive
-              greeting={greetingActive}
-            />
-          </button>
-        </div>
+      {!isFullMode && !triggerHidden ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          className={[
+            'portfolio-guide__companion',
+            'ai-marker',
+            `is-state-${markerState}`,
+            open ? 'is-docked is-open' : '',
+            hovered ? 'is-awake' : '',
+            pressed ? 'is-pressed' : '',
+            pulling ? 'is-pulling' : '',
+            idlePeek && !open && !hovered ? 'is-idle-peek' : '',
+            proximityNear && !hovered && !open ? 'is-state-proximity' : '',
+            reducedMotion ? 'is-reduced-motion' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          data-bg={surfaceBg}
+          data-state={markerState}
+          aria-label={open ? 'Close Portfolio Shortcut' : 'Open Portfolio Shortcut'}
+          aria-expanded={open}
+          onClick={togglePanel}
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => {
+            setHovered(false);
+            setPressed(false);
+          }}
+          onPointerDown={() => setPressed(true)}
+          onPointerUp={() => setPressed(false)}
+          onPointerCancel={() => setPressed(false)}
+          onFocus={() => setHovered(true)}
+          onBlur={() => {
+            setHovered(false);
+            setPressed(false);
+          }}
+        >
+          <span className="portfolio-guide__companion-hint" aria-hidden="true">
+            {SHORTCUT_ENTRY.label}
+          </span>
+          <span className="portfolio-guide__companion-plinth" aria-hidden="true" />
+          <span className="portfolio-guide__companion-art" aria-hidden="true">
+            <ShortcutMarkerArt />
+          </span>
+        </button>
       ) : null}
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(shell, document.body);
+  }
+  return shell;
 }
+
+/** User-facing name — same component, routing layer terminology. */
+export const PortfolioShortcut = PortfolioGuide;

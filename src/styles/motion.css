@@ -1,0 +1,170 @@
+/**
+ * Unified motion spine — one grammar, many section layouts.
+ * Content: faster (--motion-reveal). Fields: slower (--motion-field).
+ */
+
+:root {
+  --ease-main: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 180ms;
+  --motion-hover: 260ms;
+  --motion-reveal: 680ms;
+  --motion-field: 1200ms;
+  --motion-handoff: 1100ms;
+  --stagger: 100ms;
+  /* Legacy aliases */
+  --motion-xs: var(--motion-fast);
+  --motion-sm: var(--motion-hover);
+  --motion-md: var(--motion-reveal);
+  --motion-lg: 900ms;
+  --stagger-sm: var(--stagger);
+  --stagger-md: 100ms;
+}
+
+/* Portfolio Shortcut — overlay UI, not scroll-reveal */
+.portfolio-guide.is-open .portfolio-guide__module,
+.portfolio-guide.is-open .portfolio-guide__module .portfolio-guide__enter-stage,
+.portfolio-guide.is-open .portfolio-guide__module .portfolio-guide__card-item {
+  opacity: 1;
+  filter: none;
+}
+
+/* Hero / opening — visible on load (do not wait for IO) */
+.opening-card .motion-reveal-group.is-visible,
+.opening-card .motion-reveal-group.is-visible > .motion-reveal-child {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* —— Scroll / in-view reveal —— */
+.motion-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(5px);
+  transition:
+    opacity var(--motion-reveal) var(--ease-main),
+    transform var(--motion-reveal) var(--ease-main),
+    filter var(--motion-reveal) var(--ease-main);
+  will-change: opacity, transform, filter;
+}
+
+.motion-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.motion-reveal--sm {
+  transition-duration: var(--motion-hover);
+}
+
+.motion-reveal--lg {
+  transition-duration: var(--motion-lg);
+}
+
+.motion-reveal-group > .motion-reveal-child {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(5px);
+  transition:
+    opacity var(--motion-reveal) var(--ease-main),
+    transform var(--motion-reveal) var(--ease-main),
+    filter var(--motion-reveal) var(--ease-main);
+}
+
+.motion-reveal-group.is-visible > .motion-reveal-child {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(1) {
+  transition-delay: 0ms;
+}
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(2) {
+  transition-delay: var(--stagger);
+}
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(3) {
+  transition-delay: calc(var(--stagger) * 2);
+}
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(4) {
+  transition-delay: calc(var(--stagger) * 3);
+}
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(5) {
+  transition-delay: calc(var(--stagger) * 4);
+}
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(6) {
+  transition-delay: calc(var(--stagger) * 5);
+}
+.motion-reveal-group.is-visible > .motion-reveal-child:nth-child(n + 7) {
+  transition-delay: calc(var(--stagger) * 6);
+}
+
+.motion-reveal-group--md.is-visible > .motion-reveal-child:nth-child(n) {
+  transition-delay: calc((var(--n, 0)) * var(--stagger-md));
+}
+
+/* Legacy portfolio .reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(5px);
+  transition:
+    opacity var(--motion-reveal) var(--ease-main),
+    transform var(--motion-reveal) var(--ease-main),
+    filter var(--motion-reveal) var(--ease-main);
+}
+
+.reveal.in,
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* Section handoff — ribbons on structure layer, subdued markers */
+.narrative-chapter__ribbon-num {
+  font-size: clamp(11px, 0.85vw, 13px);
+  opacity: 0.42;
+  font-weight: 400;
+  transition: opacity var(--motion-reveal) var(--ease-main);
+}
+
+.narrative-chapter--active .narrative-chapter__ribbon-num {
+  opacity: 0.52;
+}
+
+.narrative-chapter:not(.narrative-chapter--active) .narrative-chapter__ribbon {
+  opacity: 0.48;
+  transition:
+    opacity var(--motion-field) var(--ease-main),
+    transform var(--motion-reveal) var(--ease-main);
+}
+
+.narrative-chapter--active .narrative-chapter__ribbon {
+  opacity: 0.88;
+}
+
+/* Content reveals after object climate handoff */
+html[data-field-climate='settling'] .narrative-chapter:not(.home-hero) .motion-reveal:not(.is-visible),
+html[data-field-climate='settling']
+  .narrative-chapter:not(.home-hero)
+  .motion-reveal-group:not(.is-visible)
+  > .motion-reveal-child {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-reveal,
+  .motion-reveal-group > .motion-reveal-child,
+  .reveal,
+  .narrative-chapter:not(.narrative-chapter--active) .narrative-chapter__ribbon {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+}

@@ -12,10 +12,10 @@ export const WORK_COVERS = {
 };
 
 const NARRATIVE_ACCENTS = {
-  case01: '#2a5a52',
+  case01: '#c47840',
   case02: '#9a7224',
-  case03: '#c45f2a',
-  case04: '#c4b8ce',
+  case03: '#8a5c48',
+  case04: '#a898b8',
 };
 
 /**
@@ -26,69 +26,50 @@ export const WORK_NARRATIVE_EXACT = {
   case01: {
     title: 'CONVERSATIONAL AI',
     subtitle: 'Enterprise Conversational UX & Workflow Alignment',
-    bullets: [
-      'Mapped user goals and service touchpoints into a coherent conversational strategy that anticipates needs, clarifies roles, and aligns AI interventions with real outcomes.',
-      'Defined interaction patterns (intent, fallback, validation, escalation) that ensure conversations reliably lead to task resolution rather than dead ends.',
-      'Integrated dialogue outputs with downstream systems (handoffs, agents, APIs, Cognigy flows) so AI responses trigger meaningful operational actions.',
+    thesis:
+      'Conversation strategy aligned to service outcomes—routing intent before response, then wiring dialogue into real handoffs and operations.',
+    signals: [
+      'Route intent before the assistant answers',
+      'Patterns that resolve toward a task, not a dead end',
+      'Dialogue tied to handoffs, agents, and downstream systems',
     ],
-    keySignalsLine:
-      'Key signals: workflow\u2011aligned conversation strategy, human-AI interaction design, system integration.',
-    tags: [
-      'CONVERSATIONAL AI',
-      'workflow\u2011aligned conversation strategy',
-      'human-AI interaction design',
-      'system integration',
-    ],
+    primaryTags: ['workflow-aligned strategy', 'human–AI interaction', 'system integration'],
   },
   case02: {
     title: 'CONTRACT INTELLIGENCE',
     subtitle: 'Human\u2011in\u2011the\u2011Loop & Auditable Workflow Design',
-    bullets: [
-      'Translated contract review processes into structured units (clause, classification, answer, rationale, state) that make AI output actionable and reviewable.',
-      'Separated AI suggestions, user edits, and legal decisions so judgment remains visible, owned, and traceable throughout the workflow.',
-      'Built clear audit paths and decision boundaries so reviewers can verify, correct, and own contract outcomes.',
+    thesis:
+      'Contract review as structured, reviewable units—AI suggestions separated from human judgment with clear audit paths.',
+    signals: [
+      'Clause-level structure: classification, answer, rationale, state',
+      'Visible ownership between AI suggestion and legal decision',
+      'Traceable paths for verify, correct, and sign-off',
     ],
-    keySignalsLine:
-      'Key signals: human\u2011in\u2011the\u2011loop design, governance UX, traceability in AI workflows.',
-    tags: [
-      'CONTRACT INTELLIGENCE',
-      'human\u2011in\u2011the\u2011loop design',
-      'governance UX',
-      'traceability in AI workflows',
-    ],
+    primaryTags: ['human-in-the-loop', 'governance UX', 'traceability'],
   },
   case03: {
     title: 'SUPPLY CHAIN AGENTS',
     subtitle: 'Agentic Workflow & Human Control Integration',
-    bullets: [
-      'Defined when AI agents act autonomously, when they defer, and when humans intervene to maintain control in operational flows.',
-      'Turned alerts and exceptions into decision gates with context and explicit intervention points.',
-      'Unified agents, alerts, and conversational touchpoints into an execution model that balances autonomy with oversight.',
+    thesis:
+      'Agentic flows with explicit control—when to act, defer, or intervene, and how exceptions become decision gates.',
+    signals: [
+      'Autonomy boundaries with human override points',
+      'Alerts and exceptions as structured decision gates',
+      'Agents, alerts, and touchpoints in one execution model',
     ],
-    keySignalsLine: 'Key signals: agentic workflows, control design, exception handling UX.',
-    tags: [
-      'SUPPLY CHAIN AGENTS',
-      'agentic workflows',
-      'control design',
-      'exception handling UX',
-    ],
+    primaryTags: ['agentic workflows', 'control design', 'exception handling'],
   },
   case04: {
     title: 'AI COMPANION',
     subtitle: 'Presence & Continuity\u2011Driven Engagement Design',
-    bullets: [
-      'Shifted design focus from isolated interactions to persistent companion presence grounded in user context and behavior.',
-      'Used continuity signals (memory, session state, preference cues) to create low-friction return paths and personalized engagement.',
-      'Reframed engagement metrics from single sessions to accumulated relational indicators.',
+    thesis:
+      'Companion presence over interaction volume—continuity signals that make return feel low-friction and relational.',
+    signals: [
+      'Persistent presence grounded in context and behavior',
+      'Memory and session cues for low-friction return',
+      'Engagement read through accumulated continuity, not sessions alone',
     ],
-    keySignalsLine:
-      'Key signals: companion experience design, continuity UX, adaptive engagement.',
-    tags: [
-      'AI COMPANION',
-      'companion experience design',
-      'continuity UX',
-      'adaptive engagement',
-    ],
+    primaryTags: ['companion experience', 'continuity UX', 'adaptive engagement'],
   },
 };
 
@@ -120,6 +101,40 @@ export const capabilitySectionCopy = {
   footer: '',
 };
 
+/** Per-capability ambient tint — residual field memory, not decorative blobs. */
+export const CAPABILITY_THEMES = {
+  'ai-problem-framing': {
+    residualA: 'rgba(128, 148, 108, 0.14)',
+    residualB: 'rgba(72, 98, 118, 0.06)',
+    residualC: 'rgba(148, 122, 88, 0.05)',
+    wash: 'rgba(108, 98, 88, 0.04)',
+  },
+  'human-ai-workflow-design': {
+    residualA: 'rgba(102, 138, 128, 0.13)',
+    residualB: 'rgba(82, 118, 128, 0.06)',
+    residualC: 'rgba(142, 118, 92, 0.05)',
+    wash: 'rgba(98, 112, 108, 0.04)',
+  },
+  'decision-traceability': {
+    residualA: 'rgba(98, 118, 108, 0.12)',
+    residualB: 'rgba(88, 108, 128, 0.06)',
+    residualC: 'rgba(138, 108, 92, 0.05)',
+    wash: 'rgba(104, 96, 92, 0.04)',
+  },
+  'human-in-the-loop-control': {
+    residualA: 'rgba(112, 128, 102, 0.12)',
+    residualB: 'rgba(128, 122, 108, 0.06)',
+    residualC: 'rgba(132, 112, 92, 0.05)',
+    wash: 'rgba(118, 112, 100, 0.04)',
+  },
+  'ai-continuity-presence': {
+    residualA: 'rgba(96, 128, 138, 0.12)',
+    residualB: 'rgba(78, 112, 122, 0.06)',
+    residualC: 'rgba(142, 118, 96, 0.05)',
+    wash: 'rgba(96, 118, 112, 0.04)',
+  },
+};
+
 export const homeCapabilities = [
   {
     id: 'ai-problem-framing',
@@ -129,13 +144,8 @@ export const homeCapabilities = [
     headlineLines: ['AI Problem Framing'],
     railLabelLines: ['AI Problem', 'Framing'],
     positioning: 'Where AI ambition becomes a product problem.',
-    pillsPrimary: ['AI role definition', 'workflow gap analysis', 'success criteria'],
-    pillsSecondary: [
-      'task reframing',
-      'risk framing',
-      'constraint mapping',
-      'feature / no-feature judgment',
-    ],
+    pillsPrimary: ['role definition', 'workflow gaps', 'success criteria'],
+    pillsSecondary: ['task definition', 'risk points', 'constraints', 'feature scope'],
   },
   {
     id: 'human-ai-workflow-design',
@@ -145,13 +155,8 @@ export const homeCapabilities = [
     headlineLines: ['Human-AI', 'Workflow Design'],
     railLabelLines: ['Human-AI', 'Workflow Design'],
     positioning: 'Where AI output becomes continued work.',
-    pillsPrimary: ['routing logic', 'handoff design', 'workflow continuation'],
-    pillsSecondary: [
-      'fallback paths',
-      'clarification loops',
-      'human intervention',
-      'service recovery',
-    ],
+    pillsPrimary: ['routing logic', 'handoff design', 'next-step flows'],
+    pillsSecondary: ['fallback paths', 'follow-up flows', 'human review', 'recovery flows'],
   },
   {
     id: 'decision-traceability',
@@ -161,23 +166,28 @@ export const homeCapabilities = [
     headlineLines: ['Decision', 'Traceability'],
     railLabelLines: ['Decision', 'Traceability'],
     positioning: 'Where AI-assisted judgment becomes reviewable.',
-    pillsPrimary: ['review states', 'source visibility', 'confirmation logic'],
-    pillsSecondary: ['audit trail', 'human modification', 'decision record', 'provenance'],
+    pillsPrimary: ['review steps', 'source visibility', 'audit trail'],
+    pillsSecondary: [
+      'confirmation steps',
+      'human override',
+      'decision history',
+      'source record',
+    ],
   },
   {
     id: 'human-in-the-loop-control',
     code: '04',
     label: 'Human-in-the-loop Control',
     headline: 'Human-in-the-loop Control',
-    headlineLines: ['Human-in-the-loop Control'],
+    headlineLines: ['Human-in-the-', 'loop Control'],
     railLabelLines: ['Human-in-the-loop', 'Control'],
     positioning: 'Where automation meets human responsibility.',
-    pillsPrimary: ['control boundaries', 'intervention points', 'approval gates'],
+    pillsPrimary: ['control boundaries', 'handoff points', 'approval gates'],
     pillsSecondary: [
-      'exception handling',
       'escalation logic',
-      'monitoring reduction',
-      'trust calibration',
+      'exception handling',
+      'review load',
+      'trust signals',
     ],
   },
   {
@@ -188,12 +198,12 @@ export const homeCapabilities = [
     headlineLines: ['AI Continuity', '& Presence'],
     railLabelLines: ['AI Continuity', '& Presence'],
     positioning: 'Where interaction becomes an ongoing relationship.',
-    pillsPrimary: ['state continuity', 'return logic', 'presence cues'],
+    pillsPrimary: ['session continuity', 'return logic', 'memory support'],
     pillsSecondary: [
-      'session memory',
-      'engagement loop',
-      'low-friction re-entry',
-      'relationship rhythm',
+      're-entry flows',
+      'presence signals',
+      'continuity cues',
+      'return patterns',
     ],
   },
 ];

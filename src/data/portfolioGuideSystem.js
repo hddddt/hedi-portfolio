@@ -28,14 +28,35 @@ export const GUIDE_DECISION_AREAS = {
   },
 };
 
-export const GUIDE_ENTRY = {
-  label: '05 · PORTFOLIO GUIDE',
-  title: 'Find your way in.',
-  subtitle: 'Ask what you want to know about Hedi.',
-  freeInputLabel: 'ASK YOUR OWN QUESTION',
-  freeInputHelper: 'work · method · AI direction · role boundary',
-  freeInputPlaceholder: 'Type your question...',
+/** User-facing Portfolio Shortcut shell copy */
+export const SHORTCUT_ENTRY = {
+  label: 'Portfolio Shortcut',
+  tagline: 'Start with an angle, a route, or a proof point.',
+  freeInputPlaceholder: 'Search by AI topic, role question, or design signal',
+  submitLabel: 'Find',
 };
+
+export const SHORTCUT_SECTIONS = {
+  keyAngles: 'Key angles',
+  proofPoints: 'Proof points',
+  search: 'Search evidence',
+  shortAnswer: 'Short answer',
+  relatedProof: 'Related proof points',
+  continueWith: 'Continue with',
+};
+
+export {
+  SHORTCUT_KEY_ANGLES,
+  SHORTCUT_PROOF_POINTS,
+  SHORTCUT_ANGLE_RESULTS,
+  getShortcutAngleResult,
+} from './portfolioShortcutContent.js';
+
+/** @deprecated use SHORTCUT_PROOF_POINTS */
+export { SHORTCUT_PROOF_POINTS as SHORTCUT_RECOMMENDED_EVIDENCE } from './portfolioShortcutContent.js';
+
+/** @deprecated use SHORTCUT_ENTRY */
+export const GUIDE_ENTRY = SHORTCUT_ENTRY;
 
 export const GUIDE_SYSTEM = {
   purpose:
@@ -50,15 +71,15 @@ export const GUIDE_SYSTEM = {
 };
 
 export const GUIDE_RESULT_SECTIONS = {
-  youAsked: 'You asked',
-  takeaway: 'Takeaway',
-  shortMeaning: 'Short meaning',
+  youAsked: 'Query',
+  takeaway: 'Summary',
+  shortMeaning: 'Summary',
   focus: 'Focus',
-  relatedPaths: 'Related paths',
-  askFromAngle: 'Ask from your angle',
-  askFromAngleHelper: 'belief · work · method · boundary',
-  followUp: 'Follow-up',
-  whereToLook: 'Where to look',
+  relatedPaths: 'Matched evidence',
+  askFromAngle: 'Refine',
+  followUp: 'Related',
+  whereToLook: 'Matched evidence',
+  matchReason: 'Why it matches',
 };
 
 /** Maps flow id → decision area (including legacy follow-up flows). */

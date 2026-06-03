@@ -1,8 +1,6 @@
 /**
- * Hero opening scroll narrative — three coordinated phases:
- *  1 scroll start → Hedi lifts, field settles from idle + elastic impact
- *  2 continued scroll → blobs gather, Hedi exits, then thesis copy fades in
- *  3 thesis complete → shrunk field + full copy hold, exit only after dwell
+ * Hero opening scroll narrative — gather → settle → reveal:
+ *  idle → first scroll pulls fields in (impact + compress) → thesis revealed by field hold
  */
 
 import { OPENING_LINEAR_SCALE, OPENING_SCROLL_SCALE } from '../data/fieldSizeHierarchy.js';
@@ -74,17 +72,67 @@ const INTRO_OPACITY = {
 export const OPENING_CHAPTER_ID = 'home-landing';
 export const OPENING_SCROLL_COMPLETE = 1;
 
-export function shouldUseInCardOrganicField(_rawProgress, openingComplete = false, capHandoff = 1) {
-  return !openingComplete || capHandoff < 0.85;
+/** Thesis exit → Capabilities — shared cluster (no outward scatter). */
+export const OPENING_CAP_HANDOFF_FOCAL = { x: 0.452, y: 0.572 };
+export const OPENING_CAP_HANDOFF_ECHO = {
+  a: { x: -0.032, y: -0.018, scale: 1.04, opacityMul: 0.94 },
+  b: { x: 0.034, y: 0.014, scale: 0.94, opacityMul: 0.72 },
+  c: { x: 0.012, y: 0.026, scale: 0.92, opacityMul: 0.68 },
+};
+
+/** @returns {{ a: object, b: object, c: object }} */
+export function openingCapHandoffResidualTargets() {
+  const f = OPENING_CAP_HANDOFF_FOCAL;
+  const e = OPENING_CAP_HANDOFF_ECHO;
+  return {
+    a: {
+      centerX: f.x + e.a.x,
+      centerY: f.y + e.a.y,
+      scale: e.a.scale,
+      opacity: 0.4 * e.a.opacityMul,
+    },
+    b: {
+      centerX: f.x + e.b.x,
+      centerY: f.y + e.b.y,
+      scale: e.b.scale,
+      opacity: 0.22 * e.b.opacityMul,
+    },
+    c: {
+      centerX: f.x + e.c.x,
+      centerY: f.y + e.c.y,
+      scale: e.c.scale,
+      opacity: 0.18 * e.c.opacityMul,
+    },
+  };
 }
 
-export function shouldUseViewportOrganicField(_rawProgress, openingComplete = false, capHandoff = 1) {
-  return openingComplete && capHandoff > 0.04;
+/** Opening chapter — in-card field through thesis exit (handoff blend starts here). */
+export function shouldUseInCardOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
+  if (openingComplete && capHandoff > 0.2) return false;
+  return !openingComplete || capHandoff < 0.2;
+}
+
+/** Viewport field — after opening hands off to capabilities. */
+export function shouldUseViewportOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
+  return openingComplete && capHandoff >= 0.08;
 }
 
 /** @deprecated use openingFieldScrollDrive(rawP) during opening */
 export const HERO_SCROLL_DRIVE_START = 0.006;
 export const HERO_SCROLL_DRIVE_END = 0.09;
+
+/** Raw scroll — gather → settle → reveal rhythm (first scroll = system entry). */
+const OPENING_IMPACT_START = 0.004;
+const OPENING_GATHER_END = 0.24;
+export const OPENING_SETTLE_END = 0.38;
+export const OPENING_THESIS_REVEAL_END = 0.5;
+const OPENING_HERO_EXIT_START = 0.16;
+const OPENING_HERO_EXIT_END = 0.38;
+const OPENING_THESIS_HOLD = 0.34;
+/** Thesis copy — shorter window, less time spent in half-visible haze. */
+const OPENING_THESIS_REVEAL_START = 0.32;
+const OPENING_DECK_REVEAL_START = 0.4;
+const OPENING_DECK_REVEAL_END = 0.56;
 
 /**
  * Master opening orchestration from raw scroll — single source for UI + field.
@@ -92,49 +140,64 @@ export const HERO_SCROLL_DRIVE_END = 0.09;
  */
 export function computeOpeningScrollOrchestration(rawP) {
   const p = Math.max(0, Math.min(1, rawP));
-  const introReadEnd = 0.3;
-  const systemBuildEnd = 0.65;
-  const introRead = smoothstep(0, introReadEnd, p);
-  const systemBuild = smoothstep(introReadEnd, systemBuildEnd, p);
-  const bridgeReveal = smoothstep(systemBuildEnd, 1, p);
+  const bridgeReveal = smoothstep(OPENING_SETTLE_END + 0.14, 1, p);
 
-  /** Phase 1 — keep a stronger free idle field before gather fully takes over. */
-  const idleStillness = 1 - introRead * 0.96;
-  const scrollImpact = scrollBreathScalePulse(smoothstep(0.006, OPENING_PHASE1_END * 0.7, p));
+  /** Idle hero — full atmospheric drift until first scroll registers. */
+  const idleStillness =
+    1 - potentialSnap(smoothstep(OPENING_IMPACT_START, OPENING_GATHER_END * 0.42, p));
 
-  /** Phase 2 — narrative drive + blob gather */
+  /** Scroll impact — subtle compress only; no mid-scroll swell (avoids blob burst). */
+  const scrollImpact =
+    1 +
+    smoothstep(OPENING_IMPACT_START, OPENING_GATHER_END * 0.5, p) *
+      0.045 *
+      (1 - smoothstep(0.55, 0.68, p));
+
+  /** Gather — immediate pull-in; finishes early so thesis can settle. */
+  const gather = potentialSnap(smoothstep(OPENING_IMPACT_START, OPENING_GATHER_END, p));
+  const settle = smoothstep(OPENING_GATHER_END, OPENING_SETTLE_END, p);
+
+  /** Narrative drive follows gather/settle — avoids slow decorative drift mid-transition. */
   const scrollDrive =
-    (0.24 * introRead + easeScrollBreath(systemBuild) * 0.76) *
-    (1 - bridgeReveal * 0.12);
+    easeScrollBreath(potentialSnap(smoothstep(OPENING_IMPACT_START, OPENING_SETTLE_END, p))) *
+    (1 - bridgeReveal * 0.1);
 
-  /** Blob hero timeline — fast intro → thesis convergence */
+  /** Blob hero timeline — locked to gather → settle, not a long intro plateau. */
   let heroProgress;
-  if (p <= introReadEnd) {
-    heroProgress = smoothstep(0, introReadEnd, p) * 0.16;
-  } else if (p <= systemBuildEnd) {
-    heroProgress = 0.16 + potentialSnap(smoothstep(introReadEnd, systemBuildEnd, p)) * 0.6;
+  if (p <= OPENING_GATHER_END) {
+    heroProgress = gather * 0.58;
+  } else if (p <= OPENING_SETTLE_END) {
+    heroProgress = 0.58 + settle * 0.22;
   } else if (p <= OPENING_PHASE3_END) {
-    heroProgress = 0.76;
+    heroProgress = 0.8 + smoothstep(OPENING_SETTLE_END, OPENING_PHASE3_END, p) * 0.16;
   } else {
     const t = (p - OPENING_PHASE3_END) / (OPENING_EXIT_END - OPENING_PHASE3_END);
-    heroProgress = 0.76 + easeScrollBreath(t) * 0.24;
+    heroProgress = 0.8 + t * 0.2;
   }
 
-  /** Gather — start almost immediately; complete early for a clear impact event */
-  const gather = potentialSnap(smoothstep(introReadEnd, systemBuildEnd, p));
+  /** Screen handoff — hero out during settle; thesis only after field lock (move → settle → reveal). */
+  const fadeHero = smoothstep(OPENING_HERO_EXIT_START, OPENING_HERO_EXIT_END, p);
+  const thesisHold = smoothstep(OPENING_SETTLE_END, OPENING_THESIS_HOLD, p);
+  const fadeThesis = smoothstep(OPENING_THESIS_REVEAL_START, OPENING_THESIS_REVEAL_END, p);
+  const handoffLock = settle * thesisHold * (1 - fadeThesis * 0.35);
 
-  /** Screen 1 — handoff starts with gather and exits before thesis reveal */
-  const fadeHero = smoothstep(0.58, 0.9, p);
-
-  /** Screen 2 — reveal only after gather has mostly settled */
-  const fadeThesis = smoothstep(0.66, 0.94, p);
-
-  /** Field compresses hard during gather, then slightly releases in thesis settle. */
-  const compressLinear = potentialSnap(smoothstep(introReadEnd, systemBuildEnd, p));
+  /** Field compresses on gather; holds scale through settle; micro-release as thesis begins. */
+  const compressLinear = gather;
   const compressElastic = elasticCompress(compressLinear);
-  const compressedScale = mix(1, 0.46, easeScrollBreath(compressElastic));
-  const thesisRelease = smoothstep(systemBuildEnd + 0.02, 0.94, p);
-  const fieldScale = compressedScale + thesisRelease * 0.06;
+  const compressedScale = mix(1, 0.52, compressElastic);
+  const thesisRelease = smoothstep(OPENING_THESIS_REVEAL_START - 0.02, OPENING_THESIS_REVEAL_END, p);
+  const thesisNucleus = smoothstep(OPENING_SETTLE_END * 0.45, OPENING_THESIS_REVEAL_END + 0.04, p);
+  const fieldScale =
+    compressedScale + thesisRelease * 0.08 + thesisNucleus * 0.12;
+  const condenseBeat = smoothstep(OPENING_IMPACT_START, OPENING_SETTLE_END + 0.04, p);
+  const headlineReveal = smoothstep(
+    OPENING_SETTLE_END * 0.55,
+    OPENING_THESIS_REVEAL_END - 0.06,
+    p,
+  );
+  const deckReveal = smoothstep(OPENING_DECK_REVEAL_START, OPENING_DECK_REVEAL_END, p);
+  const exitDissolve = smoothstep(0.64, 0.96, p);
+  const thesisExit = smoothstep(0.82, 0.98, p);
 
   let phase = /** @type {HeroPhase} */ ('intro');
   if (p > OPENING_PHASE3_END) phase = 'exit';
@@ -149,15 +212,25 @@ export function computeOpeningScrollOrchestration(rawP) {
     scrollDrive,
     scrollImpact,
     gather,
+    settle,
+    handoffLock,
     fadeHero,
     fadeThesis,
     fieldScale,
-    fieldEnvelope: 1,
+    thesisNucleus,
+    condenseBeat,
+    headlineReveal,
+    deckReveal,
+    exitDissolve,
+    thesisExit,
+    fieldEnvelope: 1 + idleStillness * 0.07,
     converge: gather,
     globalBlur:
-      p < systemBuildEnd
-        ? mix(16, 8.6, smoothstep(introReadEnd, systemBuildEnd, p))
-        : mix(8.6, 7.2, smoothstep(systemBuildEnd + 0.02, 1, p)),
+      p < OPENING_GATHER_END
+        ? mix(12, 5.5, potentialSnap(smoothstep(OPENING_IMPACT_START, OPENING_GATHER_END, p)))
+        : p < OPENING_SETTLE_END
+          ? mix(5.5, 4.2, settle)
+          : mix(4.2, 3.2, smoothstep(OPENING_SETTLE_END, OPENING_THESIS_REVEAL_END, p)),
   };
 }
 
@@ -179,67 +252,83 @@ const BLOB_STATES = {
   transition: {
     a: {
       ...HERO_BLOB_INTRO.a,
-      centerX: 0.47,
-      centerY: 0.5,
+      centerX: 0.44,
+      centerY: 0.52,
       scale: OPENING_SCROLL_SCALE.transition.green,
       opacity: INTRO_OPACITY.a,
       rotation: HERO_GREEN_ROTATION,
     },
     b: {
       ...HERO_BLOB_INTRO.b,
-      centerX: 0.525,
-      centerY: 0.468,
+      centerX: 0.58,
+      centerY: 0.48,
       scale: OPENING_SCROLL_SCALE.transition.blue,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
-      centerX: 0.498,
-      centerY: 0.43,
-      scale: OPENING_SCROLL_SCALE.transition.amber,
-      opacity: INTRO_OPACITY.c,
+      centerX: 0.54,
+      centerY: 0.6,
+      scale: OPENING_SCROLL_SCALE.transition.amber * 0.94,
+      opacity: INTRO_OPACITY.c * 0.85,
     },
   },
   thesis: {
     a: {
       ...HERO_BLOB_INTRO.a,
-      centerX: 0.478,
-      centerY: 0.498,
-      scale: OPENING_SCROLL_SCALE.thesis.green * 1.16,
+      centerX: 0.406,
+      centerY: 0.618,
+      scale: OPENING_SCROLL_SCALE.thesis.green * 1.14,
       opacity: INTRO_OPACITY.a,
-      stretchX: 1.08,
-      stretchY: 0.92,
-      rotation: HERO_GREEN_ROTATION * 1.05,
+      stretchX: 1.16,
+      stretchY: 0.8,
+      rotation: HERO_GREEN_ROTATION * 1.14,
     },
     b: {
       ...HERO_BLOB_INTRO.b,
-      centerX: 0.524,
-      centerY: 0.476,
-      scale: OPENING_SCROLL_SCALE.thesis.blue * 1.16,
-      opacity: INTRO_OPACITY.b,
-      stretchX: 0.9,
-      stretchY: 1.08,
-      rotation: -0.26,
+      centerX: 0.594,
+      centerY: 0.656,
+      scale: OPENING_SCROLL_SCALE.thesis.blue * 1.04,
+      opacity: INTRO_OPACITY.b * 0.9,
+      stretchX: 0.86,
+      stretchY: 1.1,
+      rotation: -0.44,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
-      centerX: 0.502,
-      centerY: 0.462,
-      scale: OPENING_SCROLL_SCALE.thesis.amber * 1.16,
-      opacity: INTRO_OPACITY.c,
-      stretchX: 1.14,
-      stretchY: 0.9,
-      rotation: 0.16,
+      centerX: 0.518,
+      centerY: 0.728,
+      scale: OPENING_SCROLL_SCALE.thesis.amber * 1.02,
+      opacity: INTRO_OPACITY.c * 0.8,
+      stretchX: 1.12,
+      stretchY: 0.74,
+      rotation: 0.32,
     },
   },
 };
 
-const FOCUS = { x: 0.5, y: 0.48 };
+/** Identity read above; thesis nucleus sits below headline copy */
+const FOCUS_HERO = { x: 0.5, y: 0.36 };
+const FOCUS_THESIS = { x: 0.508, y: 0.662 };
 const CLUSTER_OFFSETS = {
-  a: { x: -0.013, y: 0.009 },
-  b: { x: 0.014, y: 0.001 },
-  c: { x: 0.004, y: -0.012 },
+  a: { x: -0.022, y: 0.01 },
+  b: { x: 0.024, y: 0.034 },
+  c: { x: -0.006, y: 0.048 },
 };
+const CLUSTER_OFFSETS_THESIS = {
+  a: { x: -0.042, y: -0.022 },
+  b: { x: 0.046, y: 0.012 },
+  c: { x: -0.018, y: 0.048 },
+};
+
+function focusAtOrchestration(orch) {
+  const raw = orch?.rawP ?? 0;
+  const t = smoothstep(OPENING_SETTLE_END * 0.4, OPENING_THESIS_REVEAL_END + 0.06, raw);
+  return {
+    x: mix(FOCUS_HERO.x, FOCUS_THESIS.x, t),
+    y: mix(FOCUS_HERO.y, FOCUS_THESIS.y, t),
+  };
+}
 const CLUSTER_SHAPE = {
   a: { stretchX: 1.14, stretchY: 0.86, rotation: HERO_GREEN_ROTATION * 1.08 },
   b: { stretchX: 0.84, stretchY: 1.18, rotation: -0.34 },
@@ -264,11 +353,15 @@ function lerpBlobState(from, to, t) {
   };
 }
 
-function applyBlobOpacity(states) {
+function applyBlobOpacity(states, nucleus = 0) {
+  const nu = smoothstep(0.25, 0.8, nucleus);
+  const greenHold = 1 - nu * 0.06;
+  const thesisSoft = 1 - nu * 0.1;
+  const amberSoft = (states.c.opacity ?? INTRO_OPACITY.c) * (1 - nu * 0.18);
   return {
-    a: { ...states.a, opacity: INTRO_OPACITY.a },
-    b: { ...states.b, opacity: INTRO_OPACITY.b },
-    c: { ...states.c, opacity: INTRO_OPACITY.c },
+    a: { ...states.a, opacity: (states.a.opacity ?? INTRO_OPACITY.a) * greenHold },
+    b: { ...states.b, opacity: (states.b.opacity ?? INTRO_OPACITY.b) * thesisSoft },
+    c: { ...states.c, opacity: amberSoft },
   };
 }
 
@@ -292,7 +385,7 @@ function blobStatesAtProgress(heroProgress) {
   } else {
     states = BLOB_STATES.thesis;
   }
-  return applyBlobOpacity(states);
+  return states;
 }
 
 export function computeHeroScrollNarrative(rawP, prm = false) {
@@ -312,7 +405,14 @@ export function computeHeroScrollNarrative(rawP, prm = false) {
       scrollDrive: 1,
       scrollImpact: 1,
       gather: 1,
+      settle: 1,
+      thesisNucleus: 1,
+      condenseBeat: 1,
+      headlineReveal: smoothstep(0.35, 0.75, heroProgress),
+      deckReveal: smoothstep(0.45, 0.82, heroProgress),
+      handoffLock: 1,
       fieldScale: 1,
+      fieldEnvelope: 1,
     };
   }
   const orch = computeOpeningScrollOrchestration(rawP);
@@ -333,31 +433,57 @@ export function computeOpeningFieldPresence(rawP, prm = false) {
  * @param {object} [orch] opening orchestration slice
  */
 export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orch = null) {
-  const states = blobStatesAtProgress(heroProgress);
+  const states = applyBlobOpacity(blobStatesAtProgress(heroProgress), orch?.thesisNucleus ?? 0);
   const gather = orch?.gather ?? smoothstep(PHASE.introEnd * 0.5, PHASE.thesisStart + 0.02, heroProgress);
+  const settle = orch?.settle ?? 0;
+  const nucleus = orch?.thesisNucleus ?? settle;
   const impact = orch?.scrollImpact ?? 1;
   const stillness = orch?.idleStillness ?? 0;
-  const impactGain = (1 - stillness) * Math.max(0, impact - 1) * 3.2;
-  const clusterProgress = potentialSnap(
-    easeScrollBreath(smoothstep(PHASE.introEnd * 0.0, PHASE.thesisStart - 0.44, heroProgress)),
+  const exitDissolve = orch?.exitDissolve ?? 0;
+  const inExit = exitDissolve > 0.06;
+  const impactGain = inExit ? 0 : (1 - stillness) * Math.max(0, impact - 1) * 1.2;
+  const clusterProgress = smoothstep(
+    0,
+    PHASE.thesisStart - 0.08,
+    gather * 0.82 + settle * 0.28 + heroProgress * 0.08,
   );
-  const shapeProgress = easeScrollBreath(
-    smoothstep(PHASE.introEnd * 0.05, PHASE.thesisStart - 0.16, heroProgress),
-  );
+  const shapeProgress = inExit
+    ? 0
+    : easeScrollBreath(smoothstep(gather * 0.35, PHASE.thesisStart - 0.1, heroProgress));
+  const focus = focusAtOrchestration(orch);
+  const clusterTight = smoothstep(0.28, 0.72, nucleus);
 
   const applyBlob = (id, state) => {
-    const cluster = CLUSTER_OFFSETS[id];
+    const cluster = mix(
+      CLUSTER_OFFSETS[id].x,
+      CLUSTER_OFFSETS_THESIS[id].x,
+      clusterTight,
+    );
+    const clusterY = mix(
+      CLUSTER_OFFSETS[id].y,
+      CLUSTER_OFFSETS_THESIS[id].y,
+      clusterTight,
+    );
     const shape = CLUSTER_SHAPE[id];
-    const focusX = FOCUS.x + cluster.x;
-    const focusY = FOCUS.y + cluster.y;
-    const gatherMix = gather * 0.56 + clusterProgress * 0.6;
-    const cx = mix(state.centerX, focusX, gatherMix);
-    const cy = mix(state.centerY, focusY, gather * 0.5 + clusterProgress * 0.62);
-    const gatherScale = 1 + gather * 0.05;
-    const impactScale = 1 + impactGain * 0.18;
-    const radialX = (state.centerX - FOCUS.x) * impactGain * 0.22;
-    const radialY = (state.centerY - FOCUS.y) * impactGain * 0.16;
-    const shapeMix = impactGain * 0.28 + shapeProgress * 0.46;
+    const focusX = focus.x + cluster;
+    const focusY = focus.y + clusterY;
+    const gatherMix =
+      gather * 0.74 + clusterProgress * 0.62 + settle * 0.1 - clusterTight * 0.12;
+    const nucleusDrop =
+      id === 'c' ? nucleus * 0.042 : id === 'a' ? nucleus * 0.018 : id === 'b' ? nucleus * 0.028 : 0;
+    const cx = mix(state.centerX, focusX, Math.max(0, Math.min(1, gatherMix)));
+    const cy =
+      mix(state.centerY, focusY, gather * 0.58 + clusterProgress * 0.66 + settle * 0.12) + nucleusDrop;
+    const gatherScale =
+      id === 'a'
+        ? 1 - gather * 0.018 + (impact - 1) * 0.06 + nucleus * 0.09
+        : id === 'b'
+          ? 1 - gather * 0.028 + (impact - 1) * 0.05 + nucleus * 0.04
+          : 1 - gather * 0.034 + (impact - 1) * 0.04 + nucleus * 0.02;
+    const impactScale = 1 + impactGain * 0.06;
+    const radialX = 0;
+    const radialY = 0;
+    const shapeMix = impactGain * 0.36 + shapeProgress * 0.58;
     const stretchX = mix(state.stretchX, shape.stretchX, shapeMix);
     const stretchY = mix(state.stretchY, shape.stretchY, shapeMix);
     const rotation = mix(state.rotation ?? 0, shape.rotation, shapeProgress * 0.72);
@@ -373,10 +499,45 @@ export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orc
     };
   };
 
+  const condenseTowardCapability = smoothstep(0.18, 0.88, exitDissolve);
+  const handoffFocal = OPENING_CAP_HANDOFF_FOCAL;
+  const handoffEcho = OPENING_CAP_HANDOFF_ECHO;
+  const maxHandoffDrift = 0.055;
+
+  const condenseBlob = (id, blob) => {
+    if (condenseTowardCapability < 0.01) return blob;
+    const echo = handoffEcho[id];
+    const u = condenseTowardCapability;
+    const tgtX = handoffFocal.x + echo.x;
+    const tgtY = handoffFocal.y + echo.y;
+    const pull = id === 'a' ? u * 0.56 : u * 0.44;
+    let centerX = mix(blob.centerX, tgtX, pull);
+    let centerY = mix(blob.centerY, tgtY, pull * 0.85);
+    const dx = centerX - blob.centerX;
+    const dy = centerY - blob.centerY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxHandoffDrift) {
+      const s = maxHandoffDrift / dist;
+      centerX = blob.centerX + dx * s;
+      centerY = blob.centerY + dy * s;
+    }
+    const softenU = smoothstep(0.4, 1, u);
+    const tgtScale = Math.min(blob.scale, echo.scale);
+    return {
+      ...blob,
+      centerX: centerX - (id === 'a' ? softenU * 0.02 : 0),
+      centerY,
+      scale: blob.scale * mix(1, tgtScale / Math.max(blob.scale, 0.001), softenU * 0.18),
+      opacity: blob.opacity * mix(1, echo.opacityMul, softenU * 0.35),
+      stretchX: mix(blob.stretchX ?? 1, 1, softenU * 0.42),
+      stretchY: mix(blob.stretchY ?? 1, 1, softenU * 0.42),
+    };
+  };
+
   return {
-    a: applyBlob('a', states.a),
-    b: applyBlob('b', states.b),
-    c: applyBlob('c', states.c),
+    a: condenseBlob('a', applyBlob('a', states.a)),
+    b: condenseBlob('b', applyBlob('b', states.b)),
+    c: condenseBlob('c', applyBlob('c', states.c)),
     flowB: 0,
   };
 }

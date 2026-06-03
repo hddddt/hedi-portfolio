@@ -75,7 +75,9 @@ export function NarrativeChapter({
       aria-label={ariaLabel ?? chapterLabel}
     >
       {!hideRibbon && (
-        <header className="narrative-chapter__ribbon">
+        <header
+          className={`narrative-chapter__ribbon motion-reveal${revealed ? ' is-visible' : ''}`}
+        >
           <span className="narrative-chapter__ribbon-num">{chapterNum}</span>
           <span className="narrative-chapter__ribbon-sep" aria-hidden="true">
             ·

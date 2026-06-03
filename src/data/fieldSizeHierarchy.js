@@ -25,7 +25,7 @@ export const OPENING_LINEAR_SCALE = {
 export const OPENING_SCROLL_SCALE = {
   intro: { green: 1.24, blue: 1.0, amber: 0.8 },
   transition: { green: 1.2, blue: 0.98, amber: 0.78 },
-  thesis: { green: 1.16, blue: 0.96, amber: 0.76 },
+  thesis: { green: 1.36, blue: 1.1, amber: 0.94 },
 };
 
 /** Base shader radii [rx, ry] before scene multiplier */
@@ -44,9 +44,9 @@ export const FIELD_WARM_RADII_MULT = {
 
 /** Capabilities signal chapter — no oversized green wall */
 export const FIELD_SIGNAL_RADII_MULT = {
-  a: 1.1,
-  b: 1.06,
-  c: 0.96,
+  a: 1.18,
+  b: 1.1,
+  c: 1.02,
 };
 
 /** Capabilities / signal layout motion scales (before orb × ambient scaleMult) */

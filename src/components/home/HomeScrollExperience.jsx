@@ -1,4 +1,5 @@
 import '../../styles/home-scroll.css';
+import '../../styles/interaction-states.css';
 import '../../styles/home-narrative.css';
 import '../../styles/home-point-of-view.css';
 import '../../styles/home-life-archive.css';
@@ -11,7 +12,12 @@ import { FieldNarrativeProvider } from '../../context/FieldNarrativeContext.jsx'
 import { PovArchiveHandoffProvider } from '../../context/PovArchiveHandoffContext.jsx';
 import { NarrativeScrollProvider } from '../../context/NarrativeScrollContext.jsx';
 import { OrganicFieldHostProvider, useOrganicFieldHost } from '../../context/OrganicFieldHostContext.jsx';
-import { OrbSceneChapterSync, OrbSceneProvider } from '../../context/OrbSceneContext.jsx';
+import {
+  OrbSceneChapterSync,
+  OrbSceneContactSync,
+  OrbSceneProvider,
+  OrbSceneSemanticRoot,
+} from '../../context/OrbSceneContext.jsx';
 import { PerspectiveProvider } from '../../context/PerspectiveContext.jsx';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
@@ -21,6 +27,7 @@ import { MeCurrentWorkSection } from './MeCurrentWorkSection.jsx';
 import { useMemo, useRef } from 'react';
 import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
 import { beyondWorkEntranceLayers } from '../../utils/povArchiveHandoff.js';
+import { BeyondWorkCorridor } from './BeyondWorkCorridor.jsx';
 import { MePathSection, MePathPortrait, MePathDivider } from './MePathSection.jsx';
 
 function BeyondWorkAtmosphere() {
@@ -33,7 +40,8 @@ function BeyondWorkAtmosphere() {
 }
 import { LifeArchiveSection } from '../LifeArchive/LifeArchiveSection.jsx';
 import { ViewportOrganicField } from './OrganicField.jsx';
-import { PortfolioGuide } from './PortfolioGuide.jsx';
+import { PortfolioShortcut } from './PortfolioGuide.jsx';
+import { RevealObserver } from '../motion/RevealObserver.jsx';
 import { ApproachSection } from './ApproachSection.jsx';
 import { PovSourcesDock } from './PovSourcesDock.jsx';
 import { CapabilityDialSection } from './CapabilityDialSection.jsx';
@@ -107,12 +115,14 @@ function HomeScrollInner() {
       >
         <div className="home-beyond-work" data-archive-handoff-root>
           <BeyondWorkAtmosphere />
-          <div className="home-beyond-work__content">
+          <div className="home-beyond-work__content motion-reveal-group">
             <section id="home-beyond-path" className="home-beyond-work__part home-beyond-work__part--path">
               <MePathSection />
               <MePathPortrait />
               <MePathDivider />
             </section>
+
+            <BeyondWorkCorridor />
 
             <section
               id="home-beyond-archive"
@@ -139,20 +149,24 @@ function HomeScrollRootLayout() {
   const { activeId } = useNarrativeScroll();
   const { setRootHost } = useOrganicFieldHost();
   const { orbScene } = useOrbScene();
+  const scrollRootRef = useRef(null);
 
   return (
-    <div className="home-scroll-root">
+    <div ref={scrollRootRef} className="home-scroll-root">
       <OrbSceneChapterSync activeId={activeId} />
+      <OrbSceneContactSync />
+      <OrbSceneSemanticRoot activeId={activeId} orbScene={orbScene} />
       <div
         ref={setRootHost}
         className="organic-field-host organic-field-host--viewport"
         data-orb-scene={orbScene}
         aria-hidden="true"
       />
+      <RevealObserver rootRef={scrollRootRef} />
       <HomeScrollInner />
       <ViewportOrganicField />
       <PovSourcesDock />
-      <PortfolioGuide />
+      <PortfolioShortcut />
     </div>
   );
 }

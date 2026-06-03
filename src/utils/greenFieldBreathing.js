@@ -11,9 +11,9 @@ import { estimateFieldLinear } from '../data/fieldSizeHierarchy.js';
 
 /** @type {Record<GreenBreathingSection, { amplitude: number, speed: number, phase: number, opacityAmp: number, driftAmp: number }>} */
 export const GREEN_BREATHING = {
-  opening: { amplitude: 0.038, speed: 0.78, phase: 0.7, opacityAmp: 0.032, driftAmp: 0.005 },
-  capabilities: { amplitude: 0.028, speed: 0.74, phase: 1.3, opacityAmp: 0.024, driftAmp: 0.0035 },
-  other: { amplitude: 0.022, speed: 0.68, phase: 2.1, opacityAmp: 0.02, driftAmp: 0.003 },
+  opening: { amplitude: 0.022, speed: 0.62, phase: 0.7, opacityAmp: 0.018, driftAmp: 0.0028 },
+  capabilities: { amplitude: 0, speed: 0.58, phase: 1.3, opacityAmp: 0.006, driftAmp: 0 },
+  other: { amplitude: 0.018, speed: 0.64, phase: 2.1, opacityAmp: 0.014, driftAmp: 0.0025 },
 };
 
 const MAX_AREA_RATIO = 3;
@@ -47,6 +47,14 @@ export function computeGreenBreathing(t, section, reducedMotion = false, opts = 
   if (section === 'capabilities' && opts.scrollDrive != null) {
     amplitude *= 1 - Math.min(1, Math.max(0, opts.scrollDrive)) * 0.4;
   }
+  if (section === 'capabilities' && opts.capHold != null) {
+    const hold = Math.max(0, Math.min(1, opts.capHold));
+    amplitude *= 1 - hold * 0.96;
+  }
+  if (section === 'opening' && opts.openingGather != null) {
+    const g = Math.max(0, Math.min(1, opts.openingGather));
+    amplitude *= 1 - g * 0.94;
+  }
   const speedWarp =
     section === 'opening'
       ? 1 +
@@ -57,11 +65,18 @@ export function computeGreenBreathing(t, section, reducedMotion = false, opts = 
   const wave = Math.sin(t * localSpeed + cfg.phase);
   const opacityWave = Math.sin(t * localSpeed * 0.78 + cfg.phase + 1.2);
   const driftPhase = t * localSpeed * 0.62 + cfg.phase * 0.5;
+  let driftAmp = cfg.driftAmp;
+  if (section === 'capabilities' && opts.capHold != null) {
+    driftAmp *= 1 - Math.max(0, Math.min(1, opts.capHold)) * 0.97;
+  }
+  if (section === 'opening' && opts.openingGather != null) {
+    driftAmp *= 1 - Math.max(0, Math.min(1, opts.openingGather)) * 0.98;
+  }
   return {
     scale: 1 + wave * amplitude,
-    opacityDelta: opacityWave * cfg.opacityAmp,
-    dx: Math.sin(driftPhase) * cfg.driftAmp,
-    dy: Math.cos(driftPhase * 0.88) * cfg.driftAmp * 0.85,
+    opacityDelta: opacityWave * cfg.opacityAmp * (section === 'capabilities' && opts.capHold != null ? 1 - Math.min(1, opts.capHold) * 0.85 : 1),
+    dx: Math.sin(driftPhase) * driftAmp,
+    dy: Math.cos(driftPhase * 0.88) * driftAmp * 0.85,
   };
 }
 
@@ -81,8 +96,7 @@ export function clampGreenBreathingScale(
   stretches = {},
 ) {
   if (ambKey === 'signal') {
-    // Capabilities: do not enforce blue/green ratio clamp.
-    return Math.max(0.88, Math.min(1.2, breathingScale));
+    return Math.max(0.99, Math.min(1.01, breathingScale));
   }
   const radiiKey = ambKey === 'signal' ? 'signal' : 'warm';
   const gBase = estimateFieldLinear(
@@ -116,6 +130,8 @@ export function applyGreenBreathingLayer(targets, t, ctx) {
   const section = resolveGreenBreathingSection(ctx);
   const breath = computeGreenBreathing(t, section, ctx.reducedMotion, {
     scrollDrive: ctx.scrollDrive,
+    capHold: ctx.capHold,
+    openingGather: ctx.openingGather,
   });
   const clampedScale = clampGreenBreathingScale(
     targets.a.scale,

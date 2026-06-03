@@ -52,18 +52,22 @@
   --orb-transition: 0.95s;
 }
 
+.home-scroll-root[data-viewport-field-ready='true'] .organic-field-host--viewport[data-orb-scene='capabilities']{
+  --orb-host-opacity: 1;
+}
+
 .organic-field-host--viewport[data-orb-scene='pov']{
-  --orb-host-opacity: 0.96;
+  --orb-host-opacity: 1;
 }
 
 .organic-field-host--viewport[data-orb-scene='work'],
 .organic-field-host--viewport[data-orb-scene='case']{
-  --orb-host-opacity: 0.94;
+  --orb-host-opacity: 1;
 }
 
 .organic-field-host--viewport[data-orb-scene='me'],
 .organic-field-host--viewport[data-orb-scene='guide']{
-  --orb-host-opacity: 0.92;
+  --orb-host-opacity: 0.98;
   --orb-host-blur: 0.25px;
 }
 

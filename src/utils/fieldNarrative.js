@@ -14,7 +14,7 @@ export function mix(a, b, t) {
 export function easeScrollBreath(t) {
   const c = Math.max(0, Math.min(1, t));
   const base = c * c * (3 - 2 * c);
-  const swell = Math.sin(c * Math.PI) * 0.12 * (1 - c * 0.4);
+  const swell = Math.sin(c * Math.PI) * 0.05 * (1 - c * 0.55);
   return Math.max(0, Math.min(1, base + swell));
 }
 
@@ -52,17 +52,20 @@ export function computeFieldNarrative(p, options = {}) {
 
   const pScrub = prm ? p : plateauProgress(p, 0.72, 0.86);
   const open = smoothstep(0.03, 0.97, pScrub);
-  const expand = smoothstep(0.04, 0.9, open);
-  const spreadField = smoothstep(0.05, 0.9, open);
+  const exitConverge = smoothstep(0.58, 0.94, p);
+  const convergeExit = Math.max(smoothstep(0.58, 0.94, open), exitConverge);
+  const expand = smoothstep(0.04, 0.58, open) * (1 - convergeExit);
+  const spreadField = smoothstep(0.05, 0.58, open) * (1 - convergeExit);
   const fieldDrive = prm ? open : smoothstep(0.02, 0.88, open);
   const orbitDrive = prm ? fieldDrive : smoothstep(0.18, 0.94, open);
   const descend = smoothstep(0.05, 0.84, open);
   const nucleate = 1 - smoothstep(0, 0.34, open);
-  const stretchBand = smoothstep(0.08, 0.52, open) * (1 - smoothstep(0.48, 0.9, open) * 0.35);
-  const dilate = smoothstep(0.12, 0.74, open);
+  const stretchBand =
+    smoothstep(0.08, 0.52, open) * (1 - smoothstep(0.48, 0.9, open) * 0.35) * (1 - exitConverge);
+  const dilate = smoothstep(0.12, 0.74, open) * (1 - exitConverge * 0.94);
   const recede = smoothstep(0.52, 0.98, open);
   const handoff = smoothstep(0.62, 0.98, open);
-  const handoffDrift = mix(0, 1, handoff);
+  const handoffDrift = mix(0, 1, handoff) * (1 - convergeExit);
   const tonalDeep = smoothstep(0.22, 0.9, open);
   const friction = prm ? 0 : Math.min(0.45, Math.abs(fieldDrive - orbitDrive) * 2.2);
 
@@ -71,16 +74,21 @@ export function computeFieldNarrative(p, options = {}) {
   const ptrY = (springPos.y - 0.5) * 2;
   const mousePull = prm ? 0 : 1;
 
-  const brA = breatheOffset(time, 26, 0.029, -0.0235);
-  const brB = breatheOffset(time, 33, -0.0245, 0.0265);
-  const brV = breatheOffset(time, 21.5, 0.0175, 0.02);
+  const breatheMul = 1 - exitConverge * 0.9;
+  const brA = breatheOffset(time, 26, 0.029 * breatheMul, -0.0235 * breatheMul);
+  const brB = breatheOffset(time, 33, -0.0245 * breatheMul, 0.0265 * breatheMul);
+  const brV = breatheOffset(time, 21.5, 0.0175 * breatheMul, 0.02 * breatheMul);
 
-  const tAx = mix(2, -7, expand) - 10 * sx + ptrX * 3.2 * mousePull;
-  const tAy = mix(2, 14, expand) + 8 * sx + ptrY * 2.4 * mousePull + handoffDrift * 12;
-  const tBx = mix(-1, 16, expand) + 12 * sx - ptrX * 2.6 * mousePull;
-  const tBy = mix(1, 10, expand) - 6 * sx + ptrY * 2.8 * mousePull + handoffDrift * 10;
+  const tAx =
+    mix(2, -7, expand) - 10 * sx + ptrX * 3.2 * mousePull - handoffDrift * 5 - convergeExit * 3;
+  const tAy =
+    mix(2, 14, expand) + 8 * sx + ptrY * 2.4 * mousePull + handoffDrift * 3 + convergeExit * 4;
+  const tBx =
+    mix(-1, 16, expand) + 12 * sx - ptrX * 2.6 * mousePull - handoffDrift * 4 - convergeExit * 2;
+  const tBy =
+    mix(1, 10, expand) - 6 * sx + ptrY * 2.8 * mousePull + handoffDrift * 2 + convergeExit * 3;
   const tVx = mix(0, -5, expand) + 4 * sx + ptrX * 1.4 * mousePull;
-  const tVy = mix(3, 18, expand) + 10 * sx + ptrY * 1.6 * mousePull;
+  const tVy = mix(3, 18, expand) + 10 * sx + ptrY * 1.6 * mousePull + convergeExit * 2;
 
   const discs = {
     a: {
@@ -111,6 +119,7 @@ export function computeFieldNarrative(p, options = {}) {
     open,
     spreadField,
     expand,
+    convergeExit,
     recede,
     dilate,
     nucleate,
@@ -127,7 +136,7 @@ export function computeFieldNarrative(p, options = {}) {
       stretchY: mix(1.0, 1.58, dilate) * mix(1, 0.86, recede) * mix(0.98, 1.12, expand),
       skewY: prm ? 0 : mix(0, 2.4, stretchBand) * (1 - recede * 0.7),
       fieldDescendVh: prm ? 0 : mix(0, 6.5, descend),
-      fieldTopPct: mix(35, 48, descend),
+      fieldTopPct: mix(38, 52, descend),
       fieldW: mix(78, 124, fieldDrive) * mix(0.94, 1.02, expand),
       fieldH: mix(56, 96, fieldDrive) * mix(0.94, 1.04, expand),
       fieldOpacity: mix(1, 0.44, recede),
@@ -175,15 +184,103 @@ export function measureOpeningScrollProgress(el, prefersReducedMotion) {
   return Math.max(0, Math.min(1, nextP));
 }
 
+/** Opening scroll p — exit veil: 0 off, 0→1 dark rises from bottom (screen 2 → Cap only). */
+const OPENING_CAP_EXIT_START = 0.62;
+const OPENING_CAP_EXIT_END = 0.96;
+
 /**
- * 0→1 as Capabilities chapter rises into pin — drives field pose blend from opening thesis to signal.
- * @param {DOMRect | null | undefined} capabilitiesRect
+ * 0→1 Opening→Cap exit veil (dark mask grows upward from bottom). Stays 0 on screen 1.
+ * @param {number} openingProgress raw opening-scroll p ∈ [0, 1]
+ * @param {DOMRect | null | undefined} [capabilitiesRect]
  * @param {number} vh
  */
-export function measureOpeningCapabilitiesHandoff(capabilitiesRect, vh) {
-  if (!capabilitiesRect || vh < 1) return 1;
-  const top = capabilitiesRect.top;
-  if (top >= vh * 0.98) return 0;
-  if (top <= vh * 0.04) return 1;
-  return smoothstep(vh * 0.96, vh * 0.06, vh - top);
+export function measureOpeningCapExitWipe(openingProgress, capabilitiesRect, vh) {
+  const p = Math.max(0, Math.min(1, openingProgress ?? 0));
+  if (p < OPENING_CAP_EXIT_START) return 0;
+
+  const peel = smoothstep(OPENING_CAP_EXIT_START, OPENING_CAP_EXIT_END, p);
+  let capPull = smoothstep(OPENING_CAP_EXIT_START + 0.02, 0.88, p);
+  if (capabilitiesRect && vh > 0) {
+    const top = capabilitiesRect.top;
+    if (top < vh * 0.72 && top > -vh * 0.15) {
+      capPull = Math.max(capPull, smoothstep(vh * 0.58, vh * 0.08, top));
+    }
+  }
+  return Math.max(0, Math.min(1, peel * capPull));
+}
+
+/** @deprecated alias — use measureOpeningCapExitWipe */
+export function measureOpeningCapExitMask(openingProgress, capabilitiesRect, vh) {
+  return measureOpeningCapExitWipe(openingProgress, capabilitiesRect, vh) > 0.001 ? 1 : 0;
+}
+
+/**
+ * Visual curve for global grey / cap atmosphere — only after screen-2 exit mask arms.
+ * @param {number} handoff raw 0–1 from measureOpeningCapabilitiesHandoff
+ * @param {number} [exitWipe] from measureOpeningCapExitWipe
+ */
+export function openingCapHandoffVisual(handoff, exitWipe = 0) {
+  const c = Math.max(0, Math.min(1, handoff ?? 0));
+  const peel = Math.max(0, Math.min(1, exitWipe ?? 0));
+  if (c <= 0.001) return 0;
+  const gate = smoothstep(0.02, 0.3, peel);
+  return smoothstep(0, 1, c * gate);
+}
+
+/**
+ * 0→1 as Capabilities chapter rises into pin — drives field pose blend from opening thesis to signal.
+ * Holds at 0 while thesis is still dominant; ramps only as the chapter approaches sticky pin.
+ * @param {DOMRect | null | undefined} capabilitiesRect
+ * @param {number} vh
+ * @param {DOMRect | null | undefined} [stickyRect] pinned `.capability-sticky` when available
+ * @param {number | null} [openingProgress] raw opening scroll 0–1 — gates handoff until thesis exit
+ */
+export function measureOpeningCapabilitiesHandoff(
+  capabilitiesRect,
+  vh,
+  stickyRect,
+  openingProgress = null,
+  openingCapExitWipe = null,
+) {
+  if (vh < 1) return 0;
+
+  const useLegacy =
+    stickyRect == null && openingProgress == null && openingCapExitWipe == null;
+  if (useLegacy) {
+    if (!capabilitiesRect) return 1;
+    const top = capabilitiesRect.top;
+    if (top >= vh * 0.98) return 0;
+    if (top <= vh * 0.04) return 1;
+    return smoothstep(vh * 0.96, vh * 0.06, vh - top);
+  }
+
+  const exitGate = smoothstep(0.04, 0.22, openingCapExitWipe ?? 0);
+
+  let fromChapter = 0;
+  if (capabilitiesRect) {
+    const top = capabilitiesRect.top;
+    if (top > vh * 0.12) {
+      fromChapter = 0;
+    } else if (top <= 0) {
+      fromChapter = 1;
+    } else {
+      fromChapter = smoothstep(vh * 0.12, 0, top);
+    }
+  }
+
+  let fromSticky = 0;
+  if (stickyRect) {
+    const pinTop = stickyRect.top;
+    if (pinTop <= vh * 0.04 && pinTop >= -12 && stickyRect.bottom > vh * 0.5) {
+      fromSticky = smoothstep(vh * 0.04, -6, pinTop);
+    }
+  }
+
+  let handoff = Math.max(fromChapter, fromSticky) * exitGate;
+
+  if (openingProgress != null && Number.isFinite(openingProgress)) {
+    handoff *= smoothstep(0.68, 0.9, openingProgress);
+  }
+
+  return Math.max(0, Math.min(1, handoff));
 }

@@ -83,6 +83,7 @@ export function createTrackScrollTween() {
     const {
       duration = DEFAULT_TWEEN_MS,
       ease = easeOutCubic,
+      onProgress,
       onComplete,
     } = options;
 
@@ -90,24 +91,40 @@ export function createTrackScrollTween() {
     running = true;
     const startY = window.scrollY;
     const delta = targetY - startY;
+    const startTime = performance.now();
+
     if (Math.abs(delta) < 0.5) {
-      running = false;
-      onComplete?.();
+      const tickInPlace = (now) => {
+        if (!running) return;
+        const linearP = Math.min(1, (now - startTime) / duration);
+        onProgress?.(linearP);
+        if (linearP < 1) {
+          rafId = requestAnimationFrame(tickInPlace);
+        } else {
+          window.scrollTo(0, targetY);
+          running = false;
+          rafId = null;
+          onProgress?.(1);
+          onComplete?.();
+        }
+      };
+      rafId = requestAnimationFrame(tickInPlace);
       return;
     }
-    const startTime = performance.now();
 
     const tick = (now) => {
       if (!running) return;
       const elapsed = now - startTime;
-      const p = Math.min(1, elapsed / duration);
-      window.scrollTo(0, startY + delta * ease(p));
-      if (p < 1) {
+      const linearP = Math.min(1, elapsed / duration);
+      window.scrollTo(0, startY + delta * ease(linearP));
+      onProgress?.(linearP);
+      if (linearP < 1) {
         rafId = requestAnimationFrame(tick);
       } else {
         window.scrollTo(0, targetY);
         running = false;
         rafId = null;
+        onProgress?.(1);
         onComplete?.();
       }
     };

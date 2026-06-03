@@ -7,7 +7,15 @@ import {
   useRef,
   useState,
 } from 'react';
-import { computeFieldNarrative, measureOpeningScrollProgress, measureOpeningCapabilitiesHandoff } from '../utils/fieldNarrative.js';
+import {
+  computeFieldNarrative,
+  measureOpeningScrollProgress,
+  measureOpeningCapExitWipe,
+  measureOpeningCapabilitiesHandoff,
+  openingCapHandoffVisual,
+} from '../utils/fieldNarrative.js';
+import { measureCapWorkOrchestration } from '../utils/capabilitiesChoreography.js';
+import { homeCapabilities } from '../data/homeScrollChapters.js';
 
 const FieldNarrativeContext = createContext(null);
 
@@ -24,9 +32,14 @@ export function FieldNarrativeProvider({ children }) {
   const [progress, setProgress] = useState(0);
   const [openingComplete, setOpeningComplete] = useState(false);
   const openingCompleteRef = useRef(false);
-  const [openingCapHandoff, setOpeningCapHandoff] = useState(1);
-  const openingCapHandoffRef = useRef(1);
+  const [openingCapHandoff, setOpeningCapHandoff] = useState(0);
+  const openingCapHandoffRef = useRef(0);
+  const [openingCapExitWipe, setOpeningCapExitWipe] = useState(0);
+  const openingCapExitWipeRef = useRef(0);
   const [capabilityFloat, setCapabilityFloat] = useState(null);
+  const [capWorkHandoff, setCapWorkHandoff] = useState(0);
+  const capWorkHandoffRef = useRef(0);
+  const frozenCapFloatRef = useRef(null);
   const [handoffBlend, setHandoffBlendState] = useState(0);
   const handoffBlendRef = useRef(0);
   const setHandoffBlend = useCallback((value) => {
@@ -53,20 +66,72 @@ export function FieldNarrativeProvider({ children }) {
     const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
     const r = el?.getBoundingClientRect();
     const capEl =
-      typeof document !== 'undefined' ? document.getElementById('capabilities') : null;
+      typeof document !== 'undefined'
+        ? document.getElementById('capabilities') ??
+          document.querySelector('[data-narrative-chapter="home-capabilities"]')
+        : null;
     const capRect = capEl?.getBoundingClientRect();
-    const capHandoff = measureOpeningCapabilitiesHandoff(capRect, vh);
-    openingCapHandoffRef.current = capHandoff;
-    setOpeningCapHandoff(capHandoff);
-
-    const pastOpening = r != null && r.bottom <= vh * 0.12;
+    const capExitWipeRaw = measureOpeningCapExitWipe(raw, capRect, vh);
     const openingInView =
       r != null && r.top < vh * 0.92 && r.bottom > vh * 0.08;
-    const capEntering = capRect != null && capRect.top < vh * 0.98;
+    const capExitWipe = openingInView ? capExitWipeRaw : 0;
+    openingCapExitWipeRef.current = capExitWipe;
+    setOpeningCapExitWipe(capExitWipe);
+    const capSticky =
+      capEl?.querySelector('.capability-sticky')?.getBoundingClientRect() ?? null;
+    const capHandoffRaw = measureOpeningCapabilitiesHandoff(
+      capRect,
+      vh,
+      capSticky,
+      raw,
+      capExitWipeRaw,
+    );
+    const capHandoff = openingCapHandoffVisual(capHandoffRaw, capExitWipeRaw);
+    openingCapHandoffRef.current = capHandoff;
+    setOpeningCapHandoff(capHandoff);
+    if (typeof document !== 'undefined') {
+      const root = document.querySelector('.home-scroll-root');
+      if (root) {
+        root.style.setProperty('--hero-cap-handoff', String(capHandoff.toFixed(4)));
+        root.style.setProperty('--opening-cap-exit-wipe', String(capExitWipe.toFixed(4)));
+      }
+    }
 
-    if ((pastOpening && capEntering) || (raw >= 0.999 && !openingInView)) {
+    const capTrack =
+      typeof document !== 'undefined' ? document.querySelector('.capability-scroll') : null;
+    const workTrack =
+      typeof document !== 'undefined' ? document.getElementById('home-work-strongest') : null;
+    const capTrackRect = capTrack?.getBoundingClientRect() ?? null;
+    const workTrackRect = workTrack?.getBoundingClientRect() ?? null;
+    const capWork = measureCapWorkOrchestration(
+      capTrackRect,
+      workTrackRect,
+      homeCapabilities.length,
+      vh,
+    );
+    capWorkHandoffRef.current = capWork.handoff;
+    setCapWorkHandoff(capWork.handoff);
+    frozenCapFloatRef.current = capWork.frozenFloat;
+    if (typeof document !== 'undefined') {
+      const root = document.querySelector('.home-scroll-root');
+      if (root) {
+        root.style.setProperty('--cap-work-handoff', String(capWork.handoff.toFixed(4)));
+      }
+    }
+
+    const pastOpening = r != null && r.bottom <= vh * 0.06;
+    const capEntering =
+      capRect != null &&
+      capRect.top < vh * 0.48 &&
+      capRect.bottom > vh * 0.12;
+    const openingHandoffReady = raw >= 0.74 || capExitWipeRaw > 0.28;
+
+    if (
+      (pastOpening && capEntering && openingHandoffReady) ||
+      (raw >= 0.998 && !openingInView)
+    ) {
       openingCompleteRef.current = true;
-    } else if (openingInView && capHandoff < 0.08) {
+    } else if (openingInView && raw < 0.62) {
       openingCompleteRef.current = false;
     }
 
@@ -149,8 +214,13 @@ export function FieldNarrativeProvider({ children }) {
       openingComplete,
       openingCapHandoff,
       openingCapHandoffRef,
+      openingCapExitWipe,
+      openingCapExitWipeRef,
       capabilityFloat,
       setCapabilityFloat,
+      capWorkHandoff,
+      capWorkHandoffRef,
+      frozenCapFloatRef,
       handoffBlend,
       handoffBlendRef,
       setHandoffBlend,
@@ -166,7 +236,9 @@ export function FieldNarrativeProvider({ children }) {
       progress,
       openingComplete,
       openingCapHandoff,
+      openingCapExitWipe,
       capabilityFloat,
+      capWorkHandoff,
       handoffBlend,
       springPos,
       registerOpeningScroll,
@@ -186,10 +258,15 @@ export function useFieldNarrative() {
       field: DEFAULT_FIELD,
       progress: 0,
       openingComplete: false,
-      openingCapHandoff: 1,
-      openingCapHandoffRef: { current: 1 },
+      openingCapHandoff: 0,
+      openingCapHandoffRef: { current: 0 },
+      openingCapExitWipe: 0,
+      openingCapExitWipeRef: { current: 0 },
       capabilityFloat: null,
       setCapabilityFloat: () => {},
+      capWorkHandoff: 0,
+      capWorkHandoffRef: { current: 0 },
+      frozenCapFloatRef: { current: null },
       handoffBlend: 0,
       handoffBlendRef: { current: 0 },
       setHandoffBlend: () => {},

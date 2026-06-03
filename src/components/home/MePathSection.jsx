@@ -67,9 +67,9 @@ export function MePathSection() {
         Path
       </h2>
 
-      <div className="home-me-path__inner">
+      <div className="home-me-path__inner motion-reveal-group">
         <p
-          className="home-me-path__kicker"
+          className="home-me-path__kicker motion-reveal-child"
           aria-hidden="true"
           style={pathKickerStyle(handoff, reducedMotion)}
         >
@@ -77,14 +77,14 @@ export function MePathSection() {
         </p>
 
         <div
-          className="home-me-path__part home-me-path__part--opening"
+          className="home-me-path__part home-me-path__part--opening motion-reveal-child"
           style={pathBlockStyle(handoff, 0, reducedMotion)}
         >
           <PathLines lines={PATH_OPENING} blockIndex={0} handoff={handoff} reducedMotion={reducedMotion} />
         </div>
 
         <div
-          className="home-me-path__part home-me-path__part--middle"
+          className="home-me-path__part home-me-path__part--middle motion-reveal-child"
           style={pathBlockStyle(handoff, 1, reducedMotion)}
         >
           <PathLines lines={PATH_MIDDLE} blockIndex={1} handoff={handoff} reducedMotion={reducedMotion} />
@@ -98,12 +98,15 @@ export function MePathSection() {
           />
         </div>
 
-        <div className="home-me-path__pull" style={pathBlockStyle(handoff, 2, reducedMotion)}>
+        <div
+          className="home-me-path__pull motion-reveal-child"
+          style={pathBlockStyle(handoff, 2, reducedMotion)}
+        >
           <PathLines lines={PATH_PULL} blockIndex={2} handoff={handoff} reducedMotion={reducedMotion} />
         </div>
 
         <div
-          className="home-me-path__part home-me-path__part--thesis"
+          className="home-me-path__part home-me-path__part--thesis motion-reveal-child"
           style={pathBlockStyle(handoff, 3, reducedMotion)}
         >
           <PathLines lines={PATH_THESIS} blockIndex={3} handoff={handoff} reducedMotion={reducedMotion} />

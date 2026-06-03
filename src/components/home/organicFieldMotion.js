@@ -5,12 +5,24 @@
 
 import { SIGNAL_LAYOUT_SCALE } from '../../data/fieldSizeHierarchy.js';
 import { ORB_SCENE_SPECS } from '../../data/orbScenes.js';
-import { HERO_LANDING_FIELD } from '../../data/organicFieldPalette.js';
 import {
-  easeScrollBreath,
-  scrollBreathScalePulse,
-} from '../../utils/fieldNarrative.js';
-import { computeHeroFieldTargets, heroScrollDrive } from '../../utils/heroFieldMotion.js';
+  applyNavFieldHint,
+  applyWorkCaseFieldActivation,
+} from '../../utils/fieldSemanticMotion.js';
+import { HERO_LANDING_FIELD } from '../../data/organicFieldPalette.js';
+import { smoothstep } from '../../utils/fieldNarrative.js';
+import {
+  computeHeroFieldTargets,
+  computeOpeningScrollOrchestration,
+  heroScrollDrive,
+  openingCapHandoffResidualTargets,
+} from '../../utils/heroFieldMotion.js';
+import {
+  CAP_DISPLAY_SETTLE_RADIUS,
+  capabilityArcFieldY,
+  capabilityArcProgress,
+  capabilityPanelRhythm,
+} from '../../utils/capabilitiesChoreography.js';
 
 const TAU = Math.PI * 2;
 
@@ -27,13 +39,11 @@ const REST = {
   c: { x: 0.52, y: 0.44 },
 };
 
-const SIGNAL_ARC_GREEN = [
-  { x: 0.166, y: 0.28 },
-  { x: 0.112, y: 0.42 },
-  { x: 0.088, y: 0.56 },
-  { x: 0.096, y: 0.7 },
-  { x: 0.142, y: 0.82 },
-];
+/** Stable left-center field anchor — path moves through it, not against it. */
+export const SIGNAL_GREEN_FIELD_ANCHOR = { x: 0.056, y: 0.5 };
+
+/** Tight band for inner gather (path height); outer anchor never moves. */
+const SIGNAL_GREEN_RESONANCE_BAND = 0.2;
 
 /** Pinned capability panels — matches homeCapabilities.length */
 const CAPABILITY_PANEL_COUNT = 5;
@@ -41,27 +51,33 @@ const CAPABILITY_PANEL_COUNT = 5;
 const SIGNAL_ACCENT_B = { x: 0.9, y: 0.15 };
 const SIGNAL_ACCENT_C = { x: 0.94, y: 0.22 };
 
+/** Capabilities — scale locked; opacity carries panel tint. */
+export function clampCapSignalScale(value) {
+  if (value == null || !Number.isFinite(value)) return 1;
+  return Math.max(0.98, Math.min(1.02, value));
+}
+
 const SIGNAL_LAYOUT = {
   default: {
     a: {
-      opacity: 0.78,
-      scale: SIGNAL_LAYOUT_SCALE.green,
-      dx: -0.014,
-      dy: 0,
+      opacity: 0.14,
+      scale: SIGNAL_LAYOUT_SCALE.green * 0.82,
+      dx: -0.058,
+      dy: 0.08,
       rotation: 0,
-      stretchX: 1.06,
-      stretchY: 0.94,
+      stretchX: 1.02,
+      stretchY: 0.98,
     },
     b: {
-      opacity: 0.5,
-      scale: SIGNAL_LAYOUT_SCALE.blue * 0.97,
+      opacity: 0.08,
+      scale: SIGNAL_LAYOUT_SCALE.blue * 0.98,
       dx: 0,
       dy: 0,
       stretchX: 1.06,
       stretchY: 0.9,
       rotation: 0.1,
     },
-    c: { opacity: 0.25, scale: SIGNAL_LAYOUT_SCALE.amber * 0.94, dx: 0, dy: 0 },
+    c: { opacity: 0.06, scale: SIGNAL_LAYOUT_SCALE.amber * 0.96, dx: 0, dy: 0 },
   },
 };
 
@@ -73,9 +89,9 @@ const WORK_REST = {
 
 const WORK_LAYOUT = {
   default: {
-    a: { opacity: 0.48, scale: 1.1, dx: -0.01, dy: -0.02 },
-    b: { opacity: 0.3, scale: 0.92, dx: 0.01, dy: 0, stretchX: 1.04, stretchY: 1 },
-    c: { opacity: 0.24, scale: 0.54, dx: 0, dy: 0 },
+    a: { opacity: 0.38, scale: 0.86, dx: -0.042, dy: 0.04 },
+    b: { opacity: 0.26, scale: 0.88, dx: 0.01, dy: 0, stretchX: 1.04, stretchY: 1 },
+    c: { opacity: 0.2, scale: 0.52, dx: 0, dy: 0 },
   },
 };
 
@@ -95,9 +111,9 @@ const DEPTH_ARC_BLUE = [
 
 const DEPTH_LAYOUT = {
   default: {
-    a: { opacity: 0.22, scale: 0.62, dx: 0.01, dy: 0 },
-    b: { opacity: 0.58, scale: 1.5, dx: 0, dy: 0, stretchX: 1.06, stretchY: 1.03 },
-    c: { opacity: 0.24, scale: 0.54, dx: 0, dy: 0 },
+    a: { opacity: 0.2, scale: 0.62, dx: 0.02, dy: 0.01 },
+    b: { opacity: 0.52, scale: 1.22, dx: 0, dy: 0, stretchX: 1.04, stretchY: 1.02 },
+    c: { opacity: 0.22, scale: 0.54, dx: 0, dy: 0 },
   },
 };
 
@@ -109,9 +125,9 @@ const CONTACT_REST = {
 
 const CONTACT_LAYOUT = {
   default: {
-    a: { opacity: 0.2, scale: 0.54, dx: 0, dy: 0 },
-    b: { opacity: 0.22, scale: 0.58, dx: 0, dy: 0, stretchX: 1, stretchY: 1 },
-    c: { opacity: 0.52, scale: 1.32, dx: 0, dy: 0 },
+    a: { opacity: 0.38, scale: 0.82, dx: 0, dy: 0 },
+    b: { opacity: 0.36, scale: 0.8, dx: 0, dy: 0, stretchX: 1.02, stretchY: 0.98 },
+    c: { opacity: 0.4, scale: 0.84, dx: 0, dy: 0, stretchX: 0.98, stretchY: 1.02 },
   },
 };
 
@@ -123,8 +139,8 @@ const ARCHIVE_REST = {
 
 const ARCHIVE_LAYOUT = {
   default: {
-    a: { opacity: 0.1, scale: 0.4, dx: -0.022, dy: -0.014 },
-    b: { opacity: 0.12, scale: 0.42, dx: 0.02, dy: -0.012, stretchX: 1, stretchY: 1 },
+    a: { opacity: 0.16, scale: 0.44, dx: -0.022, dy: -0.014 },
+    b: { opacity: 0.18, scale: 0.46, dx: 0.02, dy: -0.012, stretchX: 1, stretchY: 1 },
     c: { opacity: 0.88, scale: 1.32, dx: 0, dy: 0, stretchX: 1.0, stretchY: 1.03 },
   },
 };
@@ -196,8 +212,8 @@ export const LANDING_MOTION_GAIN = 0.86;
 /** Per-field arc — green breathe, blue float, amber orbit */
 export const WARM_MOTION = {
   timeScale: 1.08,
-  arcMult: 1.22,
-  landingArcMult: 1.42,
+  arcMult: 1.12,
+  landingArcMult: 1.18,
   arcMultA: 0.3,
   arcMultB: 0.72,
   arcMultC: 0.76,
@@ -419,6 +435,31 @@ function decisiveTransit(t) {
   return 1 - 0.5 * Math.pow(2 * (1 - c), edge);
 }
 
+/**
+ * Per-capability field state — density / feather / hue weight (not positional slides).
+ * Order matches homeCapabilities.
+ */
+const SIGNAL_GREEN_THEME_MOTION = [
+  { op: 1.03, rot: -0.001 },
+  { op: 1, rot: 0.001 },
+  { op: 0.97, rot: 0 },
+  { op: 0.99, rot: -0.001 },
+  { op: 0.96, rot: 0.001 },
+];
+
+function lerpPanelPose(a, b, t) {
+  const u = Math.max(0, Math.min(1, t));
+  return {
+    dx: lerpNum(a.dx, b.dx, u),
+    dy: lerpNum(a.dy, b.dy, u),
+    sc: lerpNum(a.sc, b.sc, u),
+    op: lerpNum(a.op, b.op, u),
+    rot: lerpNum(a.rot, b.rot, u),
+    sx: lerpNum(a.sx, b.sx, u),
+    sy: lerpNum(a.sy, b.sy, u),
+  };
+}
+
 /** Pull scroll index toward nearest panel — fast settle at each stop */
 function snapTowardPanelIndex(clamped, snapWidth = 0.12, strength = 0.99) {
   const nearest = Math.round(clamped);
@@ -427,16 +468,15 @@ function snapTowardPanelIndex(clamped, snapWidth = 0.12, strength = 0.99) {
   return clamped + (nearest - clamped) * pull;
 }
 
-/** Scan along capability arc — short transitions, quick hold at each stop */
+/** Capability index with plateaus at each panel — decisive moves between stops. */
 export function easeCapabilityFloat(raw) {
   if (raw == null) return null;
   const maxIdx = Math.max(1, CAPABILITY_PANEL_COUNT - 1);
   const clamped = Math.max(0, Math.min(maxIdx, raw));
-  const i0 = Math.floor(clamped);
-  const frac = clamped - i0;
-  const dwell = Math.pow(Math.sin(frac * Math.PI), 0.42);
-  const slowed = frac * (1 - dwell * 0.82);
-  return snapTowardPanelIndex(i0 + slowed, 0.11, 0.99);
+  const rhythm = capabilityPanelRhythm(clamped, maxIdx);
+  if (rhythm.phase === 'read' || rhythm.phase === 'settle') return rhythm.activePanel;
+  if (rhythm.phase === 'enter' && rhythm.transitU > 0.82) return rhythm.activePanel;
+  return rhythm.from + (rhythm.to - rhythm.from) * rhythm.anchorU;
 }
 
 /** Normalized 0→1 progress through the Capabilities pinned track */
@@ -456,14 +496,12 @@ export function signalGreenCapabilityProgress(
  */
 export function signalGreenScrollAttenuation(progress) {
   const raw = Math.max(0, Math.min(1, progress));
-  const t = easeScrollBreath(raw);
-  const breath = 1 + (scrollBreathScalePulse(raw) - 1) * 0.18;
+  const t = raw * raw * (3 - 2 * raw);
   return {
-    // Calm retreat envelope for recording: subtle drift, controlled shrink/fade.
-    scaleMult: (1.18 + (0.96 - 1.18) * t) * breath,
-    opacityMult: 0.86 + (0.7 - 0.86) * t,
-    dx: -0.002 - 0.008 * t,
-    dy: -0.002 - 0.01 * t,
+    scaleMult: 1,
+    opacityMult: 0.96 + (0.9 - 0.96) * t,
+    dx: 0,
+    dy: 0,
   };
 }
 
@@ -499,8 +537,97 @@ function anchorAlongStops(stops, floatIndex, decisive = false) {
   };
 }
 
-function signalGreenAnchor(floatIndex) {
-  return anchorAlongStops(SIGNAL_ARC_GREEN, floatIndex ?? 0, true);
+/**
+ * Arc-coupled green field — anchor stable; resonance gathers at dot height (dot moves, field gathers).
+ * @param {number} floatIndex raw capability float (same driver as arc dot)
+ */
+export function signalGreenArcFieldState(floatIndex) {
+  const maxIdx = Math.max(1, CAPABILITY_PANEL_COUNT - 1);
+  const fi = Math.max(0, Math.min(maxIdx, floatIndex ?? 0));
+  const t = capabilityArcProgress(fi, CAPABILITY_PANEL_COUNT);
+  const arcY = capabilityArcFieldY(fi, CAPABILITY_PANEL_COUNT);
+  const anchor = SIGNAL_GREEN_FIELD_ANCHOR;
+  const dist = Math.abs(arcY - anchor.y);
+  const resonance = Math.pow(
+    Math.max(0, 1 - dist / SIGNAL_GREEN_RESONANCE_BAND),
+    2.2,
+  );
+  const settleDist = Math.abs(fi - Math.round(fi));
+  const settled =
+    settleDist < CAP_DISPLAY_SETTLE_RADIUS
+      ? 1 - easeSmoothstep(settleDist / CAP_DISPLAY_SETTLE_RADIUS)
+      : 0;
+  const activation = Math.min(1, resonance * 0.78 + settled * 0.5);
+  const adsorbDx = 0.016 * activation;
+
+  return {
+    x: anchor.x,
+    y: anchor.y,
+    scale: 1,
+    coreDy: 0,
+    adsorbDx,
+    arcProgress: t,
+    arcY,
+    resonance,
+    activation,
+    settled,
+    gatherYPercent: 6 + t * 82,
+    journeyU: t,
+  };
+}
+
+/** @deprecated alias — use signalGreenArcFieldState */
+export function signalGreenScrollJourney(floatIndex) {
+  return signalGreenArcFieldState(floatIndex);
+}
+
+function signalGreenBaseBreath(motionT = 0) {
+  const t = motionT ?? 0;
+  return (
+    Math.sin(t * 0.38) * 0.011 +
+    Math.sin(t * 0.17 + 1.2) * 0.006 +
+    Math.sin(t * 0.09) * 0.004
+  );
+}
+
+/**
+ * Scroll-local attention hint (time-based envelope in OrganicField is primary).
+ */
+function signalGreenRhythmAttention(rhythm) {
+  if (!rhythm) return 0;
+  if (rhythm.phase === 'read' || rhythm.phase === 'settle') return 0;
+  if (rhythm.phase === 'enter') {
+    return 0.35 * (1 - Math.pow(1 - rhythm.transitU, 2));
+  }
+  if (rhythm.phase === 'release') {
+    return 0.1 * (1 - easeSmoothstep(rhythm.transitU));
+  }
+  return 0;
+}
+
+function lerpGreenThemeMotion(a, b, t) {
+  const u = Math.max(0, Math.min(1, t));
+  return {
+    op: lerpNum(a.op, b.op, u),
+    rot: lerpNum(a.rot, b.rot, u),
+  };
+}
+
+/** Panel rhythm — tint only on enter/release; read is stable. */
+function signalGreenPanelTintOpacity(rhythm) {
+  if (!rhythm) return 1;
+  const local = rhythm.local ?? 0;
+  if (rhythm.phase === 'read') return 1;
+  if (rhythm.phase === 'settle') {
+    return local < 0.3 ? 0.95 + (local / 0.3) * 0.05 : 1;
+  }
+  if (rhythm.phase === 'enter') {
+    return local < 0.3 ? 0.93 + (local / 0.3) * 0.07 : 1;
+  }
+  if (rhythm.phase === 'release') {
+    return local > 0.75 ? 1 - ((local - 0.75) / 0.25) * 0.06 : 1;
+  }
+  return 1;
 }
 
 function scrollDepthIndex(depthFloat) {
@@ -526,25 +653,33 @@ function depthRestForScroll(depthIndex) {
 }
 
 function signalRestForCapability(capabilityFloat) {
-  const green = signalGreenAnchor(
-    magneticCapabilityFloat(capabilityFloat ?? 0, CAPABILITY_PANEL_COUNT),
-  );
+  const maxIdx = Math.max(1, CAPABILITY_PANEL_COUNT - 1);
+  const fi = Math.max(0, Math.min(maxIdx, capabilityFloat ?? 0));
+  const journey = signalGreenArcFieldState(fi);
+  const green = { x: journey.x, y: journey.y };
+  const focus = {
+    x: journey.x + (journey.adsorbDx ?? 0),
+    y: journey.arcY,
+  };
   return {
     a: green,
     b: SIGNAL_ACCENT_B,
     c: SIGNAL_ACCENT_C,
-    focus: green,
+    focus,
+    coreDy: journey.coreDy,
+    journeyScale: journey.scale,
+    arcFocusY: journey.arcY,
   };
 }
 
-function ambientA(t, signalMode = false) {
+function ambientA(t, signalMode = false, signalHold = 0) {
   const ph = (t / CYCLE.a) * TAU;
-  const rotAmp = signalMode ? 0.022 : 0.012;
-  const stretchAmp = signalMode ? 0.028 : 0.014;
-  const drift = signalMode ? 0.45 : 1;
+  const rotAmp = signalMode ? 0.006 : 0.01;
+  const stretchAmp = signalMode ? 0.008 : 0.012;
+  const drift = signalMode ? 0.02 * (1 - signalHold * 0.92) : 1;
   return {
-    dx: (Math.sin(ph) * 0.006 + Math.sin(ph * 0.41) * 0.003) * drift,
-    dy: (Math.cos(ph * 0.79) * 0.006 + Math.sin(ph * 0.23) * 0.003) * drift,
+    dx: (Math.sin(ph) * 0.002 + Math.sin(ph * 0.41) * 0.001) * drift,
+    dy: (Math.cos(ph * 0.79) * 0.002 + Math.sin(ph * 0.23) * 0.001) * drift,
     scale: 1,
     rotation: Math.sin(ph * 0.72) * rotAmp + Math.cos(ph * 1.15) * rotAmp * 0.65,
     stretchX: 1 + Math.sin(ph * 0.55) * stretchAmp,
@@ -552,89 +687,134 @@ function ambientA(t, signalMode = false) {
   };
 }
 
-/** Green volume read during capability arc travel — turn + foreshorten between stops */
-function signalGreenVolumeMotion(capabilityFloat, capPulse, chapterMorph) {
+/** Activation envelope for canvas smoothing + breathing (from raw capabilityFloat). */
+export function signalGreenActivationEnvelope(capabilityFloat, motionT = 0, greenAttention = 0) {
+  const vol = signalGreenVolumeMotion(capabilityFloat, 0, 1, { motionT, greenAttention });
+  return {
+    hold: vol.breathDamp ?? 0,
+    motionSnap: vol.motionSnap ?? 1,
+    driftDamp: vol.driftDamp ?? 1,
+  };
+}
+
+/**
+ * Presence modulation — base breath + attention tighten + slow return (not flash).
+ * @param {object} [presence]
+ * @param {number} [presence.greenAttention] 0–1 time-decayed from OrganicField
+ * @param {number} [presence.motionT]
+ * @param {number} [presence.journeyScale]
+ */
+function signalGreenVolumeMotion(capabilityFloat, _capPulse, chapterMorph, presence = {}) {
   if (capabilityFloat == null) {
     return {
       rotation: 0,
       stretchX: 1,
       stretchY: 1,
       scaleMult: 1,
+      hazeRadiiMult: 1,
       dx: 0,
       dy: 0,
+      coreDy: 0,
       opacityMult: 1,
       driftDamp: 1,
+      breathDamp: 0.35,
+      motionSnap: 1,
     };
   }
 
   const panelCount = CAPABILITY_PANEL_COUNT;
   const maxIdx = Math.max(1, panelCount - 1);
-  const fiRaw = magneticCapabilityFloat(
-    Math.max(0, Math.min(maxIdx, capabilityFloat)),
-    panelCount,
-  );
-  const nearest = Math.round(fiRaw);
-  const from = Math.floor(fiRaw);
-  const to = Math.min(maxIdx, from + 1);
-  const localT = fiRaw - from;
-  const transit = decisiveTransit(localT);
-  const moveBoost = 1 - decisiveTransit(localT);
+  const fi = Math.max(0, Math.min(maxIdx, capabilityFloat));
+  const rhythm = capabilityPanelRhythm(fi, maxIdx);
+  const tFrom = SIGNAL_GREEN_THEME_MOTION[rhythm.from] ?? SIGNAL_GREEN_THEME_MOTION[0];
+  const tTo = SIGNAL_GREEN_THEME_MOTION[rhythm.to] ?? tFrom;
 
-  // Snap into hold quickly once near panel center.
-  const settleDist = Math.abs(fiRaw - nearest);
-  const hold = 1 - Math.pow(Math.max(0, Math.min(1, settleDist / 0.1)), 3.6);
+  let theme;
+  if (rhythm.phase === 'read' || rhythm.phase === 'settle') {
+    theme = SIGNAL_GREEN_THEME_MOTION[rhythm.activePanel] ?? tFrom;
+  } else if (rhythm.phase === 'release') {
+    theme = lerpGreenThemeMotion(tFrom, tTo, rhythm.transitU * 0.38);
+  } else {
+    theme = lerpGreenThemeMotion(tFrom, tTo, 0.32 + rhythm.transitU * 0.68);
+  }
 
-  const poses = [
-    { dx: -0.006, dy: 0.008, rot: -0.018, sx: 1.03, sy: 1.04, op: 0.88, sc: 1.04 },
-    { dx: -0.01, dy: 0.002, rot: 0.022, sx: 1.02, sy: 0.98, op: 0.84, sc: 1.01 },
-    { dx: -0.014, dy: -0.008, rot: 0.032, sx: 0.98, sy: 1.03, op: 0.8, sc: 0.99 },
-    { dx: -0.009, dy: -0.014, rot: -0.018, sx: 1.03, sy: 0.98, op: 0.76, sc: 0.97 },
-    { dx: -0.004, dy: -0.018, rot: 0.014, sx: 0.99, sy: 1.02, op: 0.72, sc: 0.96 },
-  ];
-  const pFrom = poses[from] ?? poses[0];
-  const pTo = poses[to] ?? poses[poses.length - 1];
-  const pNear = poses[nearest] ?? pFrom;
-
-  const movePose = {
-    dx: lerpNum(pFrom.dx, pTo.dx, transit),
-    dy: lerpNum(pFrom.dy, pTo.dy, transit),
-    rot: lerpNum(pFrom.rot, pTo.rot, transit),
-    sx: lerpNum(pFrom.sx, pTo.sx, transit),
-    sy: lerpNum(pFrom.sy, pTo.sy, transit),
-    op: lerpNum(pFrom.op, pTo.op, transit),
-    sc: lerpNum(pFrom.sc, pTo.sc, transit),
-  };
-  const activePose = {
-    dx: lerpNum(movePose.dx, pNear.dx, hold),
-    dy: lerpNum(movePose.dy, pNear.dy, hold),
-    rot: lerpNum(movePose.rot, pNear.rot, hold),
-    sx: lerpNum(movePose.sx, pNear.sx, hold),
-    sy: lerpNum(movePose.sy, pNear.sy, hold),
-    op: lerpNum(movePose.op, pNear.op, hold),
-    sc: lerpNum(movePose.sc, pNear.sc, hold),
-  };
-
-  const seg = Math.sin(localT * Math.PI);
   const morph = 1 - easeSmoothstep(chapterMorph ?? 1);
-  const pulse = (capPulse ?? 0) * 0.28;
-  const phaseByPanel = [0.4, -0.55, 0.72, -0.82, 0.64][nearest] ?? 0;
-  const shapeBeat = Math.sin(localT * TAU + phaseByPanel) * (1 - hold) * 0.03;
-  const rot =
-    (seg * 0.08 + fiRaw * 0.01 + pulse * 0.04 + shapeBeat * 0.35 + activePose.rot) *
-    (1 + moveBoost * 0.32);
-  const depthTilt =
-    (Math.cos(localT * TAU + fiRaw * 0.42 + phaseByPanel) * 0.022 + shapeBeat * 0.2) *
-    (1 + moveBoost * 0.24);
-  const squash = 1 + seg * 0.055 * (0.55 + morph * 0.45) + pulse * 0.03;
+  const inRead = rhythm.phase === 'read';
+  const inStable =
+    rhythm.phase === 'read' ||
+    (rhythm.phase === 'settle' && (rhythm.local ?? 0) >= 0.3);
+  const field = signalGreenArcFieldState(fi);
+  const activation = field.activation ?? 0;
+  const panelTint = signalGreenPanelTintOpacity(rhythm);
+
+  const timeAtt = presence.greenAttention ?? 0;
+  const scrollAtt = signalGreenRhythmAttention(rhythm) * 0.2;
+  const attention = inStable ? timeAtt * 0.15 : Math.min(1, Math.max(timeAtt, scrollAtt));
+  const act = inStable ? activation * 0.35 : Math.min(1, activation * 0.55 + attention * 0.15);
+
+  const breath = inStable ? 0 : signalGreenBaseBreath(presence.motionT ?? 0) * 0.35;
+  const gatherOp = 1 + act * 0.05 + (inStable ? 0 : breath * 0.4);
+
+  const rot = theme.rot * (0.12 + morph * 0.06);
+
   return {
-    rotation: rot * (0.7 + morph * 0.3),
-    stretchX: ((1 + depthTilt + shapeBeat * 0.6) / squash) * activePose.sx,
-    stretchY: (squash * (1 - depthTilt * 0.7 - shapeBeat * 0.42)) * activePose.sy,
-    scaleMult: activePose.sc,
-    dx: activePose.dx,
-    dy: activePose.dy - hold * 0.004,
-    opacityMult: activePose.op,
-    driftDamp: 1 - hold * 0.74,
+    rotation: rot,
+    stretchX: 1,
+    stretchY: 1,
+    scaleMult: 1,
+    hazeRadiiMult: clampCapSignalScale(1),
+    dx: inStable ? 0 : (field.adsorbDx ?? 0) * 0.5,
+    dy: 0,
+    coreDy: 0,
+    opacityMult: Math.min(1.06, Math.max(0.9, theme.op * panelTint * gatherOp * (1 + breath))),
+    resonance: field.resonance ?? 0,
+    activation: act,
+    driftDamp: inStable ? 0.04 : 0.2,
+    breathDamp: inStable ? 0.96 : 0.75,
+    motionSnap: inRead ? 1.02 : 1.08,
+    panelPhase: rhythm.phase,
+    attention,
+  };
+}
+
+/**
+ * CSS companion — continuous journey + presence tighten (no opacity flash).
+ * @param {number | null} capabilityFloat
+ * @param {{ greenAttention?: number, motionT?: number }} [opts]
+ */
+export function signalGreenFieldPresentation(capabilityFloat, opts = {}) {
+  if (capabilityFloat == null) {
+    return {
+      '--cap-green-core-shift': '0vh',
+      '--cap-green-haze-scale': '1',
+      '--cap-green-core-scale': '1',
+      '--cap-green-attention': '0',
+      '--cap-green-feather': '1',
+      '--cap-green-journey': '0',
+    };
+  }
+  const maxIdx = Math.max(1, CAPABILITY_PANEL_COUNT - 1);
+  const fi = Math.max(0, Math.min(maxIdx, capabilityFloat));
+  const field = signalGreenArcFieldState(fi);
+  const vol = signalGreenVolumeMotion(fi, 0, 1, {
+    greenAttention: opts.greenAttention ?? 0,
+    motionT: opts.motionT ?? 0,
+    journeyScale: field.scale,
+  });
+  const att = vol.attention ?? 0;
+  const act = field.activation ?? 0;
+  const tint = signalGreenPanelTintOpacity(capabilityPanelRhythm(fi, maxIdx));
+  return {
+    '--cap-arc-progress': String(field.arcProgress).slice(0, 5),
+    '--cap-green-gather-y': `${field.gatherYPercent.toFixed(1)}%`,
+    '--cap-green-haze-scale': '1',
+    '--cap-green-gather-scale': '1',
+    '--cap-green-haze-opacity': String(0.1 + tint * 0.04).slice(0, 5),
+    '--cap-green-gather-opacity': String(0.08 + act * 0.1 + tint * 0.03).slice(0, 5),
+    '--cap-green-attention': String(att).slice(0, 5),
+    '--cap-green-resonance': String(field.resonance ?? 0).slice(0, 5),
+    '--cap-green-activation': String(act).slice(0, 5),
+    '--cap-green-feather': '1',
   };
 }
 
@@ -732,21 +912,149 @@ function clampCScale(scale, isArchive) {
   return Math.max(scale, floor);
 }
 
+/** Dominant narrative object per orb scene (handoff choreography). */
+export const SCENE_DOMINANT_FIELD = {
+  landing: null,
+  capabilities: 'a',
+  work: 'a',
+  case: 'a',
+  pov: 'b',
+  me: 'c',
+  contact: null,
+  guide: null,
+};
+
+/** Directional memory — morph pulls toward scene anchor, not generic center. */
+const SCENE_MORPH_ANCHOR = {
+  landing: CLUSTER_FOCUS,
+  capabilities: { x: 0.06, y: 0.52 },
+  work: WORK_REST.a,
+  case: WORK_REST.a,
+  pov: DEPTH_REST.b,
+  me: ARCHIVE_REST.c,
+  contact: { x: 0.5, y: 0.48 },
+  guide: CLUSTER_FOCUS,
+};
+
+const HANDOFF_RESOLVE_RATIO = 0.44;
+
+const FIELD_RESIDUE_DRIFT = {
+  a: { dx: -0.038, dy: 0.018 },
+  b: { dx: 0.022, dy: -0.016 },
+  c: { dx: 0.028, dy: 0.024 },
+};
+
+export function sceneMorphAnchor(orbScene) {
+  if (!orbScene) return CLUSTER_FOCUS;
+  return SCENE_MORPH_ANCHOR[orbScene] ?? CLUSTER_FOCUS;
+}
+
+function transformFieldResidue(field, fieldId, u, isDominant) {
+  const drift = FIELD_RESIDUE_DRIFT[fieldId] ?? { dx: 0, dy: 0 };
+  if (isDominant) {
+    return {
+      ...field,
+      centerX: field.centerX + drift.dx * u,
+      centerY: field.centerY + drift.dy * u,
+      scale: field.scale * (1 - 0.14 * u),
+      opacity: field.opacity * (1 - 0.32 * u),
+      stretchX: (field.stretchX ?? 1) * (1 + 0.08 * u),
+      stretchY: (field.stretchY ?? 1) * (1 + 0.08 * u),
+      rotation: (field.rotation ?? 0) * (1 - 0.4 * u),
+    };
+  }
+  return {
+    ...field,
+    opacity: field.opacity * (1 - 0.12 * u),
+    scale: field.scale * (1 - 0.06 * u),
+  };
+}
+
+/** Outgoing object resolves into residue before next scene condenses. */
+export function objectFieldResidue(targets, dominantFieldId, u) {
+  const t = easeSmoothstep(Math.max(0, Math.min(1, u)));
+  return {
+    a: transformFieldResidue(targets.a, 'a', t, dominantFieldId === 'a'),
+    b: transformFieldResidue(targets.b, 'b', t, dominantFieldId === 'b'),
+    c: transformFieldResidue(targets.c, 'c', t, dominantFieldId === 'c'),
+    flowB: targets.flowB,
+  };
+}
+
+/** Incoming object condenses from soft trace into active phase. */
+export function objectFieldCondense(targets, dominantFieldId, u) {
+  const t = easeSmoothstep(Math.max(0, Math.min(1, u)));
+  if (!dominantFieldId) return targets;
+  const trace = objectFieldResidue(targets, dominantFieldId, 0.38);
+  return blendMotionTargets(trace, targets, t);
+}
+
+export function blendCapWorkFieldTargets(from, to, t) {
+  const u = easeSmoothstep(Math.max(0, Math.min(1, t)));
+  return blendMotionTargets(from, to, u);
+}
+
+/**
+ * Staged chapter climate: resolve outgoing dominant → condense incoming (no competing hues).
+ * @param {object} prev
+ * @param {object} next
+ * @param {number} t 0–1 sceneClimateBlend progress
+ * @param {string} [fromScene]
+ * @param {string} [toScene]
+ */
+export function blendChapterClimateTargets(prev, next, t, fromScene, toScene) {
+  const u = Math.max(0, Math.min(1, t));
+  if (fromScene === 'capabilities' && toScene === 'work') {
+    return blendCapWorkFieldTargets(prev, next, u);
+  }
+  const fromDom = fromScene ? SCENE_DOMINANT_FIELD[fromScene] : null;
+  const toDom = toScene ? SCENE_DOMINANT_FIELD[toScene] : null;
+
+  if (reducedMotionGuard()) {
+    return blendMotionTargets(prev, next, u);
+  }
+
+  if (u < HANDOFF_RESOLVE_RATIO) {
+    if (fromDom) {
+      return objectFieldResidue(prev, fromDom, u / HANDOFF_RESOLVE_RATIO);
+    }
+    return blendMotionTargets(prev, next, u * 0.35);
+  }
+
+  const enterU = (u - HANDOFF_RESOLVE_RATIO) / (1 - HANDOFF_RESOLVE_RATIO);
+  if (toDom) {
+    return objectFieldCondense(next, toDom, enterU);
+  }
+  return blendMotionTargets(prev, next, easeSmoothstep(enterU));
+}
+
+function reducedMotionGuard() {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
 /**
  * Subtle gather → expand during chapter morph (morph 0 = just changed, 1 = settled).
+ * @param {object} [anchor] — scene rest anchor for directional continuity
  */
-export function applyChapterMorph(targets, morph) {
+export function applyChapterMorph(targets, morph, anchor = CLUSTER_FOCUS, opts = {}) {
+  const focus = anchor ?? CLUSTER_FOCUS;
   const u = easeSmoothstep(morph);
+  const settleOnly = opts.settleOnly === true;
   const gatherPhase = 1 - easeSmoothstep(Math.min(1, morph / 0.22));
-  const expandPhase = easeSmoothstep(Math.max(0, (morph - 0.12) / 0.88));
-  const gather = gatherPhase * 0.045;
-  const scalePulse = 1 - gatherPhase * 0.035 + expandPhase * 0.02;
+  const expandPhase = settleOnly
+    ? 0
+    : easeSmoothstep(Math.max(0, (morph - 0.12) / 0.88));
+  const gather = gatherPhase * 0.038;
+  const scalePulse = 1 - gatherPhase * 0.03 + expandPhase * 0.018;
 
-  const twist = gatherPhase * 0.26 - expandPhase * 0.08;
+  const twist = gatherPhase * 0.18 - expandPhase * 0.06;
 
   const pull = (field, isGreen = false) => ({
-    centerX: field.centerX + (CLUSTER_FOCUS.x - field.centerX) * gather,
-    centerY: field.centerY + (CLUSTER_FOCUS.y - field.centerY) * gather,
+    centerX: field.centerX + (focus.x - field.centerX) * gather,
+    centerY: field.centerY + (focus.y - field.centerY) * gather,
     scale: field.scale * scalePulse,
     opacity: field.opacity,
     stretchX: (field.stretchX ?? 1) * (isGreen ? 1 - gatherPhase * 0.1 + expandPhase * 0.05 : 1),
@@ -903,14 +1211,15 @@ export function applyOrbSceneSemantics(targets, orbScene, t, reducedMotion = fal
   const applyRole = (field, role, driftFn, flow = 0) => {
     const gain = tierMotionGain(role.tier, orbScene);
     const landingOpacity = orbScene === 'landing';
+    const calmCap = orbScene === 'capabilities';
     let out = {
       ...field,
       opacity: landingOpacity ? role.opacity : field.opacity * role.opacity,
-      scale: field.scale * role.scale,
+      scale: calmCap ? clampCapSignalScale(field.scale * role.scale) : field.scale * role.scale,
       stretchX: (field.stretchX ?? 1) * (role.stretchX ?? 1),
       stretchY: (field.stretchY ?? 1) * (role.stretchY ?? 1),
     };
-    if (!reducedMotion && gain > 0.01) {
+    if (!reducedMotion && gain > 0.01 && !calmCap) {
       const drifted = driftFn(out, t, flow);
       out = {
         ...drifted,
@@ -930,7 +1239,7 @@ export function applyOrbSceneSemantics(targets, orbScene, t, reducedMotion = fal
 
   return {
     a: applyRole(targets.a, spec.green, (field, time) =>
-      greenSceneDrift(field, time, orbScene === 'capabilities', orbScene === 'landing'),
+      greenSceneDrift(field, time, false, orbScene === 'landing'),
     ),
     b: applyRole(
       targets.b,
@@ -974,7 +1283,7 @@ function lerpMotionField(from, to, t) {
   };
 }
 
-function blendMotionTargets(idle, narrative, drive) {
+export function blendMotionTargets(idle, narrative, drive) {
   return {
     a: lerpMotionField(idle.a, narrative.a, drive),
     b: lerpMotionField(idle.b, narrative.b, drive),
@@ -983,16 +1292,124 @@ function blendMotionTargets(idle, narrative, drive) {
   };
 }
 
-/** Opening thesis pose → Capabilities signal pose */
-export function blendOpeningToCapabilitiesField(fromHero, signalTargets, blend) {
-  const u = easeScrollBreath(Math.max(0, Math.min(1, blend)));
-  const breath = scrollBreathScalePulse(blend);
-  const blended = blendMotionTargets(fromHero, signalTargets, u);
+/** Thesis exit cluster — matches heroFieldMotion condense (no lateral scatter). */
+const OPENING_CAP_RESIDUAL = openingCapHandoffResidualTargets();
+
+/** Capabilities — calm residual opacity band; scale clamped. */
+function settleSignalFieldTargets(targets) {
   return {
-    a: { ...blended.a, scale: blended.a.scale * breath },
-    b: { ...blended.b, scale: blended.b.scale * (1 + (breath - 1) * 0.35) },
-    c: { ...blended.c, scale: blended.c.scale * (1 + (breath - 1) * 0.25) },
-    flowB: blended.flowB,
+    ...targets,
+    a: {
+      ...targets.a,
+      scale: clampCapSignalScale(targets.a.scale),
+      opacity: Math.min(0.16, Math.max(0.08, targets.a.opacity)),
+    },
+    b: {
+      ...targets.b,
+      scale: clampCapSignalScale(targets.b.scale),
+      opacity: Math.min(0.1, Math.max(0.04, targets.b.opacity)),
+    },
+    c: {
+      ...targets.c,
+      scale: clampCapSignalScale(targets.c.scale),
+      opacity: Math.min(0.1, Math.max(0.04, targets.c.opacity)),
+    },
+  };
+}
+
+/** Floor opacities for dark chapter fields (signal / work / depth / archive). */
+function boostChapterFieldVisibility(targets, ambKey) {
+  if (ambKey === 'signal') {
+    return settleSignalFieldTargets(targets);
+  }
+  if (ambKey === 'work') {
+    return {
+      ...targets,
+      a: { ...targets.a, opacity: Math.max(targets.a.opacity, 0.28) },
+      b: { ...targets.b, opacity: Math.max(targets.b.opacity, 0.18) },
+      c: { ...targets.c, opacity: Math.max(targets.c.opacity, 0.14) },
+    };
+  }
+  if (ambKey === 'depth' || ambKey === 'archive') {
+    return {
+      ...targets,
+      a: { ...targets.a, opacity: Math.max(targets.a.opacity, 0.22) },
+      b: { ...targets.b, opacity: Math.max(targets.b.opacity, 0.16) },
+      c: { ...targets.c, opacity: Math.max(targets.c.opacity, 0.12) },
+    };
+  }
+  return targets;
+}
+
+const OPENING_CAP_HANDOFF_MAX_UV = 0.09;
+
+function clampHandoffCenter(from, to, maxDelta = OPENING_CAP_HANDOFF_MAX_UV) {
+  const dx = to - from;
+  if (Math.abs(dx) <= maxDelta) return to;
+  return from + Math.sign(dx) * maxDelta;
+}
+
+/** Staged handoff: thesis cluster → hold → signal rest (no burst to accent corners). */
+export function blendOpeningToCapabilitiesField(fromHero, signalTargets, blend) {
+  const u = Math.max(0, Math.min(1, blend));
+  const ease = u * u * (3 - 2 * u);
+  const clusterU = smoothstep(0, 0.62, ease);
+  const signalU = smoothstep(0.74, 1, ease);
+  const residual = OPENING_CAP_RESIDUAL;
+
+  const pullField = (id, hero, signalField) => {
+    const res = residual[id];
+    const toSignalU = id === 'a' ? signalU : smoothstep(0.93, 1, ease);
+    let centerX = lerpNum(hero.centerX, res.centerX, clusterU);
+    let centerY = lerpNum(hero.centerY, res.centerY, clusterU * 0.94);
+    centerX = lerpNum(centerX, signalField.centerX, toSignalU);
+    centerY = lerpNum(centerY, signalField.centerY, toSignalU * 0.96);
+    const clampU = Math.max(signalU, toSignalU);
+    centerX = clampHandoffCenter(hero.centerX, centerX, OPENING_CAP_HANDOFF_MAX_UV * (1 - clampU * 0.4));
+    centerY = clampHandoffCenter(
+      hero.centerY,
+      centerY,
+      OPENING_CAP_HANDOFF_MAX_UV * (1 - clampU * 0.4),
+    );
+    const opacity = lerpNum(
+      hero.opacity,
+      lerpNum(res.opacity, signalField.opacity, toSignalU),
+      clusterU * 0.78 + toSignalU * 0.22,
+    );
+    const scaleMid = Math.min(hero.scale, res.scale);
+    const scale = lerpNum(
+      hero.scale,
+      lerpNum(scaleMid, signalField.scale, toSignalU),
+      clusterU * 0.85 + toSignalU * 0.15,
+    );
+    const stretchGoal = lerpNum(
+      Math.min(hero.stretchX ?? 1, 1.03),
+      signalField.stretchX ?? 1,
+      toSignalU,
+    );
+    const stretchGoalY = lerpNum(
+      Math.min(hero.stretchY ?? 1, 1.03),
+      signalField.stretchY ?? 1,
+      toSignalU,
+    );
+    const stretchMix = clusterU * 0.48 + toSignalU * 0.32;
+    return {
+      ...hero,
+      centerX,
+      centerY,
+      scale,
+      opacity: Math.max(opacity, id === 'a' ? 0.28 : id === 'b' ? 0.14 : 0.12),
+      stretchX: lerpNum(hero.stretchX ?? 1, stretchGoal, stretchMix),
+      stretchY: lerpNum(hero.stretchY ?? 1, stretchGoalY, stretchMix),
+      rotation: lerpNum(hero.rotation ?? 0, signalField.rotation ?? 0, toSignalU * 0.35),
+    };
+  };
+
+  return {
+    a: pullField('a', fromHero.a, signalTargets.a),
+    b: pullField('b', fromHero.b, signalTargets.b),
+    c: pullField('c', fromHero.c, signalTargets.c),
+    flowB: lerpNum(fromHero.flowB ?? 0, signalTargets.flowB ?? 0, signalU * 0.3),
   };
 }
 
@@ -1057,7 +1474,35 @@ export function computeMotionTargets(
   if (isWarmHero) {
     const drive = openingOrch ? openingOrch.scrollDrive : heroScrollDrive(heroProgress);
     if (drive > 0.001) {
-      const narrative = computeHeroFieldTargets(heroProgress, t, reducedMotion, openingOrch);
+      let narrative = computeHeroFieldTargets(heroProgress, t, reducedMotion, openingOrch);
+      const capBlend = opts.openingCapBlend ?? 0;
+      if (capBlend > 0.004) {
+        const rawP = openingOrch?.rawP ?? heroProgress ?? 1;
+        const exitOrch = openingOrch ?? computeOpeningScrollOrchestration(rawP);
+        const fromHero = computeHeroFieldTargets(
+          exitOrch.heroProgress ?? heroProgress,
+          t,
+          reducedMotion,
+          exitOrch,
+        );
+        const signalT = computeMotionTargets(
+          t,
+          perspectiveKey,
+          reducedMotion,
+          'signal',
+          capabilityFloat ?? 0,
+          depthFloat,
+          {
+            ...opts,
+            heroProgress: undefined,
+            openingCapBlend: 0,
+            orbScene: 'capabilities',
+            chapterMorph: 1,
+            aLead: 1,
+          },
+        );
+        narrative = blendOpeningToCapabilitiesField(fromHero, signalT, capBlend);
+      }
       if (drive >= 0.999) {
         return narrative;
       }
@@ -1124,7 +1569,37 @@ export function computeMotionTargets(
       : 0;
   const warmRhythm = isWarm && !reducedMotion;
   const motionT = warmRhythm ? t * WARM_MOTION.timeScale : t;
-  let ambA = reducedMotion ? { dx: 0, dy: 0, scale: 1 } : ambientA(motionT, isSignal);
+
+  let greenVol = {
+    rotation: 0,
+    stretchX: 1,
+    stretchY: 1,
+    scaleMult: 1,
+    hazeRadiiMult: 1,
+    dx: 0,
+    dy: 0,
+    coreDy: 0,
+    opacityMult: 1,
+    driftDamp: 1,
+    breathDamp: 0,
+    motionSnap: 1,
+  };
+  const capHandoffBlend = opts.openingCapBlend ?? 1;
+  const signalDriftDamp =
+    isSignal && capHandoffBlend < 0.995 ? 0.05 + capHandoffBlend * 0.18 : 1;
+
+  if (isSignal && capabilityFloat != null && !reducedMotion) {
+    const journey = signalGreenArcFieldState(capabilityFloat);
+    greenVol = signalGreenVolumeMotion(capabilityFloat, 0, opts.chapterMorph ?? 1, {
+      greenAttention: opts.greenAttention ?? 0,
+      motionT: t,
+      journeyScale: journey.scale,
+    });
+  }
+
+  let ambA = reducedMotion
+    ? { dx: 0, dy: 0, scale: 1 }
+    : ambientA(motionT, isSignal, greenVol.breathDamp ?? 0);
   let ambB = reducedMotion
     ? { dx: 0, dy: 0, scale: 1, flow: 0 }
     : isDepth
@@ -1132,13 +1607,34 @@ export function computeMotionTargets(
       : ambientB(motionT, flowBoost);
   let ambC = reducedMotion ? { dx: 0, dy: 0, scale: 1 } : ambientC(motionT, perspectiveKey, capPulse);
 
+  if (isSignal && signalDriftDamp < 0.98) {
+    ambA = {
+      ...ambA,
+      dx: ambA.dx * signalDriftDamp,
+      dy: ambA.dy * signalDriftDamp,
+      rotation: (ambA.rotation ?? 0) * signalDriftDamp,
+    };
+    ambB = {
+      ...ambB,
+      dx: ambB.dx * signalDriftDamp,
+      dy: ambB.dy * signalDriftDamp,
+      flow: (ambB.flow ?? 0) * signalDriftDamp,
+    };
+    ambC = {
+      ...ambC,
+      dx: ambC.dx * signalDriftDamp,
+      dy: ambC.dy * signalDriftDamp,
+    };
+  }
+
   if (warmRhythm) {
     ambA = warmAmbientA(motionT);
     ambB = warmAmbientB(motionT);
     ambC = warmAmbientC(motionT);
   }
 
-  const accentDamp = isChapterField ? 0.42 : 1;
+  const accentDamp =
+    isSignal && capabilityFloat != null ? 0.1 : isChapterField ? 0.42 : 1;
   const workGreenAmbDamp = isWork ? 0.38 : 1;
   const aLead = opts.aLead ?? 1;
 
@@ -1196,20 +1692,6 @@ export function computeMotionTargets(
   const fieldB = mergeFieldMotion(layout.b, ambB);
   const fieldC = mergeFieldMotion(layout.c, ambC);
 
-  let greenVol = {
-    rotation: 0,
-    stretchX: 1,
-    stretchY: 1,
-    scaleMult: 1,
-    dx: 0,
-    dy: 0,
-    opacityMult: 1,
-    driftDamp: 1,
-  };
-  if (isSignal && capabilityFloat != null && !reducedMotion) {
-    greenVol = signalGreenVolumeMotion(capabilityFloat, capPulse, opts.chapterMorph ?? 1);
-  }
-
   let targets = {
     a: {
       centerX:
@@ -1221,12 +1703,16 @@ export function computeMotionTargets(
         posA.y +
         layout.a.dy +
         ambA.dy * workGreenAmbDamp * aLead * (greenVol.driftDamp ?? 1) +
+        (greenVol.coreDy ?? 0) +
         (greenVol.dy ?? 0),
-      scale: layout.a.scale * (1 + (ambA.scale - 1) * aLead) * (greenVol.scaleMult ?? 1),
+      scale: clampCapSignalScale(
+        layout.a.scale * (1 + (ambA.scale - 1) * aLead) * (greenVol.scaleMult ?? 1),
+      ),
       opacity: layout.a.opacity * (greenVol.opacityMult ?? 1),
       stretchX: fieldA.stretchX * greenVol.stretchX,
       stretchY: fieldA.stretchY * greenVol.stretchY,
       rotation: fieldA.rotation + greenVol.rotation,
+      hazeRadiiMult: isSignal ? (greenVol.hazeRadiiMult ?? 1) : 1,
     },
     b: {
       centerX: posB.x + layout.b.dx + ambB.dx,
@@ -1255,7 +1741,9 @@ export function computeMotionTargets(
 
   const morph = opts.chapterMorph ?? 1;
   if (morph < 0.995) {
-    targets = applyChapterMorph(targets, morph);
+    targets = applyChapterMorph(targets, morph, sceneMorphAnchor(opts.orbScene), {
+      settleOnly: capHandoffBlend < 0.94,
+    });
   }
 
   const orbScene = opts.orbScene ?? null;
@@ -1277,6 +1765,10 @@ export function computeMotionTargets(
       const povTargets = applyOrbSceneSemantics(targets, 'pov', t, reducedMotion);
       const meTargets = applyOrbSceneSemantics(targets, 'me', t, reducedMotion);
       targets = blendMotionTargets(povTargets, meTargets, handoffBlend);
+    } else if (orbScene === 'me' && (opts.contactBlend ?? 0) > 0.02) {
+      const meTargets = applyOrbSceneSemantics(targets, 'me', t, reducedMotion);
+      const contactTargets = applyOrbSceneSemantics(targets, 'contact', t, reducedMotion);
+      targets = blendMotionTargets(meTargets, contactTargets, opts.contactBlend);
     } else {
       targets = applyOrbSceneSemantics(targets, orbScene, t, reducedMotion);
     }
@@ -1285,25 +1777,51 @@ export function computeMotionTargets(
     targets.c.scale = Math.max(targets.c.scale, 0.92);
   }
 
-  if (isSignal) {
+  if (isSignal && capHandoffBlend > 0.004 && capHandoffBlend < 1) {
+    const exitOrch =
+      opts.openingOrch ??
+      (opts.heroProgress != null
+        ? computeOpeningScrollOrchestration(
+            typeof opts.heroProgress === 'number' && opts.heroProgress <= 1
+              ? opts.heroProgress
+              : 1,
+          )
+        : computeOpeningScrollOrchestration(1));
+    const fromHero = computeHeroFieldTargets(
+      exitOrch.heroProgress ?? 1,
+      t,
+      reducedMotion,
+      exitOrch,
+    );
+    targets = blendOpeningToCapabilitiesField(fromHero, targets, capHandoffBlend);
+  }
+
+  if (isSignal && capHandoffBlend > 0.94) {
     const capProgress = signalGreenCapabilityProgress(capabilityFloat ?? 0);
     const atten = signalGreenScrollAttenuation(capProgress);
+    const arcBlend = smoothstep(0.94, 1, capHandoffBlend);
     targets = {
       ...targets,
       a: {
         ...targets.a,
-        centerX: targets.a.centerX + atten.dx,
-        centerY: targets.a.centerY + atten.dy,
-        scale: targets.a.scale * atten.scaleMult,
-        opacity: targets.a.opacity * (atten.opacityMult ?? 1),
+        centerX: targets.a.centerX + atten.dx * arcBlend,
+        centerY: targets.a.centerY + atten.dy * arcBlend,
+        scale: clampCapSignalScale(targets.a.scale),
+        opacity: targets.a.opacity * (1 + ((atten.opacityMult ?? 1) - 1) * arcBlend),
       },
     };
   }
 
-  const openingCapBlend = opts.openingCapBlend ?? 1;
-  if (isSignal && openingCapBlend < 0.999) {
-    const fromHero = computeHeroFieldTargets(1, t, reducedMotion);
-    targets = blendOpeningToCapabilitiesField(fromHero, targets, openingCapBlend);
+  if (isWork && opts.workCaseFocus?.hue) {
+    targets = applyWorkCaseFieldActivation(targets, opts.workCaseFocus);
+  }
+
+  if (opts.navFieldHint?.hue) {
+    targets = applyNavFieldHint(targets, opts.navFieldHint);
+  }
+
+  if (isSignal || isWork || isDepth || isArchive) {
+    targets = boostChapterFieldVisibility(targets, ambientKey);
   }
 
   return targets;
@@ -1339,7 +1857,9 @@ export const MOTION_SMOOTH = {
   c: 4.9,
   flow: 3.2,
   ambient: 3.2,
-  chapterMorph: 1.65,
+  chapterMorph: 1.35,
+  /** Chapter climate crossfade (~--motion-field 900–1400ms) */
+  fieldClimate: 0.62,
   capPulse: 4.5,
   aLead: 2.1,
 };

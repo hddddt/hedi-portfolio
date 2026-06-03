@@ -5,12 +5,12 @@ import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { useOrganicFieldHost } from '../../context/OrganicFieldHostContext.jsx';
 import { usePerspective } from '../../context/PerspectiveContext.jsx';
-import { easeScrollBreath } from '../../utils/fieldNarrative.js';
 import { applyGreenBreathingLayer } from '../../utils/greenFieldBreathing.js';
 import { createOrganicFieldRenderer } from './organicFieldGl.js';
 import {
   computeHeroFieldTargets,
   computeOpeningFieldPresence,
+  computeOpeningScrollOrchestration,
   heroScrollDrive,
   shouldUseInCardOrganicField,
   shouldUseViewportOrganicField,
@@ -21,9 +21,15 @@ import {
   ARC_AMP,
   WARM_MOTION,
   orbSceneArcScale,
+  blendChapterClimateTargets,
+  blendCapWorkFieldTargets,
+  blendMotionTargets,
+  blendOpeningToCapabilitiesField,
   computeMotionTargets,
   easeCapabilityFloat,
+  easeSmoothstep,
   MOTION_SMOOTH,
+  signalGreenActivationEnvelope,
   smoothField,
   smoothScalar,
 } from './organicFieldMotion.js';
@@ -38,10 +44,10 @@ export const ORGANIC_FIELD_CONFIG = {
   },
   ambient: {
     warm: { opacityMult: 1, scaleMult: 1.03, light: true, extraC: 1.04 },
-    signal: { opacityMult: 0.94, scaleMult: 1.08, light: false, extraC: 1.06, organic: 0.85 },
-    work: { opacityMult: 0.5, scaleMult: 1.06, light: false, extraC: 0.9 },
-    depth: { opacityMult: 0.68, scaleMult: 1.14, light: false, extraC: 0.96 },
-    archive: { opacityMult: 0.78, scaleMult: 1.0, light: false, extraC: 1.08 },
+    signal: { opacityMult: 0.84, scaleMult: 1, light: false, extraC: 1.02, organic: 0.62 },
+    work: { opacityMult: 0.82, scaleMult: 1.06, light: false, extraC: 0.96, organic: 0.72 },
+    depth: { opacityMult: 0.86, scaleMult: 1.12, light: false, extraC: 1, organic: 0.68 },
+    archive: { opacityMult: 0.88, scaleMult: 1.02, light: false, extraC: 1.06, organic: 0.7 },
     contact: { opacityMult: 0.56, scaleMult: 1.08, light: true, extraC: 1.12 },
     default: { opacityMult: 0.7, scaleMult: 1.0, light: false, extraC: 1.05 },
   },
@@ -80,6 +86,7 @@ function motionFromTargets(targets) {
       stretchX: targets.a.stretchX ?? 1,
       stretchY: targets.a.stretchY ?? 1,
       rotation: targets.a.rotation ?? 0,
+      hazeRadiiMult: targets.a.hazeRadiiMult ?? 1,
       flow: 0,
     },
     b: {
@@ -100,23 +107,39 @@ function motionFromTargets(targets) {
   };
 }
 
-function initMotionState(inCard = false) {
-  const t0 = inCard
-    ? computeMotionTargets(0, null, false, 'warm', null, null, {
-        orbScene: 'landing',
-        heroProgress: 0,
-      })
-    : computeHeroFieldTargets(1, 0, false);
-  return motionFromTargets(t0);
+function initMotionState(inCard = false, capHandoff = 0, rawOpen = 1) {
+  if (inCard) {
+    const t0 = computeMotionTargets(0, null, false, 'warm', null, null, {
+      orbScene: 'landing',
+      heroProgress: 0,
+    });
+    return motionFromTargets(t0);
+  }
+  const p = Math.max(0, Math.min(1, rawOpen ?? 1));
+  const orch = computeOpeningScrollOrchestration(p);
+  const hero = computeHeroFieldTargets(orch.heroProgress ?? 1, 0, false, orch);
+  if (capHandoff < 0.995) {
+    const signal = computeMotionTargets(0, null, false, 'signal', 0, null, {
+      openingCapBlend: capHandoff,
+      orbScene: 'capabilities',
+      chapterMorph: 1,
+      aLead: 1,
+    });
+    const blended = blendOpeningToCapabilitiesField(hero, signal, capHandoff);
+    return motionFromTargets(blended);
+  }
+  return motionFromTargets(hero);
 }
 
 function OrganicFieldCanvas({ inCard = false }) {
   const { ambientKey } = useNarrativeScroll();
-  const { orbScene } = useOrbScene();
+  const { orbScene, workCaseFocus, navFieldHint, contactBlend } = useOrbScene();
   const {
     capabilityFloat,
     depthFloatRef,
     handoffBlendRef,
+    capWorkHandoffRef,
+    frozenCapFloatRef,
     progress: heroScrollProgress,
     openingComplete,
     openingCapHandoffRef,
@@ -126,6 +149,9 @@ function OrganicFieldCanvas({ inCard = false }) {
   const inCardRef = useRef(inCard);
   const ambientKeyRef = useRef(ambientKey);
   const orbSceneRef = useRef(orbScene);
+  const workCaseFocusRef = useRef(workCaseFocus);
+  const navFieldHintRef = useRef(navFieldHint);
+  const contactBlendRef = useRef(contactBlend);
   const capabilityFloatRef = useRef(capabilityFloat);
   const heroProgressRef = useRef(heroScrollProgress);
   const openingCompleteRef = useRef(openingComplete);
@@ -142,6 +168,18 @@ function OrganicFieldCanvas({ inCard = false }) {
   useEffect(() => {
     orbSceneRef.current = inCard ? 'landing' : orbScene;
   }, [inCard, orbScene]);
+
+  useEffect(() => {
+    workCaseFocusRef.current = workCaseFocus;
+  }, [workCaseFocus]);
+
+  useEffect(() => {
+    navFieldHintRef.current = navFieldHint;
+  }, [navFieldHint]);
+
+  useEffect(() => {
+    contactBlendRef.current = contactBlend;
+  }, [contactBlend]);
 
   useEffect(() => {
     perspectiveKeyRef.current = perspectiveKey;
@@ -188,15 +226,23 @@ function OrganicFieldCanvas({ inCard = false }) {
     };
     mq.addEventListener('change', onMq);
 
-    const motion = initMotionState(inCardRef.current);
+    const motion = initMotionState(
+      inCardRef.current,
+      inCardRef.current ? 0 : (openingCapHandoffRef?.current ?? 0),
+      heroProgressRef.current ?? 1,
+    );
 
     let chapterMorph = 1;
     let aLead = 1;
     let capPulse = 0;
     let lastAmbientKey = ambientKeyRef.current || 'default';
     let lastOrbScene = orbSceneRef.current || 'landing';
+    let prevClimateScene = lastOrbScene;
+    let sceneClimateBlend = 1;
     let lastPerspective = perspectiveKeyRef.current;
     let lastCapRaw = capabilityFloatRef.current;
+    let lastCapPanel = -1;
+    let greenAttention = 0;
 
     const ambInit = ambientState(ambientKeyRef.current || 'warm');
     let globalOpacity = ambInit.opacityMult;
@@ -228,40 +274,67 @@ function OrganicFieldCanvas({ inCard = false }) {
     const draw = (dt) => {
       if (disposed || width < 1 || height < 1) return;
 
+      try {
+        drawFrame(dt);
+      } catch (err) {
+        if (typeof console !== 'undefined') {
+          console.error('[OrganicField] draw failed', err);
+        }
+      }
+    };
+
+    const drawFrame = (dt) => {
       const rawOpen = heroProgressRef.current;
-      const capHandoff = openingCapHandoffRef?.current ?? 1;
+      const capHandoff = openingCapHandoffRef?.current ?? 0;
+      const capWorkHandoff = capWorkHandoffRef?.current ?? 0;
+      const inCapWorkHandoff = capWorkHandoff > 0.002 && capWorkHandoff < 0.998;
       const inOpening = !openingCompleteRef.current;
       const ambKey = inOpening ? 'warm' : ambientKeyRef.current || 'default';
       const sceneKey = inOpening ? 'landing' : orbSceneRef.current || 'landing';
       const persp = perspectiveKeyRef.current;
-      if (ambKey !== lastAmbientKey) {
+      if (ambKey !== lastAmbientKey && !inCapWorkHandoff) {
         lastAmbientKey = ambKey;
-        chapterMorph = Math.min(capHandoff, 0.35);
-        aLead = Math.min(capHandoff, 0.45);
+        chapterMorph = ambKey === 'signal' ? 1 : Math.min(capHandoff, 0.35);
+        aLead = ambKey === 'signal' ? 1 : Math.min(capHandoff, 0.45);
         const ambSnap = ambientState(ambKey);
         globalOpacity = ambSnap.opacityMult;
         globalScale = ambSnap.scaleMult;
-      } else if (sceneKey !== lastOrbScene) {
+      } else if (sceneKey !== lastOrbScene && !inCapWorkHandoff && capHandoff > 0.94) {
+        prevClimateScene = lastOrbScene;
         lastOrbScene = sceneKey;
-        chapterMorph = 0;
-        aLead = Math.min(aLead, 0.55);
+        sceneClimateBlend = 0;
+        chapterMorph = Math.min(chapterMorph, 0.78);
+        aLead = Math.min(aLead, 0.62);
+      } else if (sceneKey !== lastOrbScene && !inCapWorkHandoff) {
+        lastOrbScene = sceneKey;
       } else if (persp !== lastPerspective) {
         lastPerspective = persp;
         chapterMorph = Math.min(chapterMorph, 0.42);
       }
       chapterMorph = smoothScalar(chapterMorph, 1, dt, MOTION_SMOOTH.chapterMorph);
       aLead = smoothScalar(aLead, 1, dt, MOTION_SMOOTH.aLead);
+      sceneClimateBlend = smoothScalar(
+        sceneClimateBlend,
+        1,
+        dt,
+        MOTION_SMOOTH.fieldClimate,
+      );
 
       const capRaw = capabilityFloatRef.current;
-      if (
-        capRaw != null &&
-        lastCapRaw != null &&
-        Math.abs(capRaw - lastCapRaw) > 0.028
-      ) {
-        capPulse = 1;
-      }
       lastCapRaw = capRaw;
-      const capActiveForMotion = capabilityFloatRef.current != null && ambKey === 'signal';
+      const frozenCap = frozenCapFloatRef?.current;
+      const effectiveCapRaw =
+        capRaw != null ? capRaw : inCapWorkHandoff && frozenCap != null ? frozenCap : null;
+      const capActiveForMotion =
+        effectiveCapRaw != null && (ambKey === 'signal' || inCapWorkHandoff);
+      if (capActiveForMotion && effectiveCapRaw != null) {
+        const panelKey = Math.round(effectiveCapRaw);
+        if (panelKey !== lastCapPanel) {
+          greenAttention = 1;
+          lastCapPanel = panelKey;
+        }
+      }
+      greenAttention = smoothScalar(greenAttention, 0, dt, 1.28);
       capPulse = smoothScalar(
         capPulse,
         0,
@@ -269,7 +342,14 @@ function OrganicFieldCanvas({ inCard = false }) {
         capActiveForMotion ? 11 : MOTION_SMOOTH.capPulse,
       );
 
-      const easedCap = easeCapabilityFloat(capRaw);
+      const capForMotion =
+        capActiveForMotion && effectiveCapRaw != null
+          ? effectiveCapRaw
+          : easeCapabilityFloat(effectiveCapRaw);
+      const capActivation =
+        capActiveForMotion && effectiveCapRaw != null
+          ? signalGreenActivationEnvelope(effectiveCapRaw, animTime, greenAttention)
+          : null;
       const amb = ambientState(ambKey);
       const openingPresence = inOpening
         ? computeOpeningFieldPresence(rawOpen, reducedMotion)
@@ -283,7 +363,7 @@ function OrganicFieldCanvas({ inCard = false }) {
         perspectiveKeyRef.current,
         reducedMotion,
         ambKey,
-        easedCap,
+        capForMotion,
         depthFloatRef?.current ?? null,
         {
           chapterMorph,
@@ -294,8 +374,95 @@ function OrganicFieldCanvas({ inCard = false }) {
           openingOrch: openingPresence,
           handoffBlend: handoffBlendRef?.current ?? 0,
           openingCapBlend: capHandoff,
+          contactBlend: contactBlendRef.current ?? 0,
+          workCaseFocus: workCaseFocusRef.current,
+          navFieldHint: navFieldHintRef.current,
+          greenAttention,
         },
       );
+
+      if (inCapWorkHandoff && !inOpening) {
+        const settleOpts = {
+          chapterMorph: 1,
+          capPulse: 0,
+          greenAttention: 0,
+          aLead: 1,
+          heroProgress,
+          openingOrch: openingPresence,
+          handoffBlend: handoffBlendRef?.current ?? 0,
+          openingCapBlend: capHandoff,
+          contactBlend: contactBlendRef.current ?? 0,
+          workCaseFocus: workCaseFocusRef.current,
+          navFieldHint: navFieldHintRef.current,
+        };
+        const capFloat = frozenCap ?? effectiveCapRaw ?? 4;
+        const signalTargets = computeMotionTargets(
+          animTime,
+          perspectiveKeyRef.current,
+          reducedMotion,
+          'signal',
+          capFloat,
+          depthFloatRef?.current ?? null,
+          { ...settleOpts, orbScene: 'capabilities' },
+        );
+        const workTargets = computeMotionTargets(
+          animTime,
+          perspectiveKeyRef.current,
+          reducedMotion,
+          'work',
+          null,
+          depthFloatRef?.current ?? null,
+          { ...settleOpts, orbScene: 'work' },
+        );
+        targets = blendCapWorkFieldTargets(signalTargets, workTargets, capWorkHandoff);
+      } else if (
+        !inOpening &&
+        sceneClimateBlend < 0.995 &&
+        !inCapWorkHandoff &&
+        prevClimateScene &&
+        prevClimateScene !== sceneKey
+      ) {
+        const prevTargets = computeMotionTargets(
+          animTime,
+          perspectiveKeyRef.current,
+          reducedMotion,
+          ambKey,
+          capForMotion,
+          depthFloatRef?.current ?? null,
+          {
+            chapterMorph: 1,
+            capPulse,
+            greenAttention,
+            aLead: 1,
+            orbScene: prevClimateScene,
+            heroProgress,
+            openingOrch: openingPresence,
+            handoffBlend: handoffBlendRef?.current ?? 0,
+            openingCapBlend: capHandoff,
+            contactBlend: contactBlendRef.current ?? 0,
+            workCaseFocus: workCaseFocusRef.current,
+            navFieldHint: navFieldHintRef.current,
+          },
+        );
+        const climateT = easeSmoothstep(sceneClimateBlend);
+        targets = blendChapterClimateTargets(
+          prevTargets,
+          targets,
+          climateT,
+          prevClimateScene,
+          sceneKey,
+        );
+      }
+
+      if (typeof document !== 'undefined') {
+        const climateReady =
+          inOpening || (sceneClimateBlend > 0.9 && chapterMorph > 0.86);
+        const nextClimate = climateReady ? 'ready' : 'settling';
+        if (document.documentElement.dataset.fieldClimate !== nextClimate) {
+          document.documentElement.dataset.fieldClimate = nextClimate;
+          window.dispatchEvent(new Event('fieldclimatechange'));
+        }
+      }
 
       const isWarmLand = ambKey === 'warm' || ambKey === 'default' || !ambKey;
       const heroDrive =
@@ -304,21 +471,33 @@ function OrganicFieldCanvas({ inCard = false }) {
           : heroProgress != null && isWarmLand
             ? heroScrollDrive(heroProgress)
             : 0;
-      const capActive = capabilityFloatRef.current;
+      const capActive = effectiveCapRaw;
       const chapterScrollDrive =
-        capActive != null && sceneKey === 'capabilities' ? Math.min(1, capActive * 1.15) : 0;
-      const gatherDamp =
-        inOpening && openingPresence ? 1 - openingPresence.gather * 0.88 : 1;
+        sceneKey === 'capabilities'
+          ? 0
+          : capActive != null && inCapWorkHandoff
+            ? Math.min(0.28, capActive * 0.22)
+            : 0;
+      const openingGather = inOpening && openingPresence ? openingPresence.gather ?? 0 : 0;
+      const openingHandoff =
+        inOpening && openingPresence ? openingPresence.handoffLock ?? 0 : 0;
+      const capHold = capActivation?.hold ?? 0;
+      const scrollEventActive =
+        openingGather > 0.03 ||
+        openingHandoff > 0.2 ||
+        (capActiveForMotion && capHold > 0.5);
+      const gatherDamp = inOpening && openingPresence ? 1 - openingGather * 0.99 : 1;
       const idleMotion =
         inOpening && openingPresence && isWarmLand
           ? openingPresence.idleStillness * gatherDamp * (1 - chapterScrollDrive * 0.88)
           : (1 - heroDrive) * (1 - chapterScrollDrive * 0.88);
+      const decorativeDrift = scrollEventActive ? 0 : idleMotion * (capActivation?.driftDamp ?? 1);
 
-      if (isWarmLand && idleMotion > 0.001) {
+      if (isWarmLand && decorativeDrift > 0.001) {
         const arcBase =
           WARM_MOTION.arcMult *
           (sceneKey === 'landing' ? WARM_MOTION.landingArcMult : 1) *
-          idleMotion;
+          decorativeDrift;
         const phaseA = animTime * 0.44 + 0.83;
         const phaseB = animTime * 0.64 + 1.37 + (motion.b.flow ?? 0) * 0.05;
         const phaseC = animTime * 0.96 + 2.14;
@@ -341,12 +520,12 @@ function OrganicFieldCanvas({ inCard = false }) {
               : targets.c,
         };
 
-        if (idleMotion > 0.012) {
+        if (decorativeDrift > 0.012) {
           const warmPhase = animTime * WARM_MOTION.timeScale;
           const driftA = applyWarmFieldDrift('a', targets.a, warmPhase, animTime);
           const driftB = applyWarmFieldDrift('b', targets.b, warmPhase, animTime);
           const driftC = applyWarmFieldDrift('c', targets.c, warmPhase, animTime);
-          const driftBlend = Math.min(1, idleMotion * 1.12);
+          const driftBlend = Math.min(1, decorativeDrift * 1.12);
           const blendDrift = (base, drifted) => ({
             ...base,
             centerX: lerp(base.centerX, drifted.centerX, driftBlend),
@@ -382,28 +561,60 @@ function OrganicFieldCanvas({ inCard = false }) {
           inOpening,
           reducedMotion,
           scrollDrive: chapterScrollDrive,
+          capHold: capActivation?.hold ?? 0,
+          openingGather,
         });
       }
 
-      const idleSpring = idleMotion * idleMotion;
-      const handoffDamp = capHandoff < 0.999 ? 0.46 : 1;
-      const capSnapMotion = capActive != null && ambKey === 'signal';
-      const openingGather = inOpening && openingPresence ? openingPresence.gather ?? 0 : 0;
+      const idleSpring = decorativeDrift * decorativeDrift;
+      const capHandoffCalm = capHandoff < 0.995 && !inOpening;
+      const handoffSnapBoost = capHandoffCalm
+        ? capHandoff < 0.55
+          ? lerp(2.6, 3.8, capHandoff / 0.55)
+          : lerp(3.8, 3.2, (capHandoff - 0.55) / 0.45)
+        : 1;
+      const capSnapMotion = capActive != null && (ambKey === 'signal' || inCapWorkHandoff);
+      const capMotionSnap = capActivation?.motionSnap ?? 1;
+      const openingImpact = inOpening && openingPresence ? openingPresence.scrollImpact ?? 1 : 1;
       // Reduce visual lag during opening gather so process reads as immediate.
-      const openingSnapBoost = inOpening ? lerp(1, 2.9, openingGather) : 1;
+      const openingSettle = inOpening && openingPresence ? openingPresence.settle ?? 0 : 0;
+      const openingThesisNucleus =
+        inOpening && openingPresence ? openingPresence.thesisNucleus ?? 0 : 0;
+      const gatherSnap = openingGather * (1 - openingSettle * 0.92);
+      const openingSnapBoost =
+        capHandoffCalm || !inOpening
+          ? 1
+          : lerp(1, 2.1, gatherSnap) * (1 + Math.max(0, openingImpact - 1) * 0.12);
+      const thesisMotionSnap =
+        capHandoffCalm || !inOpening ? 1 : 1 + openingThesisNucleus * 0.42;
+      const handoffMotionDamp = inCapWorkHandoff
+        ? Math.max(0.42, 1 - capWorkHandoff * 0.38)
+        : capHandoffCalm
+          ? 0.52 + capHandoff * 0.48
+          : 1;
+      const climateLag = sceneClimateBlend < 0.98 ? 0.52 : 1;
       const smoothA = capSnapMotion
-        ? 9.4 * handoffDamp
+        ? 9.4 * capMotionSnap * handoffMotionDamp
         : lerp(lerp(MOTION_SMOOTH.a, 1.72, idleSpring), 4.8, heroDrive) *
-          handoffDamp *
-          openingSnapBoost;
+          handoffSnapBoost *
+          openingSnapBoost *
+          thesisMotionSnap *
+          climateLag *
+          handoffMotionDamp;
       const smoothB =
         lerp(lerp(MOTION_SMOOTH.b, 2.05, idleSpring), 3.8, heroDrive) *
-        handoffDamp *
-        openingSnapBoost;
+          handoffSnapBoost *
+          openingSnapBoost *
+          thesisMotionSnap *
+          climateLag *
+          handoffMotionDamp;
       const smoothC =
         lerp(lerp(MOTION_SMOOTH.c, 2.48, idleSpring), 4.2, heroDrive) *
-        handoffDamp *
-        openingSnapBoost;
+          handoffSnapBoost *
+          openingSnapBoost *
+          thesisMotionSnap *
+          climateLag *
+          handoffMotionDamp;
 
       motion.a = smoothField(
         motion.a,
@@ -448,7 +659,7 @@ function OrganicFieldCanvas({ inCard = false }) {
       let targetScale = amb.scaleMult * openingScale;
       let targetLight = amb.light ?? false;
       if (!inOpening && ambKey === 'signal' && capHandoff < 0.999) {
-        const u = easeScrollBreath(capHandoff);
+        const u = capHandoff * capHandoff * (3 - 2 * capHandoff);
         targetOpacity = lerp(warmAmb.opacityMult, amb.opacityMult, u) * fieldEnvelope;
         targetScale = lerp(warmAmb.scaleMult, amb.scaleMult, u) * openingScale;
         targetLight = capHandoff < 0.38;
@@ -458,14 +669,19 @@ function OrganicFieldCanvas({ inCard = false }) {
       extraC = lerp(extraC, amb.extraC ?? 1, kAmb);
       light = targetLight;
       const organicBoost =
-        amb.organic ?? (ambKey === 'signal' || sceneKey === 'capabilities' ? 1 : 0);
+        amb.organic ??
+        (ambKey === 'signal' || sceneKey === 'capabilities'
+          ? 0.92
+          : ambKey === 'work' || sceneKey === 'work' || sceneKey === 'case'
+            ? 0.78
+            : 0.65);
 
       renderer.draw({
         width: canvas.width,
         height: canvas.height,
         time: animTime,
         light,
-        globalOpacity: finite(globalOpacity, 0.85),
+        globalOpacity: finite(globalOpacity, 0.94),
         globalScale: finite(globalScale, 1),
         extraC: finite(extraC, 1),
         flowB: finite(motion.flowB, 0),
@@ -482,7 +698,11 @@ function OrganicFieldCanvas({ inCard = false }) {
         centerA: { x: finite(motion.a.centerX, 0.43), y: finite(motion.a.centerY, 0.48) },
         centerB: { x: finite(motion.b.centerX, 0.5), y: finite(motion.b.centerY, 0.5) },
         centerC: { x: finite(motion.c.centerX, 0.56), y: finite(motion.c.centerY, 0.52) },
-        radiiA: fieldRadii('a', motion.a.stretchX, motion.a.stretchY, ambKey),
+        radiiA: (() => {
+          const r = fieldRadii('a', motion.a.stretchX, motion.a.stretchY, ambKey);
+          const h = finite(motion.a.hazeRadiiMult, 1);
+          return { x: r.x * h, y: r.y * h };
+        })(),
         radiiB: fieldRadii('b', motion.b.stretchX, motion.b.stretchY, ambKey),
         radiiC: fieldRadii('c', motion.c.stretchX, motion.c.stretchY, ambKey),
         rotation: {
@@ -495,6 +715,9 @@ function OrganicFieldCanvas({ inCard = false }) {
       if (!drewOnce) {
         drewOnce = true;
         canvas.setAttribute('data-field-ready', 'true');
+        if (!inCardRef.current && typeof document !== 'undefined') {
+          document.querySelector('.home-scroll-root')?.setAttribute('data-viewport-field-ready', 'true');
+        }
       }
     };
 
@@ -521,6 +744,9 @@ function OrganicFieldCanvas({ inCard = false }) {
       window.removeEventListener('resize', resize);
       mq.removeEventListener('change', onMq);
       renderer.dispose();
+      if (!inCardRef.current && typeof document !== 'undefined') {
+        document.querySelector('.home-scroll-root')?.removeAttribute('data-viewport-field-ready');
+      }
     };
   }, []);
 

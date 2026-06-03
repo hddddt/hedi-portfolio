@@ -1,0 +1,243 @@
+/**
+ * Shared interaction grammar — hover / active / semantic accent.
+ * Same timing everywhere; hue varies by section (green / blue / amber).
+ */
+
+/* —— Capabilities —— */
+.cap-dial--rail .cap-dial__arc-stop-hit:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 3px;
+}
+
+.cap-dial--wheel .cap-dial__arc-label {
+  opacity: 0.5;
+  transition:
+    opacity var(--motion-hover) var(--ease-main),
+    transform var(--motion-hover) var(--ease-main),
+    color var(--motion-fast) var(--ease-main),
+    filter var(--motion-fast) var(--ease-main);
+}
+
+.cap-dial--wheel .cap-dial__arc-label-line {
+  color: rgba(10, 9, 8, 0.52);
+}
+
+.cap-dial--wheel .cap-dial__arc-label:hover,
+.cap-dial--wheel .cap-dial__arc-label:focus-visible {
+  opacity: 0.84;
+  transform: translateX(6px);
+}
+
+.cap-dial--wheel[data-active-cap] .cap-dial__arc-label[data-cap] {
+  opacity: 0.5;
+}
+
+.cap-dial--wheel[data-active-cap] .cap-dial__arc-label[data-cap][data-active='true'] {
+  opacity: 1;
+  transform: translateX(8px);
+  filter: contrast(1.04);
+}
+
+.cap-dial--wheel[data-active-cap] .cap-dial__arc-label[data-cap][data-active='true'] .cap-dial__arc-label-line {
+  color: rgba(10, 9, 8, 0.88);
+  font-weight: 520;
+}
+
+/* —— Work: evidence cards —— */
+.work-narrative__visual--track {
+  transition:
+    transform var(--motion-hover) var(--ease-main),
+    border-color var(--motion-fast) var(--ease-main),
+    box-shadow var(--motion-hover) var(--ease-main),
+    opacity var(--motion-fast) var(--ease-main);
+}
+
+.work-narrative__visual--track:not(.is-active):not(.is-adjacent) {
+  opacity: 0.55;
+}
+
+.work-narrative__visual--track.is-active {
+  opacity: 1;
+}
+
+.work-narrative__visual--track:hover,
+.work-narrative__visual--track:focus-visible {
+  transform: translateY(-6px);
+  z-index: 4;
+}
+
+.work-narrative__visual--track:hover .work-narrative__visual-inner,
+.work-narrative__visual--track:focus-visible .work-narrative__visual-inner {
+  border-color: var(--work-card-border, rgba(10, 9, 8, 0.22));
+  box-shadow:
+    0 16px 40px rgba(10, 9, 8, 0.1),
+    0 0 0 1px var(--work-card-glow, transparent);
+}
+
+.work-narrative__visual--track[data-field-hue='green']:hover .work-narrative__visual-inner,
+.work-narrative__visual--track[data-field-hue='green']:focus-visible .work-narrative__visual-inner {
+  --work-card-border: rgba(42, 90, 72, 0.32);
+  --work-card-glow: rgba(126, 174, 151, 0.12);
+}
+
+.work-narrative__visual--track[data-field-hue='blue']:hover .work-narrative__visual-inner,
+.work-narrative__visual--track[data-field-hue='blue']:focus-visible .work-narrative__visual-inner {
+  --work-card-border: rgba(72, 88, 132, 0.32);
+  --work-card-glow: rgba(112, 128, 178, 0.12);
+}
+
+.work-narrative__visual--track[data-field-hue='amber']:hover .work-narrative__visual-inner,
+.work-narrative__visual--track[data-field-hue='amber']:focus-visible .work-narrative__visual-inner {
+  --work-card-border: rgba(154, 114, 36, 0.32);
+  --work-card-glow: rgba(207, 164, 112, 0.12);
+}
+
+.work-narrative__visual-hint {
+  opacity: 0.45;
+  transform: translateX(0);
+  transition:
+    opacity var(--motion-hover) var(--ease-main),
+    transform var(--motion-hover) var(--ease-main);
+}
+
+.work-narrative__visual--track:hover .work-narrative__visual-hint,
+.work-narrative__visual--track:focus-visible .work-narrative__visual-hint {
+  opacity: 1;
+  transform: translateX(6px);
+}
+
+/* —— POV: sources + citations —— */
+.pov-sources-dock__trigger,
+.pov-sources-dock__citation {
+  transition:
+    opacity var(--motion-hover) var(--ease-main),
+    transform var(--motion-hover) var(--ease-main),
+    border-color var(--motion-fast) var(--ease-main),
+    background var(--motion-fast) var(--ease-main),
+    color var(--motion-fast) var(--ease-main);
+}
+
+.pov-sources-dock__trigger:hover,
+.pov-sources-dock__trigger:focus-visible,
+.pov-sources-dock__citation:hover,
+.pov-sources-dock__citation:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(72, 88, 132, 0.28);
+  box-shadow: 0 8px 24px rgba(72, 88, 132, 0.08);
+}
+
+/* —— Beyond: archive + human layer —— */
+.life-archive-grid__chip,
+.life-photo-card,
+.life-archive-connect__card,
+.home-me__current-work-cta,
+.home-about__cta-btn {
+  transition:
+    transform var(--motion-hover) var(--ease-main),
+    opacity var(--motion-fast) var(--ease-main),
+    border-color var(--motion-fast) var(--ease-main),
+    box-shadow var(--motion-hover) var(--ease-main),
+    color var(--motion-fast) var(--ease-main);
+}
+
+.life-archive-grid__chip:hover,
+.life-archive-grid__chip:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(154, 114, 36, 0.28);
+  box-shadow: 0 6px 20px rgba(207, 164, 112, 0.08);
+}
+
+.life-photo-card:hover,
+.life-photo-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow:
+    0 14px 36px rgba(10, 9, 8, 0.1),
+    0 0 0 1px rgba(207, 164, 112, 0.1);
+}
+
+.life-archive-connect__card:hover,
+.life-archive-connect__card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(207, 164, 112, 0.1);
+}
+
+.home-me__current-work-cta:hover,
+.home-me__current-work-cta:focus-visible,
+.home-about__cta-btn:hover,
+.home-about__cta-btn:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(154, 114, 36, 0.32);
+  box-shadow: 0 8px 22px rgba(207, 164, 112, 0.1);
+}
+
+/* —— Header nav —— */
+.home-header__link {
+  opacity: 0.48;
+  transition:
+    opacity var(--motion-fast) var(--ease-main),
+    color var(--motion-hover) var(--ease-main);
+}
+
+.home-header__link:hover,
+.home-header__link:focus-visible {
+  opacity: 0.78;
+}
+
+.home-header__link.is-active {
+  opacity: 1;
+}
+
+.home-header__link[data-nav-hue='green']:hover,
+.home-header__link[data-nav-hue='green']:focus-visible {
+  color: rgba(42, 90, 72, 0.92);
+}
+
+.home-header__link[data-nav-hue='blue']:hover,
+.home-header__link[data-nav-hue='blue']:focus-visible {
+  color: rgba(72, 88, 132, 0.92);
+}
+
+.home-header__link[data-nav-hue='amber']:hover,
+.home-header__link[data-nav-hue='amber']:focus-visible {
+  color: rgba(154, 114, 36, 0.92);
+}
+
+/* —— Chapter ribbons —— */
+.narrative-chapter__ribbon.motion-reveal.is-visible {
+  transition-delay: 0ms;
+}
+
+/* —— Beyond stagger (uses motion-reveal tokens) —— */
+.home-beyond-work__content.motion-reveal-group > .home-beyond-work__part,
+.home-beyond-work__content.motion-reveal-group > .home-beyond-work__corridor {
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(5px);
+  transition:
+    opacity var(--motion-reveal) var(--ease-main),
+    transform var(--motion-reveal) var(--ease-main),
+    filter var(--motion-reveal) var(--ease-main);
+}
+
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__part:nth-child(1) {
+  transition-delay: 0ms;
+}
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__corridor {
+  transition-delay: calc(var(--stagger) * 2.2);
+}
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__part:nth-child(3) {
+  transition-delay: calc(var(--stagger) * 4);
+}
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__part:nth-child(4) {
+  transition-delay: calc(var(--stagger) * 5.2);
+}
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__part:nth-child(5) {
+  transition-delay: calc(var(--stagger) * 6.4);
+}
+
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__part,
+.home-beyond-work__content.motion-reveal-group.is-visible > .home-beyond-work__corridor {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}

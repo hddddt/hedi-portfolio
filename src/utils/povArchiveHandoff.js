@@ -106,11 +106,64 @@ function mixRange(p, from, to) {
   return from + (to - from) * p;
 }
 
-/** Path part (05 · first) — quick reveal, no ghosting on entry */
+/** Path part (05 · first) — completes before archive corridor arms. */
 export function pathPartReveal(handoff) {
   const p = clamp01(handoff);
-  if (p >= 0.92) return 1;
-  return smoothstep(0.04, 0.36, p);
+  if (p >= 0.88) return 1;
+  return smoothstep(0.04, 0.38, p);
+}
+
+/** Life archive block — delayed beat after path + corridor hold. */
+export function archivePartReveal(handoff) {
+  const p = clamp01(handoff);
+  if (p >= 0.9) return 1;
+  return smoothstep(0.5, 0.78, p);
+}
+
+/**
+ * Narrative corridor between Path and Kept in view — pause, then hand off.
+ * @param {number} handoff
+ * @param {boolean} reducedMotion
+ */
+export function pathArchiveCorridorStyle(handoff, reducedMotion = false) {
+  if (reducedMotion) {
+    return {
+      root: { opacity: 1 },
+      axis: { opacity: 1, transform: 'scaleY(1)' },
+      kicker: { opacity: 1, transform: 'none' },
+      lead: { opacity: 1, transform: 'none' },
+      beat: { opacity: 1, transform: 'none' },
+    };
+  }
+
+  const p = clamp01(handoff);
+  const corridor = smoothstep(0.34, 0.58, p);
+  const root = { opacity: 0.35 + corridor * 0.65 };
+
+  const axisU = phaseProgress(corridor, 0, 0.42);
+  const axisScaleY = mixRange(axisU, 0.35, 1);
+  const axis = {
+    opacity: mixRange(axisU, 0, 1),
+    transform: `translateX(-50%) scaleY(${axisScaleY})`,
+  };
+
+  const kicker = motionStyle(phaseProgress(corridor, 0.08, 0.32), { y: 10, opacity: 0 }, {
+    y: 0,
+    opacity: 1,
+  });
+
+  const lead = motionStyle(phaseProgress(corridor, 0.2, 0.48), { y: 12, opacity: 0, blur: 3 }, {
+    y: 0,
+    opacity: 1,
+    blur: 0,
+  });
+
+  const beat = motionStyle(phaseProgress(corridor, 0.38, 0.62), { y: 8, opacity: 0 }, {
+    y: 0,
+    opacity: 0.72,
+  });
+
+  return { root, axis, kicker, lead, beat };
 }
 
 export function pathKickerStyle(handoff, reducedMotion = false) {
@@ -179,41 +232,42 @@ export function beyondWorkEntranceLayers(handoff, reducedMotion = false) {
 
   const p = clamp01(handoff);
   const pathReveal = pathPartReveal(p);
-  const atmosphere = { opacity: 0.62 + pathReveal * 0.38 };
+  const archiveReveal = archivePartReveal(p);
+  const atmosphere = { opacity: 0.58 + pathReveal * 0.22 + archiveReveal * 0.2 };
 
   const pathLead = pathKickerStyle(p, false);
 
-  const archiveTitle = motionStyle(phaseProgress(p, 0.44, 0.62), {
+  const archiveTitle = motionStyle(phaseProgress(archiveReveal, 0, 0.38), {
     y: 14,
     scale: 0.99,
     opacity: 0,
     blur: 4,
   }, { y: 0, scale: 1, opacity: 1, blur: 0 });
 
-  const archiveSubtitle = motionStyle(phaseProgress(p, 0.5, 0.66), {
+  const archiveSubtitle = motionStyle(phaseProgress(archiveReveal, 0.1, 0.48), {
     y: 10,
     opacity: 0,
     blur: 2,
   }, { y: 0, opacity: 1, blur: 0 });
 
-  const fieldWrap = motionStyle(phaseProgress(p, 0.56, 0.72), {
+  const fieldWrap = motionStyle(phaseProgress(archiveReveal, 0.22, 0.58), {
     y: 10,
     opacity: 0,
     scale: 0.992,
   }, { y: 0, opacity: 1, scale: 1 });
 
-  const instruction = motionStyle(phaseProgress(p, 0.74, 0.88), {
+  const instruction = motionStyle(phaseProgress(archiveReveal, 0.48, 0.72), {
     y: 8,
     opacity: 0,
   }, { y: 0, opacity: 1 });
 
-  const guide = motionStyle(phaseProgress(p, 0.7, 0.84), {
+  const guide = motionStyle(phaseProgress(archiveReveal, 0.42, 0.68), {
     y: 6,
     opacity: 0,
     scale: 0.98,
   }, { y: 0, opacity: 1, scale: 1 });
 
-  const scrollHint = motionStyle(phaseProgress(p, 0.8, 0.94), {
+  const scrollHint = motionStyle(phaseProgress(archiveReveal, 0.58, 0.86), {
     y: 5,
     opacity: 0,
   }, { y: 0, opacity: 1 });
@@ -246,10 +300,11 @@ export function archiveFragmentStyle(handoff, index, total, reducedMotion = fals
     rotate: (index % 2 === 0 ? -0.3 : 0.3),
   };
 
+  const archiveReveal = archivePartReveal(handoff);
   const stagger = index / Math.max(1, total - 1);
-  const start = 0.4 + stagger * 0.22;
-  const end = Math.min(0.92, start + 0.16);
-  const p = phaseProgress(handoff, start, end);
+  const start = 0.12 + stagger * 0.38;
+  const end = Math.min(0.92, start + 0.18);
+  const p = phaseProgress(archiveReveal, start, end);
 
   return motionStyle(p, {
     x: offsets.x,
@@ -263,10 +318,11 @@ export function archiveFragmentStyle(handoff, index, total, reducedMotion = fals
 /** Remaining archive cards after the first five — settle phase (65–100%). */
 export function archiveFragmentSettleStyle(handoff, index, total, reducedMotion = false) {
   if (reducedMotion) return { opacity: 1, transform: 'none' };
+  const archiveReveal = archivePartReveal(handoff);
   const stagger = index / Math.max(1, total - 1);
-  const start = 0.65 + stagger * 0.22;
-  const end = Math.min(0.98, start + 0.12);
-  return motionStyle(phaseProgress(handoff, start, end), {
+  const start = 0.38 + stagger * 0.32;
+  const end = Math.min(0.98, start + 0.14);
+  return motionStyle(phaseProgress(archiveReveal, start, end), {
     y: 10,
     scale: 0.97,
     opacity: 0,

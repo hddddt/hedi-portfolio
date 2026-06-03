@@ -23,7 +23,7 @@ export function getPortfolioGuideReply(query) {
     return '02 · Capabilities maps how she frames products — start at Product Framing.';
   }
   if (/hello|hi|hey/.test(q)) {
-    return 'Hi. Pick a path above, or ask about work, thinking, or her world.';
+    return 'Use a quick path above, or search by topic, role, or signal.';
   }
 
   return DEFAULT_REPLY;

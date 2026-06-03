@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { capabilitySectionCopy } from '../../data/homeScrollChapters.js';
-import { computeHeroScrollNarrative, OPENING_PHASE2_END } from '../../utils/heroFieldMotion.js';
+import {
+  computeHeroScrollNarrative,
+  OPENING_PHASE2_END,
+  OPENING_SETTLE_END,
+  OPENING_THESIS_REVEAL_END,
+} from '../../utils/heroFieldMotion.js';
 import { LandingOrganicField } from './OrganicField.jsx';
 
 /** Shared oblique system (~30°), flattened vertically in SVG group space */
 const ORBIT_AXIS_DEG = -30;
-const FIELD_TILT_DEG = -30;
 
 function smoothstep(edge0, edge1, x) {
   if (edge1 <= edge0) return x >= edge1 ? 1 : 0;
@@ -19,22 +23,15 @@ function mix(a, b, t) {
 }
 
 /**
- * Scroll scrub plateau: effective progress freezes while raw p ∈ [holdStart, holdEnd).
- * Agency-style “hold on the line” before the next beat (here: section B main landed).
- */
-function plateauProgress(p, holdStart, holdEnd) {
-  if (p <= holdStart || holdEnd <= holdStart) return p;
-  if (p < holdEnd) return holdStart;
-  return holdStart + ((p - holdEnd) / (1 - holdEnd)) * (1 - holdStart);
-}
-
-/**
  * Scroll 0→1: tilted orbit family + fused atmospheric field (offset discs, layered blur).
  */
 export function OpeningBridgeSection() {
   const scrollRef = useRef(null);
-  const { registerOpeningScroll } = useFieldNarrative();
+  const { registerOpeningScroll, openingCapHandoff } = useFieldNarrative();
   const [p, setP] = useState(0);
+  const scrollTargetRef = useRef(0);
+  const scrollSmoothRef = useRef(0);
+  const scrollRafRef = useRef(0);
 
   const setScrollRef = useCallback(
     (el) => {
@@ -63,9 +60,9 @@ export function OpeningBridgeSection() {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => {
+    const measureScrollP = () => {
       const el = scrollRef.current;
-      if (!el) return;
+      if (!el) return 0;
       const rect = el.getBoundingClientRect();
       const total = Math.max(1, rect.height - window.innerHeight);
       const t = Math.min(Math.max(-rect.top, 0), total);
@@ -73,116 +70,119 @@ export function OpeningBridgeSection() {
       if (reduceMotionRef.current) {
         nextP = nextP >= 0.5 ? 1 : 0;
       }
-      setP(nextP);
+      return nextP;
     };
+
+    const onScroll = () => {
+      scrollTargetRef.current = measureScrollP();
+    };
+
+    const tick = () => {
+      const target = scrollTargetRef.current;
+      let next = scrollSmoothRef.current;
+      if (reduceMotionRef.current) {
+        next = target;
+      } else {
+        const delta = target - next;
+        const gain = Math.abs(delta) > 0.08 ? 0.32 : 0.2;
+        next += delta * gain;
+        if (Math.abs(target - next) < 0.0006) next = target;
+      }
+      scrollSmoothRef.current = next;
+      setP(next);
+      scrollRafRef.current = requestAnimationFrame(tick);
+    };
+
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
+    scrollRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(scrollRafRef.current);
+    };
   }, []);
 
   const prm = prefersReducedMotion;
   const heroNarrative = computeHeroScrollNarrative(p, prm);
   const open = heroNarrative.heroProgress;
-  const gateIntro = smoothstep(0, 0.3, p);
-  const gateSystem = smoothstep(0.3, 0.65, p);
-  const gateBridge = smoothstep(0.65, 1, p);
+  const gatherBeat = heroNarrative.gather ?? 0;
+  const settleBeat = heroNarrative.settle ?? 0;
+  const handoffLock = heroNarrative.handoffLock ?? 0;
+  const decorFreeze = Math.max(gatherBeat, handoffLock * 0.85);
+  const thesisNucleus = heroNarrative.thesisNucleus ?? settleBeat;
+  const condenseBeat = heroNarrative.condenseBeat ?? smoothstep(0.02, OPENING_SETTLE_END, p);
+  const headlineReveal = heroNarrative.headlineReveal ?? 0;
+  const deckReveal = heroNarrative.deckReveal ?? 0;
+  const exitDissolve = heroNarrative.exitDissolve ?? smoothstep(OPENING_PHASE2_END, 1, p);
+  const thesisExit = heroNarrative.thesisExit ?? 0;
+  const capHandoff = openingCapHandoff ?? 0;
+  const exitVeil = exitDissolve;
+  const thesisState = smoothstep(OPENING_SETTLE_END * 0.5, OPENING_PHASE2_END, p);
+  const thesisSettled = smoothstep(OPENING_THESIS_REVEAL_END - 0.06, OPENING_PHASE2_END, p);
+  const continuity = smoothstep(0.08, 0.72, gatherBeat * 0.55 + settleBeat * 0.65 + thesisNucleus * 0.35);
 
-  /** Identity field “opening” — spatial expansion, not only tone */
-  const expand = smoothstep(0.28, 0.82, open);
-  const spreadField = smoothstep(0.3, 0.86, open);
-
-  const fieldDrive = prm ? open : 0.18 * gateIntro + 0.82 * gateSystem;
-  const orbitDrive = prm ? fieldDrive : 0.12 * gateIntro + 0.88 * gateSystem;
-  const descend = smoothstep(0.32, 0.88, open);
-  const nucleate = 1 - smoothstep(0, 0.34, open);
-  const stretchBand = smoothstep(0.08, 0.52, open) * (1 - smoothstep(0.48, 0.9, open) * 0.35);
-  const dilate = smoothstep(0.12, 0.74, open);
-  const recede = gateBridge;
+  const expand =
+    exitDissolve > 0.08
+      ? 0
+      : smoothstep(0.22, 0.78, open) * (1 - decorFreeze * 0.88);
+  const fieldDrive = prm ? open : gatherBeat;
+  const orbitDrive = prm ? fieldDrive : smoothstep(0, 0.32, p) * (1 - decorFreeze * 0.55);
+  const recede = smoothstep(0.42, 0.94, open);
   const friction = prm ? 0 : Math.min(0.45, Math.abs(fieldDrive - orbitDrive) * 2.2);
 
-  /** Tonal plane: subtle deepen only (not the primary transition read) */
   const tonalDeep = smoothstep(0.22, 0.9, open);
-  const c1 = Math.round(mix(252, 248, tonalDeep));
-  const c2 = Math.round(mix(246, 238, tonalDeep));
-  const c3 = Math.round(mix(240, 230, tonalDeep));
+  const thesisTone = smoothstep(OPENING_SETTLE_END * 0.65, OPENING_PHASE2_END, p) * 0.35;
+  const c1 = Math.round(mix(252, 250, tonalDeep + thesisTone));
+  const c2 = Math.round(mix(246, 242, tonalDeep + thesisTone));
+  const c3 = Math.round(mix(240, 236, tonalDeep + thesisTone));
+  const plateR = Math.round(mix(252, 18, exitVeil));
+  const plateG = Math.round(mix(248, 16, exitVeil));
+  const plateB = Math.round(mix(238, 14, exitVeil));
   const openingCardStyle = {
-    background: `linear-gradient(178deg,rgb(${c1},${c1},${c1}) 0%,rgb(${c2},${c2},${c2}) 50%,rgb(${c3},${c3},${c3}) 100%)`,
+    background: `linear-gradient(178deg,rgb(${plateR},${plateG},${plateB}) 0%,rgb(${c2},${c2},${c2}) 50%,rgb(${c3},${c3},${c3}) 100%)`,
+    '--opening-gather': String(gatherBeat),
+    '--opening-settle': String(settleBeat),
+    '--opening-nucleus': String(thesisNucleus),
+    '--opening-continuity': String(continuity),
+    '--opening-env-handoff': String(exitVeil),
+    '--opening-thesis-settled': String(thesisSettled),
+    '--opening-thesis-state': String(thesisState),
+    '--opening-condense': String(condenseBeat),
   };
   const tonalPlaneStyle = {
-    opacity: mix(0, 0.12, smoothstep(0.28, 0.88, open)),
-    background:
-      'linear-gradient(182deg,rgba(10,9,8,0) 0%,rgba(10,9,8,0.018) 48%,rgba(10,9,8,0.055) 100%)',
+    opacity: mix(0.04, 0.08, thesisState),
+    background: thesisState > 0.2
+      ? 'linear-gradient(182deg,rgba(10,9,8,0) 0%,rgba(10,9,8,0.028) 42%,rgba(10,9,8,0.072) 100%)'
+      : 'linear-gradient(182deg,rgba(10,9,8,0) 0%,rgba(10,9,8,0.018) 48%,rgba(10,9,8,0.055) 100%)',
   };
 
-  /** Outer envelope: scroll expands the whole hero field */
-  const stretchX = mix(0.92, 1.22, dilate) * mix(1, 0.93, recede) * mix(0.97, 1.06, expand);
-  const stretchY = mix(1.0, 1.58, dilate) * mix(1, 0.86, recede) * mix(0.98, 1.12, expand);
-  const skewY = prm ? 0 : mix(0, 2.4, stretchBand) * (1 - recede * 0.7);
-  const fieldDescendVh = prm ? 0 : mix(0, 6.5, descend);
-  const fieldTopPct = mix(35, 48, descend);
-  const fieldW = mix(46, 124, fieldDrive) * mix(0.94, 1.02, expand);
-  const fieldH = mix(30, 96, fieldDrive) * mix(0.94, 1.04, expand);
-  const fieldOpacity = mix(0.99, 0.44, recede);
-
-  const atmosphereStyle = {
-    position: 'absolute',
-    width: `${fieldW}vw`,
-    maxWidth: 'min(940px, 96vw)',
-    height: `${fieldH}vh`,
-    maxHeight: 'min(680px, 82vh)',
-    left: '50%',
-    top: `${fieldTopPct}%`,
-    opacity: fieldOpacity,
-    transform: `translate3d(-50%, calc(-40% + ${fieldDescendVh}vh), 0) skewY(${skewY}deg) scale(${stretchX}, ${stretchY})`,
-    transformOrigin: '50% 28%',
-  };
-
-  /** Tilted disc: compresses around identity at rest, opens with scroll */
-  const flatY = mix(0.86, 0.94, dilate) * mix(1, 0.9, recede) * mix(1.02, 0.92, expand);
-  const flatX = mix(1.02, 1.14, dilate) * mix(1, 0.97, recede) * mix(0.98, 1.08, expand);
-  const fieldDeformStyle = {
-    transform: `rotate(${FIELD_TILT_DEG}deg) scale(${flatX}, ${flatY}) translate(${mix(0, 14, fieldDrive)}px, ${mix(0, 20, dilate)}px)`,
-    transformOrigin: '50% 46%',
-  };
-
-  const fuseBlur = mix(2, 11, dilate) * mix(1, 0.86, recede) * mix(0.92, 1.05, expand);
-  const fieldStackClass = `opening-card__field-stack${prm ? '' : ' opening-card__field-stack--live'}`;
-  const fieldStackStyle = {
-    filter: `blur(${fuseBlur}px) saturate(${mix(1.05, 0.97, open)})`,
-  };
-
-  const blurA = mix(10, 22, dilate) * mix(1, 0.88, recede) * mix(0.94, 1.08, expand);
-  const blurB = mix(14, 32, dilate) * mix(1, 0.85, recede) * mix(0.94, 1.1, expand);
-  const blurVeil = mix(18, 42, dilate) * mix(1, 0.82, recede) * mix(0.92, 1.06, expand);
-
-  /** Spheres: rest float → scroll freeze → slow spread (translate + anisotropic scale, not uniform “zoom”) */
-  const sx = spreadField * (prm ? 0 : 1);
-  const discAStyle = {
-    opacity: mix(0.94, 0.8, recede),
-    filter: `blur(${blurA}px) saturate(${mix(1.12, 1.02, open)})`,
-    transform: `translate(${mix(2, -7, expand) - 10 * sx}%, ${mix(2, 14, expand) + 8 * sx}%) scale(${1 + 0.05 * sx}, ${mix(0.9, 0.86, nucleate) - 0.06 * sx})`,
-  };
-  const discBStyle = {
-    opacity: mix(0.88, 0.72, recede),
-    filter: `blur(${blurB}px) saturate(${mix(1.08, 0.98, open)})`,
-    transform: `translate(${mix(-1, 16, expand) + 12 * sx}%, ${mix(1, 10, expand) - 6 * sx}%) scale(${1 - 0.04 * sx}, ${mix(0.92, 0.88, nucleate) + 0.05 * sx})`,
-  };
-  const discVeilStyle = {
-    opacity: mix(0.28, 0.2, recede),
-    filter: `blur(${blurVeil}px) saturate(${mix(1.15, 1.02, open)})`,
-    transform: `translate(${mix(0, -5, expand) + 4 * sx}%, ${mix(3, 18, expand) + 10 * sx}%) scale(${mix(1.02, 1.14, expand) + 0.06 * sx}, ${mix(0.88, 0.9, expand) - 0.05 * sx})`,
-  };
-
-  /** Orbit wrap: tighter around identity at rest, loosens + grows with scroll */
-  const orbitOpacity = mix(0.68, 0.26, recede);
-  const orbitTx = mix(0, -2.8, orbitDrive);
-  const orbitTy = mix(0, 1.8, orbitDrive);
-  const orbitScale = mix(1.08, 1.22, orbitDrive) * mix(1, 0.97, recede) * mix(0.98, 1.08, expand);
-  const orbitDriftYvh = prm ? 0 : mix(0, 2.8, orbitDrive);
+  /** Orbits — narrative skeleton; compress with field, stay legible on thesis as residual trace */
+  const orbitExitStruct = smoothstep(0.78, 0.98, exitVeil);
+  const orbitResidual =
+    mix(1, 0.9, thesisNucleus * 0.35) * mix(1, 0.82, recede) * (1 - orbitExitStruct * 0.12);
+  const orbitLegibility = mix(1.18, 1.06, gatherBeat * 0.22 + thesisNucleus * 0.18);
+  const orbitThesisBlend = smoothstep(0.22, 0.72, settleBeat * 0.45 + thesisNucleus * 0.65);
+  const orbitOpacity =
+    mix(mix(0.68, 0.64, thesisNucleus * 0.25), 0.62, orbitThesisBlend * 0.35) *
+    orbitResidual *
+    orbitLegibility;
+  const orbitLeftPct = mix(mix(67, 64, gatherBeat * 0.35), 56, orbitThesisBlend);
+  const orbitTopPct = mix(mix(43, 41, gatherBeat * 0.28), 58, orbitThesisBlend);
+  const orbitTx = mix(11, 5, orbitDrive) + mix(0, -2, settleBeat);
+  const orbitTy = mix(-5, 6, orbitThesisBlend) + mix(0, 3, thesisNucleus);
+  const orbitScale =
+    mix(1.18, 1.1, gatherBeat) *
+    mix(1, 0.94, thesisNucleus * 0.45) *
+    mix(1, 1.02, expand);
+  const orbitDriftYvh = prm ? 0 : mix(0, 2.5, orbitDrive) + orbitThesisBlend * 1.8 - thesisNucleus * 0.8;
+  const orbitCompress = mix(1, 0.9, gatherBeat * 0.55 + thesisNucleus * 0.28);
 
   const orbitWrapStyle = {
     opacity: orbitOpacity,
-    transform: `translate3d(calc(-50% + ${orbitTx}%), calc(-46% + ${orbitTy}% + ${orbitDriftYvh}vh), 0) scale(${orbitScale})`,
+    left: `${orbitLeftPct}%`,
+    top: `${orbitTopPct}%`,
+    width: 'min(132%, 820px)',
+    transform: `translate3d(calc(-50% + ${orbitTx}%), calc(-50% + ${orbitTy}% + ${orbitDriftYvh}vh), 0) scale(${orbitScale * orbitCompress})`,
   };
 
   const od = orbitDrive;
@@ -196,38 +196,55 @@ export function OpeningBridgeSection() {
   const e3 = `translate(${mix(0, -8, od)} ${mix(0, 20, od)}) scale(${mix(1, 1.03, od) * ex})`;
   const e4 = `translate(${mix(0, 14, od)} ${mix(0, -10, od)}) scale(${mix(1, 1.02, od) * ex})`;
 
-  const dashStrokeW = 0.92 + friction * 0.48;
-  const solidOrbitGroupOpacity = mix(0.82, 0.32, smoothstep(0.18, 0.82, open));
-  const dashedOrbitGroupOpacity = mix(0.78, 0.88, smoothstep(0.22, 0.88, open));
+  const dashStrokeW = 0.78 + friction * 0.38;
+  const solidOrbitGroupOpacity =
+    mix(0.74, 0.66, thesisNucleus * 0.35) * mix(1, 0.94, gatherBeat);
+  const dashedOrbitGroupOpacity =
+    mix(0.68, 0.6, thesisNucleus * 0.3) * mix(0.96, 1, settleBeat);
 
-  /** Phase 1–2: Hedi lifts off; thesis waits until hero fully gone (phase 3) */
-  const heroSlideT = heroNarrative.fadeHero;
-  const heroBaseLiftVh = prm ? -1.5 : -3.2;
-  // Shared travel: slower story beat with momentum (slow start -> push -> settle).
-  const travelT = smoothstep(0.2, 0.98, heroSlideT);
-  const momentum = Math.sin(travelT * Math.PI) * (1 - travelT) * (prm ? 0.02 : 0.14);
-  const travelStory = Math.max(0, Math.min(1, travelT + momentum));
-  const sharedLiftVh = prm ? mix(0, -8.5, travelStory) : mix(0, -22, travelStory);
-  const narrativeGapVh = prm ? 8.5 : 28;
-  const heroLiftStyle = {
-    transform: `translate3d(0, ${heroBaseLiftVh + sharedLiftVh}vh, 0)`,
+  /** gather → compress → reveal → settle — one sentence, not two screens */
+  const heroRetreat = heroNarrative.fadeHero;
+  const heroTravelT = smoothstep(0.04, 0.92, heroRetreat);
+  const heroLiftVh = prm ? mix(0, -7, heroTravelT) : mix(0, -14, heroTravelT);
+  const heroScale = mix(1, 0.9, heroTravelT);
+  const heroTopPct = mix(50, 36, heroTravelT);
+  const heroOpacity = mix(1, 0, Math.pow(heroTravelT, 1.35));
+
+  const thesisTravelT = smoothstep(0.08, 1, headlineReveal);
+  const thesisTopPct = mix(58, 50, thesisTravelT);
+  const thesisLiftVh = mix(prm ? 6 : 10, 1.5, thesisTravelT);
+  const thesisScale = mix(0.97, 1, thesisTravelT);
+  const capHandoffFade = smoothstep(0.48, 0.92, capHandoff);
+  const thesisHandoffFade = Math.max(thesisExit, capHandoffFade * 0.82);
+  const thesisSlotOpacity = headlineReveal * (1 - thesisHandoffFade * 0.92);
+  const nucleusZoneOpacity =
+    smoothstep(0.55, 0.82, headlineReveal) *
+    thesisSettled *
+    0.38 *
+    (1 - capHandoffFade * 0.5);
+  const titleStyle = {
+    opacity: headlineReveal,
+    transform: `translate3d(0, ${mix(18, 0, headlineReveal)}px, 0)`,
   };
-  const narrativeLiftStyle = {
-    transform: `translate3d(0, ${heroBaseLiftVh + sharedLiftVh + narrativeGapVh}vh, 0)`,
+  const deckStyle = {
+    opacity: deckReveal * (1 - thesisHandoffFade * 0.5),
+    transform: `translate3d(0, ${mix(16, 0, deckReveal)}px, 0)`,
   };
-  const heroOpacity = 1 - heroNarrative.fadeHero;
-  const narrativeReveal = smoothstep(0.72, 1, gateBridge);
-  const narrativeOpacity = Math.max(heroNarrative.fadeThesis, narrativeReveal * 0.92);
+
+  const heroSlotStyle = {
+    top: `${heroTopPct}%`,
+    transform: `translate3d(0, calc(-50% + ${heroLiftVh}vh), 0) scale(${heroScale})`,
+    opacity: heroOpacity,
+    visibility: heroOpacity < 0.04 ? 'hidden' : 'visible',
+  };
+  const thesisSlotStyle = {
+    top: `${thesisTopPct}%`,
+    transform: `translate3d(0, calc(-50% + ${thesisLiftVh}vh), 0) scale(${thesisScale})`,
+    opacity: thesisSlotOpacity,
+    visibility: thesisSlotOpacity < 0.04 ? 'hidden' : 'visible',
+  };
 
   const orbitStopMo = !prm && p > 0.025 && p < OPENING_PHASE2_END + 0.02;
-
-  const idleClass = prm
-    ? 'opening-card__atmosphere-idle'
-    : 'opening-card__atmosphere-idle opening-card__atmosphere-idle--live';
-
-  const breatheA = prm ? '' : 'opening-card__disc-breathe opening-card__disc-breathe--a';
-  const breatheB = prm ? '' : 'opening-card__disc-breathe opening-card__disc-breathe--b';
-  const breatheV = prm ? '' : 'opening-card__disc-breathe opening-card__disc-breathe--veil';
 
   const headlineLines = Array.isArray(capabilitySectionCopy.headline)
     ? capabilitySectionCopy.headline
@@ -237,7 +254,10 @@ export function OpeningBridgeSection() {
     <section ref={setScrollRef} className="opening-scroll" aria-label="Opening">
       <div className="opening-sticky">
         <div className="opening-bridge__frame">
-          <div className="opening-card opening-card--plate" style={openingCardStyle}>
+          <div
+            className={`opening-card opening-card--plate${thesisState > 0.22 ? ' opening-card--thesis-state' : ''}${thesisSettled > 0.35 ? ' opening-card--thesis-settled' : ''}${handoffLock > 0.35 ? ' opening-card--handoff-lock' : ''}`}
+            style={openingCardStyle}
+          >
             <div className="opening-card__field-slot" aria-hidden="true">
               <LandingOrganicField />
             </div>
@@ -267,8 +287,8 @@ export function OpeningBridgeSection() {
                                   rx="242"
                                   ry="104"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.052)"
-                                  strokeWidth="0.68"
+                                  stroke="rgba(10,9,8,0.152)"
+                                  strokeWidth="0.82"
                                 />
                               </g>
                               {!prm && (
@@ -301,8 +321,8 @@ export function OpeningBridgeSection() {
                                   rx="214"
                                   ry="92"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.058)"
-                                  strokeWidth="0.62"
+                                  stroke="rgba(10,9,8,0.156)"
+                                  strokeWidth="0.76"
                                 />
                               </g>
                               {!prm && (
@@ -335,8 +355,8 @@ export function OpeningBridgeSection() {
                                   rx="318"
                                   ry="122"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.068)"
-                                  strokeWidth="0.82"
+                                  stroke="rgba(10,9,8,0.162)"
+                                  strokeWidth="0.94"
                                 />
                               </g>
                               {!prm && (
@@ -370,9 +390,9 @@ export function OpeningBridgeSection() {
                                   rx="252"
                                   ry="108"
                                   fill="none"
-                                  stroke="rgba(10,9,8,0.22)"
-                                  strokeWidth={dashStrokeW}
-                                  strokeDasharray="9 5 3 11 6"
+                                  stroke="rgba(10,9,8,0.168)"
+                                  strokeWidth={dashStrokeW + 0.08}
+                                  strokeDasharray="18 10 6 20 10"
                                 />
                               </g>
                               {!prm && (
@@ -396,51 +416,65 @@ export function OpeningBridgeSection() {
 
             <div className="opening-card__stack">
               <div className="opening-card__layer opening-card__layer--single">
-                <div className="opening-card__scroll-rig">
+                <div className="opening-card__sentence">
                   <div
-                    className="opening-card__hero-lock opening-card__scroll-rig__hero"
-                    style={{
-                      ...heroLiftStyle,
-                      opacity: heroOpacity,
-                      visibility: heroOpacity < 0.03 ? 'hidden' : 'visible',
-                    }}
+                    className="opening-card__hero-slot motion-reveal-group is-visible"
+                    style={heroSlotStyle}
                   >
-                    <h1 className="opening-card__name opening-card__wordmark">Hedi</h1>
-                    <p className="opening-card__sub">
-                      <span className="opening-card__sub-role">Product Designer</span>
-                      <span
-                        className="opening-card__sub-lead"
-                        aria-label="for AI systems and enterprise workflows"
-                      >
-                        <span className="opening-card__sub-for">for </span>
-                        <span className="opening-card__sub-ai">AI systems</span>
-                        <span className="opening-card__sub-join"> &amp; </span>
-                        <span className="opening-card__sub-work">enterprise workflows</span>
-                      </span>
-                    </p>
-                  </div>
-                  <div
-                    className="opening-card__scroll-rig__position opening-card__scroll-rig__narrative"
-                    style={{
-                      ...narrativeLiftStyle,
-                      opacity: narrativeOpacity,
-                      visibility: narrativeOpacity < 0.03 ? 'hidden' : 'visible',
-                    }}
-                  >
-                    <div className="opening-card__narrative-bundle opening-card__narrative-bundle--poster">
-                      <div className="opening-card__poster">
-                        <h2 id="home-position-title" className="opening-card__title">
-                          {headlineLines.map((line) => (
-                            <span key={line} className="opening-card__title-line">
-                              {line}
-                              <br />
-                            </span>
-                          ))}
-                        </h2>
-                        <p className="opening-card__deck">{capabilitySectionCopy.intro}</p>
-                      </div>
+                    <div className="opening-card__hero-lock">
+                      <h1 className="opening-card__name opening-card__wordmark motion-reveal-child">
+                        Hedi
+                      </h1>
+                      <p className="opening-card__sub motion-reveal-child">
+                        <span className="opening-card__sub-role">Product Designer</span>
+                        <span className="opening-card__sub-lead">
+                          AI systems &amp; enterprise workflows
+                        </span>
+                      </p>
                     </div>
                   </div>
+                  <div
+                    className={`opening-card__thesis-slot motion-reveal-group${headlineReveal > 0.06 ? ' is-visible' : ''}`}
+                    style={thesisSlotStyle}
+                  >
+                    <div className="opening-card__thesis-unit">
+                      <h2
+                        id="home-position-title"
+                        className="opening-card__title motion-reveal-child"
+                        style={titleStyle}
+                      >
+                        {headlineLines.map((line) => (
+                          <span key={line} className="opening-card__title-line">
+                            {line}
+                            <br />
+                          </span>
+                        ))}
+                      </h2>
+                      <div
+                        className="opening-card__nucleus-zone"
+                        style={{ opacity: nucleusZoneOpacity }}
+                        aria-hidden="true"
+                      />
+                      <p className="opening-card__deck motion-reveal-child" style={deckStyle}>
+                        {capabilitySectionCopy.intro}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className="opening-card__peripheral"
+                  style={{
+                    opacity: Math.max(0, 1 - heroRetreat * 0.92 - thesisNucleus * 0.35),
+                  }}
+                  aria-hidden={heroOpacity < 0.2}
+                >
+                  <p className="opening-card__scroll-cue">
+                    <span className="opening-card__scroll-cue-label">Scroll</span>
+                    <span className="opening-card__scroll-cue-track" aria-hidden="true">
+                      <span className="opening-card__scroll-cue-line" />
+                      <span className="opening-card__scroll-cue-chevron" />
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>
