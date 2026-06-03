@@ -267,23 +267,23 @@ vec3 meshGreenHero(vec2 p, float rot) {
   float micro = (vnoise(p * 6.5 + vec2(rot * 0.15, u_time * 0.012)) - 0.5) * 0.022;
   float layer = (fbm(p * 3.2 + vec2(rot * 0.08, u_time * 0.006)) - 0.5) * 0.032;
   float t = clamp(r * 0.42 + cloud + micro + layer * 0.5, 0.0, 1.0);
-  vec3 deep = vec3(0.3, 0.6, 0.46);
-  vec3 shade = vec3(0.36, 0.68, 0.5);
-  vec3 mid = vec3(0.42, 0.74, 0.54);
-  vec3 accent = vec3(0.48, 0.8, 0.6);
-  vec3 lift = vec3(0.54, 0.84, 0.64);
-  vec3 hi = vec3(0.64, 0.92, 0.72);
-  vec3 wash = vec3(0.74, 0.94, 0.8);
-  vec3 mist = vec3(0.82, 0.96, 0.86);
+  vec3 deep = vec3(0.16, 0.5, 0.38);
+  vec3 shade = vec3(0.24, 0.62, 0.44);
+  vec3 mid = vec3(0.32, 0.74, 0.5);
+  vec3 accent = vec3(0.4, 0.82, 0.56);
+  vec3 lift = vec3(0.5, 0.88, 0.64);
+  vec3 hi = vec3(0.58, 0.94, 0.7);
+  vec3 wash = vec3(0.68, 0.96, 0.78);
+  vec3 mist = vec3(0.76, 0.98, 0.84);
   vec3 col = heroRichGradient(t, r, p, rot, 1.3, deep, shade, mid, accent, lift, hi, wash, mist);
   col = heroLayerBlur(
     p, rot, 1.3, col,
-    vec3(0.52, 0.86, 0.66),
-    vec3(0.68, 0.94, 0.78),
+    vec3(0.44, 0.86, 0.58),
+    vec3(0.62, 0.96, 0.72),
     0.38
   );
   float tBlur = clamp(length(p + vec2(0.035, -0.018)) * 0.36 + fbm(p * 1.05) * 0.1, 0.0, 1.0);
-  vec3 blurWash = mix(vec3(0.56, 0.84, 0.64), vec3(0.8, 0.96, 0.84), smoothstep(0.15, 0.88, tBlur));
+  vec3 blurWash = mix(vec3(0.48, 0.82, 0.58), vec3(0.76, 0.98, 0.8), smoothstep(0.15, 0.88, tBlur));
   col = mix(col, blurWash, 0.28 * (1.0 - smoothstep(0.25, 0.92, r)));
   float dome = 1.0 - smoothstep(0.38, 1.08, r);
   col *= 0.96 + dome * 0.06;
@@ -299,7 +299,7 @@ vec3 meshGreenHero(vec2 p, float rot) {
   float grain = (vnoise(p * 16.0 + vec2(rot * 0.12, r)) - 0.5) * 0.034;
   float grain2 = (vnoise(p * 34.0 + vec2(rot * 0.2, r * 1.4)) - 0.5) * 0.018;
   col += vec3(grain * 0.014 + grain2 * 0.008, grain * 0.032 + grain2 * 0.012, grain * 0.02 + grain2 * 0.009);
-  return heroChroma(col, 1.16) * 1.1;
+  return heroChroma(col, 1.28) * 1.16;
 }
 
 vec3 meshGreen(vec2 p, float rot) {
@@ -353,23 +353,23 @@ vec3 meshBlueHero(vec2 p, float flow, float rot) {
   float micro = (vnoise(p * 7.5 + vec2(rot * 0.2, flow * 0.03)) - 0.5) * 0.024;
   float layer = (fbm(p * 3.4 + vec2(flow * 0.02, rot * 0.06)) - 0.5) * 0.03;
   float t = clamp(r * 0.44 + cloud + micro + layer * 0.45, 0.0, 1.0);
-  vec3 deep = vec3(0.26, 0.38, 0.62);
-  vec3 shade = vec3(0.3, 0.42, 0.68);
-  vec3 mid = vec3(0.34, 0.46, 0.74);
-  vec3 accent = vec3(0.38, 0.44, 0.78);
-  vec3 lift = vec3(0.42, 0.5, 0.82);
-  vec3 hi = vec3(0.5, 0.56, 0.86);
-  vec3 wash = vec3(0.62, 0.66, 0.9);
-  vec3 mist = vec3(0.72, 0.74, 0.92);
+  vec3 deep = vec3(0.12, 0.22, 0.62);
+  vec3 shade = vec3(0.18, 0.3, 0.72);
+  vec3 mid = vec3(0.24, 0.38, 0.8);
+  vec3 accent = vec3(0.3, 0.44, 0.86);
+  vec3 lift = vec3(0.36, 0.5, 0.9);
+  vec3 hi = vec3(0.44, 0.56, 0.94);
+  vec3 wash = vec3(0.52, 0.62, 0.96);
+  vec3 mist = vec3(0.62, 0.7, 0.98);
   vec3 col = heroRichGradient(t, r, p, rot, 2.9, deep, shade, mid, accent, lift, hi, wash, mist);
   col = heroLayerBlur(
     p, rot, 2.9, col,
-    vec3(0.42, 0.48, 0.76),
-    vec3(0.56, 0.6, 0.84),
+    vec3(0.34, 0.42, 0.82),
+    vec3(0.48, 0.54, 0.9),
     0.3
   );
   float tBlur = clamp(length(p + vec2(-0.028, 0.022)) * 0.34 + fbm(p * 1.08 + vec2(flow * 0.02, 0.0)) * 0.11, 0.0, 1.0);
-  vec3 blurWash = mix(vec3(0.44, 0.5, 0.74), vec3(0.62, 0.66, 0.86), smoothstep(0.12, 0.9, tBlur));
+  vec3 blurWash = mix(vec3(0.36, 0.44, 0.78), vec3(0.54, 0.6, 0.92), smoothstep(0.12, 0.9, tBlur));
   col = mix(col, blurWash, 0.2 * (1.0 - smoothstep(0.22, 0.94, r)));
   float dome = 1.0 - smoothstep(0.4, 1.1, r);
   col *= 0.93 + dome * 0.05;
@@ -385,7 +385,7 @@ vec3 meshBlueHero(vec2 p, float flow, float rot) {
   float grain = (vnoise(p * 18.0 + u_time * 0.015) - 0.5) * 0.028;
   float grain2 = (vnoise(p * 36.0 + vec2(rot * 0.14, r * 1.3)) - 0.5) * 0.014;
   col += vec3(grain * 0.014 + grain2 * 0.008, grain * 0.018 + grain2 * 0.008, grain * 0.028 + grain2 * 0.01);
-  return heroChroma(col, 1.06) * 1.03;
+  return heroChroma(col, 1.14) * 1.08;
 }
 
 vec3 meshBlue(vec2 p, float flow, float rot) {
@@ -418,17 +418,17 @@ vec3 meshAmberHero(vec2 p) {
   float micro = (vnoise(p * 8.0) - 0.5) * 0.024;
   float layer = (fbm(p * 3.0 + vec2(u_time * 0.007, 4.6)) - 0.5) * 0.028;
   float t = clamp(r * 0.43 + micro + cloud * 0.35 + layer * 0.4, 0.0, 1.0);
-  vec3 deep = vec3(0.92, 0.44, 0.08);
-  vec3 shade = vec3(0.96, 0.52, 0.1);
-  vec3 mid = vec3(0.98, 0.6, 0.14);
-  vec3 accent = vec3(1.0, 0.68, 0.18);
-  vec3 lift = vec3(1.0, 0.76, 0.24);
-  vec3 hi = vec3(1.0, 0.84, 0.32);
-  vec3 wash = vec3(1.0, 0.9, 0.48);
-  vec3 mist = vec3(1.0, 0.94, 0.58);
+  vec3 deep = vec3(0.92, 0.42, 0.04);
+  vec3 shade = vec3(0.98, 0.54, 0.08);
+  vec3 mid = vec3(1.0, 0.64, 0.12);
+  vec3 accent = vec3(1.0, 0.72, 0.16);
+  vec3 lift = vec3(1.0, 0.8, 0.22);
+  vec3 hi = vec3(1.0, 0.88, 0.32);
+  vec3 wash = vec3(1.0, 0.92, 0.44);
+  vec3 mist = vec3(1.0, 0.96, 0.56);
   vec3 col = heroRichGradient(t, r, p, 0.0, 4.6, deep, shade, mid, accent, lift, hi, wash, mist);
   float dome = 1.0 - smoothstep(0.38, 1.08, r);
-  col *= 0.97 + dome * 0.08;
+  col *= 0.98 + dome * 0.1;
   col += internalHighlight(p, 4.6, vec3(0.28, 0.12, 0.02), 0.072);
   float vein = heroVein(p, 0.0, 4.6);
   col += vec3(0.18, 0.08, 0.01) * (vein - 0.5) * 0.055 * (1.0 - r * 0.4);
@@ -441,7 +441,7 @@ vec3 meshAmberHero(vec2 p) {
   float grain = (vnoise(p * 17.0) - 0.5) * 0.03;
   float grain2 = (vnoise(p * 33.0 + vec2(r * 1.2, 4.6)) - 0.5) * 0.016;
   col += vec3(grain * 0.05 + grain2 * 0.016, grain * 0.034 + grain2 * 0.011, grain * 0.012 + grain2 * 0.004);
-  return heroChroma(col, 1.2) * 1.12;
+  return heroChroma(col, 1.3) * 1.18;
 }
 
 vec3 meshAmber(vec2 p) {
@@ -481,7 +481,7 @@ vec4 layerFromMask(float mask, vec3 rgb, float opacity, vec2 pLocal, float seed,
   col *= 1.0 + (densN - 1.0) * (u_light > 0.5 ? 3.6 : 2.8);
   float a = mask * opacity * u_globalOpacity;
   a *= mix(1.0, densN, u_light > 0.5 ? 0.22 : 0.12);
-  a = clamp(a, 0.0, u_light > 0.5 ? 0.9 : 0.88);
+  a = clamp(a, 0.0, u_light > 0.5 ? 0.94 : 0.88);
   return vec4(col * a, a);
 }
 
@@ -529,7 +529,7 @@ void main() {
 
   float opacityC = u_opacity.z * u_extraC;
   if (u_light > 0.5) {
-    opacityC = min(opacityC * 1.0, 0.62);
+    opacityC = min(opacityC * 1.06, 0.74);
   }
 
   vec4 layerB = layerFromMask(maskB, rgbB, u_opacity.y, pB, 2.9, 0.04);

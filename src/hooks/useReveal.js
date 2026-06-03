@@ -73,7 +73,13 @@ function collectRevealTargets(root) {
 function fieldClimateAllowsReveal(el) {
   if (typeof document === 'undefined') return true;
   if (document.documentElement.dataset.fieldClimate !== 'settling') return true;
-  if (el.closest('.opening-card, .home-hero, #home-landing, .cap-dial__layout')) return true;
+  if (
+    el.closest(
+      '.opening-card, .home-hero, #home-landing, .cap-dial__layout, .home-life-archive, .home-beyond-work',
+    )
+  ) {
+    return true;
+  }
   if (el.closest('.portfolio-guide')) return true;
   return false;
 }

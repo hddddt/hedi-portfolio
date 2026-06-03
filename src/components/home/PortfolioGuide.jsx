@@ -15,11 +15,10 @@ import {
 import {
   GUIDE_RESULT_SECTIONS,
   SHORTCUT_ENTRY,
-  SHORTCUT_KEY_ANGLES,
-  SHORTCUT_PROOF_POINTS,
+  SHORTCUT_ROUTES,
   SHORTCUT_SECTIONS,
 } from '../../data/portfolioGuideSystem.js';
-import { ShortcutAngleResult } from './ShortcutAngleResult.jsx';
+import { ShortcutRoutePanel } from './ShortcutRoutePanel.jsx';
 import {
   getFreeGuideAnswer,
   matchExplicitPresetFlowId,
@@ -29,14 +28,12 @@ import {
   activateGuideTarget,
   clearPreviewTarget,
   previewTarget,
-  scrollToGuideTarget,
+  scrollToGuideAction,
 } from '../../utils/portfolioGuideTarget.js';
 import { ShortcutMarkerArt } from './ShortcutMarker.jsx';
 import '../../styles/portfolio-guide.css';
 import '../../styles/portfolio-shortcut-marker.css';
 
-const SCROLL_SHOW_THRESHOLD = 0.08;
-const OPENING_SCROLL_SHOW_VH = 2.85;
 const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
 const ORB_MOOD_CLICK_MS = 1400;
 const PANEL_CLOSE_MS = 420;
@@ -114,28 +111,25 @@ const GUIDE_TRIGGER_MODE =
 export function PortfolioGuide() {
   const { activeId } = useNarrativeScroll();
   const { setGuideOpen } = useOrbScene();
-  const isLanding = activeId === 'home-landing';
   const isOpeningChapter =
     activeId === 'home-landing' || activeId === 'home-capabilities';
-  const isSectionGuide = activeId === 'home-life-archive';
   const isFullMode = false;
-  const triggerHidden = GUIDE_TRIGGER_MODE === 'hidden';
   const triggerSubtle = GUIDE_TRIGGER_MODE === 'subtle';
-  const source = isSectionGuide ? 'section-guide' : 'landing-guide';
+  const source =
+    activeId === 'home-life-archive' ? 'section-guide' : 'landing-guide';
 
   useEffect(() => {
-    if (isSectionGuide) setGuideOpen(false);
-  }, [isSectionGuide, setGuideOpen]);
+    if (activeId === 'home-life-archive') setGuideOpen(false);
+  }, [activeId, setGuideOpen]);
 
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
   const panelBodyRef = useRef(null);
-  const [scrollVisible, setScrollVisible] = useState(false);
-  const [openingScrollVisible, setOpeningScrollVisible] = useState(true);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [hintSuppressed, setHintSuppressed] = useState(false);
   const [pressed, setPressed] = useState(false);
   const [pulling, setPulling] = useState(false);
   const pullTimerRef = useRef(0);
@@ -231,6 +225,9 @@ export function PortfolioGuide() {
 
   const closePanel = useCallback(() => {
     if (!open) return;
+    setHovered(false);
+    setPressed(false);
+    setHintSuppressed(true);
     bumpPeekCooldown();
     clearTrackedPreview();
     resetOrbMood();
@@ -249,7 +246,13 @@ export function PortfolioGuide() {
       setOpen(false);
       setClosing(false);
       if (!isFullMode) {
-        triggerRef.current?.focus();
+        triggerRef.current?.blur();
+        const stillOverHandle = triggerRef.current?.matches(':hover');
+        if (stillOverHandle) {
+          setHovered(true);
+        } else {
+          setHintSuppressed(false);
+        }
       }
     }, PANEL_CLOSE_MS);
   }, [open, isFullMode, resetOrbMood, clearTrackedPreview, bumpPeekCooldown]);
@@ -328,8 +331,8 @@ export function PortfolioGuide() {
       if (previewTargetIdRef.current === targetId) {
         previewTargetIdRef.current = null;
       }
-      scrollToGuideTarget(targetId);
-      if (!targetId.startsWith('case-')) {
+      scrollToGuideAction(action);
+      if (targetId && !targetId.startsWith('case-')) {
         activateGuideTarget(targetId);
       }
       closePanel();
@@ -483,27 +486,14 @@ export function PortfolioGuide() {
     [],
   );
 
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-      const vh = window.innerHeight;
-      setScrollVisible(y > vh * SCROLL_SHOW_THRESHOLD);
-      setOpeningScrollVisible(y < vh * OPENING_SCROLL_SHOW_VH);
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const shouldShowRoot = open || isLanding || scrollVisible || openingScrollVisible;
   const surfaceBg = usePortfolioShortcutSurface(activeId);
   const scrollActive = useScrollActivityPause(420);
   const proximityNear = useShortcutProximity({
-    enabled: shouldShowRoot && !open && !triggerHidden,
+    enabled: !open,
   });
 
   const idlePeek = useShortcutHandleIdlePeek({
-    enabled: shouldShowRoot && !triggerHidden && !isFullMode,
+    enabled: !isFullMode,
     paused:
       open ||
       closing ||
@@ -563,16 +553,13 @@ export function PortfolioGuide() {
 
   const whereToLook = resultPresentation?.whereToLook ?? [];
 
-  if (isSectionGuide) {
-    return null;
-  }
-
   const shell = (
     <div
       ref={rootRef}
         className={[
         'portfolio-guide',
-        shouldShowRoot ? 'is-visible' : '',
+        'portfolio-guide--seam-marker',
+        'is-visible',
         open ? 'is-open' : '',
         closing ? 'is-closing' : '',
         pulling ? 'is-pulling' : '',
@@ -652,56 +639,22 @@ export function PortfolioGuide() {
                     {SHORTCUT_SECTIONS.keyAngles}
                   </p>
                   <ul className="portfolio-guide__angle-list">
-                    {SHORTCUT_KEY_ANGLES.map((angle, angleIndex) => (
-                      <li key={angle.id} className="portfolio-guide__angle-item">
+                    {SHORTCUT_ROUTES.map((route, routeIndex) => (
+                      <li key={route.id} className="portfolio-guide__angle-item">
                         <button
                           type="button"
                           className="portfolio-guide__angle-card"
-                          style={{ '--angle-i': angleIndex }}
-                          onClick={() => showAngleResult(angle.id)}
+                          style={{ '--angle-i': routeIndex }}
+                          onClick={() => showAngleResult(route.id)}
                           disabled={followUpReading || resultProcessing}
                         >
                           <span className="portfolio-guide__angle-card-copy">
-                            <span className="portfolio-guide__angle-card-title">{angle.title}</span>
-                            <span className="portfolio-guide__angle-card-sub">{angle.subtitle}</span>
+                            <span className="portfolio-guide__angle-card-eyebrow">{route.eyebrow}</span>
+                            <span className="portfolio-guide__angle-card-title">{route.title}</span>
+                            <span className="portfolio-guide__angle-card-oneliner">{route.oneLiner}</span>
                           </span>
                           <span className="portfolio-guide__angle-card-arrow" aria-hidden="true">
                             →
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-
-                <section
-                  className="portfolio-guide__evidence-block portfolio-guide__enter-stage portfolio-guide__enter-stage--evidence"
-                  aria-label={SHORTCUT_SECTIONS.proofPoints}
-                >
-                  <p className="portfolio-guide__block-label portfolio-guide__block-label--secondary">
-                    {SHORTCUT_SECTIONS.proofPoints}
-                  </p>
-                  <ul className="portfolio-guide__cards">
-                    {SHORTCUT_PROOF_POINTS.map((item, cardIndex) => (
-                      <li
-                        key={item.id}
-                        className="portfolio-guide__card-item"
-                        style={{ '--card-i': cardIndex }}
-                      >
-                        <button
-                          type="button"
-                          className="portfolio-guide__card portfolio-guide__card--evidence"
-                          onPointerEnter={() => handleEvidencePointerEnter(item.action)}
-                          onPointerLeave={() => handleEvidencePointerLeave(item.action)}
-                          onClick={(event) => handleEvidenceClick(event, item.action)}
-                        >
-                          <span className="portfolio-guide__card-kicker">{item.num}</span>
-                          <span className="portfolio-guide__card-copy">
-                            <span className="portfolio-guide__card-title">{item.title}</span>
-                            <span className="portfolio-guide__card-desc">{item.signal}</span>
-                          </span>
-                          <span className="portfolio-guide__card-arrow" aria-hidden="true">
-                            ↗
                           </span>
                         </button>
                       </li>
@@ -722,13 +675,12 @@ export function PortfolioGuide() {
             ) : null}
 
             {view === 'angle' && angleResultId ? (
-              <ShortcutAngleResult
-                angleId={angleResultId}
+              <ShortcutRoutePanel
+                routeId={angleResultId}
                 onBack={returnHome}
                 onEvidencePointerEnter={handleEvidencePointerEnter}
                 onEvidencePointerLeave={handleEvidencePointerLeave}
                 onEvidenceClick={handleEvidenceClick}
-                onRouteClick={handleEvidenceClick}
               />
             ) : null}
 
@@ -936,7 +888,7 @@ export function PortfolioGuide() {
         </div>
       </aside>
 
-      {!isFullMode && !triggerHidden ? (
+      {!isFullMode ? (
         <button
           ref={triggerRef}
           type="button"
@@ -950,6 +902,7 @@ export function PortfolioGuide() {
             pulling ? 'is-pulling' : '',
             idlePeek && !open && !hovered ? 'is-idle-peek' : '',
             proximityNear && !hovered && !open ? 'is-state-proximity' : '',
+            hintSuppressed ? 'is-hint-suppressed' : '',
             reducedMotion ? 'is-reduced-motion' : '',
           ]
             .filter(Boolean)
@@ -959,15 +912,20 @@ export function PortfolioGuide() {
           aria-label={open ? 'Close Portfolio Shortcut' : 'Open Portfolio Shortcut'}
           aria-expanded={open}
           onClick={togglePanel}
-          onPointerEnter={() => setHovered(true)}
+          onPointerEnter={() => {
+            if (!hintSuppressed) setHovered(true);
+          }}
           onPointerLeave={() => {
+            setHintSuppressed(false);
             setHovered(false);
             setPressed(false);
           }}
           onPointerDown={() => setPressed(true)}
           onPointerUp={() => setPressed(false)}
           onPointerCancel={() => setPressed(false)}
-          onFocus={() => setHovered(true)}
+          onFocus={() => {
+            if (!hintSuppressed) setHovered(true);
+          }}
           onBlur={() => {
             setHovered(false);
             setPressed(false);

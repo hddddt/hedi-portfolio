@@ -147,9 +147,9 @@
 }
 
 /* Content reveals after object climate handoff */
-html[data-field-climate='settling'] .narrative-chapter:not(.home-hero) .motion-reveal:not(.is-visible),
+html[data-field-climate='settling'] .narrative-chapter:not(.home-hero):not(.home-life-archive) .motion-reveal:not(.is-visible),
 html[data-field-climate='settling']
-  .narrative-chapter:not(.home-hero)
+  .narrative-chapter:not(.home-hero):not(.home-life-archive)
   .motion-reveal-group:not(.is-visible)
   > .motion-reveal-child {
   opacity: 0;

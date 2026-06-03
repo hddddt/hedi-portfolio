@@ -660,6 +660,23 @@
 }
 
 /* Prevent scroll/IO reveal rules from ever blanking ch 05 */
+/* Ch 05 — scroll handoff only; IO reveal must not gate or stagger content */
+.home-life-archive .motion-reveal:not(.is-visible),
+.home-life-archive .motion-reveal-group:not(.is-visible) > .motion-reveal-child,
+.home-life-archive .motion-reveal-group > .motion-reveal-child {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.home-life-archive .home-beyond-work__content > .home-beyond-work__part,
+.home-life-archive .home-beyond-work__content > .home-beyond-work__corridor {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition: none;
+}
+
 .home-life-archive .home-beyond-work,
 .home-life-archive .home-beyond-work__content,
 .home-life-archive .home-beyond-work__corridor,

@@ -31,13 +31,13 @@ export const GUIDE_DECISION_AREAS = {
 /** User-facing Portfolio Shortcut shell copy */
 export const SHORTCUT_ENTRY = {
   label: 'Portfolio Shortcut',
-  tagline: 'Start with an angle, a route, or a proof point.',
+  tagline: 'Choose an angle, then jump to the evidence that answers it.',
   freeInputPlaceholder: 'Search by AI topic, role question, or design signal',
   submitLabel: 'Find',
 };
 
 export const SHORTCUT_SECTIONS = {
-  keyAngles: 'Key angles',
+  keyAngles: 'Review angles',
   proofPoints: 'Proof points',
   search: 'Search evidence',
   shortAnswer: 'Short answer',
@@ -47,8 +47,12 @@ export const SHORTCUT_SECTIONS = {
 
 export {
   SHORTCUT_KEY_ANGLES,
+  SHORTCUT_ROUTES,
   SHORTCUT_PROOF_POINTS,
+  SHORTCUT_ROUTE_PANELS,
   SHORTCUT_ANGLE_RESULTS,
+  getShortcutRoute,
+  getShortcutRoutePanel,
   getShortcutAngleResult,
 } from './portfolioShortcutContent.js';
 

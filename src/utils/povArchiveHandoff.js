@@ -109,15 +109,15 @@ function mixRange(p, from, to) {
 /** Path part (05 · first) — completes before archive corridor arms. */
 export function pathPartReveal(handoff) {
   const p = clamp01(handoff);
-  if (p >= 0.88) return 1;
-  return smoothstep(0.04, 0.38, p);
+  if (p >= 0.72) return 1;
+  return smoothstep(0, 0.22, p);
 }
 
 /** Life archive block — delayed beat after path + corridor hold. */
 export function archivePartReveal(handoff) {
   const p = clamp01(handoff);
-  if (p >= 0.9) return 1;
-  return smoothstep(0.5, 0.78, p);
+  if (p >= 0.78) return 1;
+  return smoothstep(0.22, 0.48, p);
 }
 
 /**
@@ -137,8 +137,8 @@ export function pathArchiveCorridorStyle(handoff, reducedMotion = false) {
   }
 
   const p = clamp01(handoff);
-  const corridor = smoothstep(0.34, 0.58, p);
-  const root = { opacity: 0.35 + corridor * 0.65 };
+  const corridor = smoothstep(0.16, 0.38, p);
+  const root = { opacity: 0.55 + corridor * 0.45 };
 
   const axisU = phaseProgress(corridor, 0, 0.42);
   const axisScaleY = mixRange(axisU, 0.35, 1);

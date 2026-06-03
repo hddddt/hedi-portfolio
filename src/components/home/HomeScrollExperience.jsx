@@ -115,7 +115,7 @@ function HomeScrollInner() {
       >
         <div className="home-beyond-work" data-archive-handoff-root>
           <BeyondWorkAtmosphere />
-          <div className="home-beyond-work__content motion-reveal-group">
+          <div className="home-beyond-work__content">
             <section id="home-beyond-path" className="home-beyond-work__part home-beyond-work__part--path">
               <MePathSection />
               <MePathPortrait />

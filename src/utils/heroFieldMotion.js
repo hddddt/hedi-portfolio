@@ -252,7 +252,7 @@ const BLOB_STATES = {
   transition: {
     a: {
       ...HERO_BLOB_INTRO.a,
-      centerX: 0.44,
+      centerX: 0.48,
       centerY: 0.52,
       scale: OPENING_SCROLL_SCALE.transition.green,
       opacity: INTRO_OPACITY.a,
@@ -260,15 +260,15 @@ const BLOB_STATES = {
     },
     b: {
       ...HERO_BLOB_INTRO.b,
-      centerX: 0.58,
-      centerY: 0.48,
+      centerX: 0.62,
+      centerY: 0.52,
       scale: OPENING_SCROLL_SCALE.transition.blue,
       opacity: INTRO_OPACITY.b,
     },
     c: {
       ...HERO_BLOB_INTRO.c,
-      centerX: 0.54,
-      centerY: 0.6,
+      centerX: 0.58,
+      centerY: 0.58,
       scale: OPENING_SCROLL_SCALE.transition.amber * 0.94,
       opacity: INTRO_OPACITY.c * 0.85,
     },

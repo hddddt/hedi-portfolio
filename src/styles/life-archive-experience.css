@@ -514,11 +514,7 @@
   color: rgba(250, 248, 243, 0.7);
 }
 
-/* Hide portfolio guide duplicate orb while in this section */
-.portfolio-guide--life-archive {
-  visibility: hidden;
-  pointer-events: none;
-}
+/* Portfolio guide stays visible in all chapters (including life archive). */
 
 @media (max-width: 900px) {
   .life-archive-experience__detail {

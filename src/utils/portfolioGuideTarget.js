@@ -1,4 +1,6 @@
-/** @typedef {{ type: 'section' | 'case', id: string }} GuideDestination */
+/** @typedef {{ type: 'section' | 'case' | 'capability', id: string }} GuideDestination */
+
+import { homeCapabilities } from '../data/homeScrollChapters.js';
 
 import { WORK_TRACK_LEAD_IN_VH } from './workChoreography.js';
 
@@ -57,7 +59,28 @@ export function actionToTargetId(action) {
     return 'selected-work';
   }
 
+  if (action.type === 'capability') {
+    return 'capabilities';
+  }
+
   return null;
+}
+
+/**
+ * @param {GuideDestination | null | undefined} action
+ */
+export function scrollToGuideAction(action) {
+  if (!action) return;
+
+  if (action.type === 'capability') {
+    const panelIndex = homeCapabilities.findIndex((c) => c.id === action.id);
+    scrollCapabilityToPanel(panelIndex >= 0 ? panelIndex : 0);
+    window.setTimeout(() => activateGuideTarget('capabilities'), 480);
+    return;
+  }
+
+  const targetId = actionToTargetId(action);
+  if (targetId) scrollToGuideTarget(targetId);
 }
 
 /**
