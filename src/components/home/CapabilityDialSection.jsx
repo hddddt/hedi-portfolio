@@ -31,6 +31,7 @@ import {
   trackHeightVh,
   trackScrollTargetY,
 } from '../../utils/scrollTrack.js';
+import { HOME_CHAPTER_NAV_EVENT } from '../../utils/portfolioGuideTarget.js';
 
 const CAP_WORK_HANDOFF_EVENT = 'portfolio:cap-work-handoff';
 
@@ -203,6 +204,7 @@ export function CapabilityDialSection({ trackRef }) {
   const chapterExitArmedRef = useRef(false);
   const capExitingToWorkRef = useRef(false);
   const workHandoffYRef = useRef(null);
+  const chapterNavLockUntilRef = useRef(0);
   const [releaseProgress, setReleaseProgress] = useState(0);
   const n = homeCapabilities.length;
   const trackVh = trackHeightVh(n);
@@ -488,6 +490,29 @@ export function CapabilityDialSection({ trackRef }) {
     return undefined;
   }, [activeId, alignScrollToPanel, n, snapToChapterStart]);
 
+  useEffect(() => {
+    const onChapterNav = (e) => {
+      const { targetId, panelIndex = 0 } = e.detail ?? {};
+      if (targetId !== 'capabilities') return;
+      if (!wrapRef.current) return;
+      chapterNavLockUntilRef.current = performance.now() + 920;
+      scrollTweenRef.current?.cancel();
+      const clamped = Math.min(n - 1, Math.max(0, panelIndex));
+      forceFirstPanelOnEntryRef.current = clamped === 0;
+      openingEntrySettlingRef.current = false;
+      setOpeningEntrySettling(false);
+      openingEntrySnapPendingRef.current = false;
+      entryLatchUntilRef.current = 0;
+      const rect = wrapRef.current.getBoundingClientRect();
+      if (rect.top > PIN_TOP_TOLERANCE_PX) {
+        snapToChapterStart('smooth');
+      }
+      scrollToPanel(clamped, 'smooth');
+    };
+    window.addEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
+    return () => window.removeEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
+  }, [n, scrollToPanel, snapToChapterStart]);
+
   /** Opening exit wipe — snap to panel 0 when Cap engages mid-scroll (activeId may lag). */
   const prevCapExitWipeRef = useRef(0);
   useEffect(() => {
@@ -517,6 +542,7 @@ export function CapabilityDialSection({ trackRef }) {
 
   useEffect(() => {
     const onScroll = () => {
+      if (performance.now() < chapterNavLockUntilRef.current) return;
       const el = wrapRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -666,6 +692,7 @@ export function CapabilityDialSection({ trackRef }) {
       if (wheelStepConsumedRef.current) return;
       if (wheelCooldownRef.current || scrollTweenRef.current?.isRunning()) return;
       if (performance.now() < inputLockUntilRef.current) return;
+      if (performance.now() < chapterNavLockUntilRef.current) return;
       const el = wrapRef.current;
       if (!el || n <= 1) return;
 
@@ -694,6 +721,7 @@ export function CapabilityDialSection({ trackRef }) {
       if (wheelStepConsumedRef.current) return false;
       if (wheelCooldownRef.current || scrollTweenRef.current?.isRunning()) return false;
       if (performance.now() < inputLockUntilRef.current) return false;
+      if (performance.now() < chapterNavLockUntilRef.current) return false;
       if (dir === 1 && stepAnchorRef.current >= n - 1) {
         wheelAccum = 0;
         startCapWorkHandoff();

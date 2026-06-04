@@ -3,8 +3,12 @@
 import { homeCapabilities } from '../data/homeScrollChapters.js';
 
 import { WORK_TRACK_LEAD_IN_VH } from './workChoreography.js';
+import { trackScrollTargetY } from './scrollTrack.js';
 
 const ACTIVE_HIGHLIGHT_MS = 1800;
+
+/** Header + guide — chapter sections sync panel state after programmatic scroll. */
+export const HOME_CHAPTER_NAV_EVENT = 'home-chapter-nav';
 
 /** Logical guide target → DOM element id (1:1 on scroll-home prototype). */
 export const GUIDE_TARGET_DOM_ID = {
@@ -136,6 +140,12 @@ function scrollWorkTrackN(trackEl, panelIndex, panelCount) {
   window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
 }
 
+function dispatchChapterNav(targetId, panelIndex = 0) {
+  window.dispatchEvent(
+    new CustomEvent(HOME_CHAPTER_NAV_EVENT, { detail: { targetId, panelIndex } }),
+  );
+}
+
 function scrollCapabilityToPanel(panelIndex = 0) {
   const track = document.querySelector(SELECTORS.capabilityTrack);
   if (!(track instanceof HTMLElement)) {
@@ -143,7 +153,10 @@ function scrollCapabilityToPanel(panelIndex = 0) {
     return;
   }
   const panelCount = document.querySelectorAll(SELECTORS.capabilityPanelCount).length;
-  scrollPinnedTrackNMinusOne(track, panelIndex, Math.max(1, panelCount));
+  const count = Math.max(1, panelCount);
+  const y = trackScrollTargetY(track, panelIndex, count);
+  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+  dispatchChapterNav('capabilities', panelIndex);
 }
 
 function scrollWorkToPanel(panelIndex = 0) {
@@ -164,6 +177,7 @@ function scrollPovToPanel(panelIndex = 0) {
   }
   const panelCount = track.querySelectorAll('.pov-scroll__snap').length;
   scrollPinnedTrackNMinusOne(track, panelIndex, Math.max(1, panelCount));
+  dispatchChapterNav('point-of-view', panelIndex);
 }
 
 /**
@@ -208,6 +222,21 @@ export function scrollToGuideTarget(targetId) {
 
   if (targetId === 'point-of-view') {
     scrollPovToPanel(0);
+    window.setTimeout(() => activateGuideTarget(targetId), 480);
+    return;
+  }
+
+  if (targetId === 'me') {
+    const target =
+      document.getElementById('home-beyond-path') ?? resolveGuideTargetElement('me');
+    if (!target) {
+      console.warn('[PortfolioGuide] Missing target:', targetId);
+      return;
+    }
+    const headerClearance = Math.max(56, Math.round(window.innerHeight * 0.06));
+    const y = target.getBoundingClientRect().top + window.scrollY - headerClearance;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    dispatchChapterNav('me', 0);
     window.setTimeout(() => activateGuideTarget(targetId), 480);
     return;
   }

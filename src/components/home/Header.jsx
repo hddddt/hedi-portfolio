@@ -1,27 +1,19 @@
+import { createPortal } from 'react-dom';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { NAV_CHAPTER_FIELD_HUE } from '../../data/fieldSemanticStates.js';
+import { scrollToGuideTarget } from '../../utils/portfolioGuideTarget.js';
 
+/** href matches NarrativeChapter `guideTargetId` (see portfolioGuideTarget.js). */
 const LINKS = [
-  { href: '#home-capabilities', chapterId: 'home-capabilities', label: 'Capabilities' },
-  { href: '#home-work-narrative', chapterId: 'home-work-narrative', label: 'Work' },
-  { href: '#home-approach', chapterId: 'home-approach', label: 'View' },
-  { href: '#home-life-archive', chapterId: 'home-life-archive', label: 'Me' },
+  { href: '#capabilities', targetId: 'capabilities', chapterId: 'home-capabilities', label: 'Capabilities' },
+  { href: '#selected-work', targetId: 'selected-work', chapterId: 'home-work-narrative', label: 'Work' },
+  { href: '#point-of-view', targetId: 'point-of-view', chapterId: 'home-approach', label: 'View' },
+  { href: '#me', targetId: 'me', chapterId: 'home-life-archive', label: 'Me' },
 ];
 
-function scrollToSection(href) {
-  const id = href.replace('#', '');
-  const target = document.getElementById(id);
-  if (!target) return;
-  const rectTop = target.getBoundingClientRect().top + window.scrollY;
-  const nudge =
-    id === 'home-life-archive'
-      ? Math.max(24, Math.round(window.innerHeight * 0.04))
-      : 0;
-  window.scrollTo({
-    top: Math.max(0, rectTop + nudge),
-    behavior: 'smooth',
-  });
+function scrollToSection(targetId) {
+  scrollToGuideTarget(targetId);
 }
 
 function scrollToFirstScreen() {
@@ -32,8 +24,8 @@ export function Header() {
   const { activeId } = useNarrativeScroll();
   const { setNavFieldHint } = useOrbScene();
 
-  return (
-    <header className="home-header" role="banner">
+  const header = (
+    <header className="home-header home-header--portaled" role="banner">
       <span className="home-header__spacer" aria-hidden="true" />
       <a
         href="#top"
@@ -63,7 +55,7 @@ export function Header() {
             onBlur={() => setNavFieldHint(null)}
             onClick={(e) => {
               e.preventDefault();
-              scrollToSection(l.href);
+              scrollToSection(l.targetId);
             }}
           >
             {l.label}
@@ -72,4 +64,7 @@ export function Header() {
       </nav>
     </header>
   );
+
+  if (typeof document === 'undefined') return header;
+  return createPortal(header, document.body);
 }

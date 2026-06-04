@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
 import { povBeats } from '../../data/pointOfViewChapters.js';
 import { formatPovMarkers } from '../../data/povSources.js';
 import { povExitLayers } from '../../utils/povArchiveHandoff.js';
+import { HOME_CHAPTER_NAV_EVENT } from '../../utils/portfolioGuideTarget.js';
 
 const BEAT_VH = 100;
 const HANDOFF_CORRIDOR_VH = 38;
@@ -183,6 +184,7 @@ export function ApproachSection() {
   const [beatIndex, setBeatIndex] = useState(0);
   const [scrollFloat, setScrollFloat] = useState(0);
   const beatIndexRef = useRef(0);
+  const chapterNavLockUntilRef = useRef(0);
 
   const n = povBeats.length;
   const corridorVh = handoffReduced ? 0 : HANDOFF_CORRIDOR_VH;
@@ -214,11 +216,40 @@ export function ApproachSection() {
     return () => setDepthFloat(null);
   }, [activeId, scrollFloat, exitProgress, setDepthFloat]);
 
+  const scrollToBeat = useCallback(
+    (index, behavior = 'smooth') => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const vh = window.innerHeight;
+      const total = Math.max(1, el.offsetHeight - vh);
+      const clamped = Math.min(n - 1, Math.max(0, index));
+      const traveled = n <= 1 ? 0 : (clamped / (n - 1)) * total;
+      const y = el.getBoundingClientRect().top + window.scrollY + traveled;
+      window.scrollTo({ top: Math.max(0, y), behavior });
+      beatIndexRef.current = clamped;
+      setScrollFloat(clamped);
+      setBeatIndex(clamped);
+    },
+    [n],
+  );
+
+  useEffect(() => {
+    const onChapterNav = (e) => {
+      const { targetId, panelIndex = 0 } = e.detail ?? {};
+      if (targetId !== 'point-of-view') return;
+      chapterNavLockUntilRef.current = performance.now() + 920;
+      scrollToBeat(panelIndex, 'smooth');
+    };
+    window.addEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
+    return () => window.removeEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
+  }, [scrollToBeat]);
+
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
 
     const onScroll = () => {
+      if (performance.now() < chapterNavLockUntilRef.current) return;
       const total = Math.max(1, el.offsetHeight - window.innerHeight);
       const rect = el.getBoundingClientRect();
       const t = Math.min(Math.max(-rect.top, 0), total);

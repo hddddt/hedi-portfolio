@@ -29,6 +29,16 @@ html.home-scroll-page body{
   --opening-cap-exit-wipe:0;
   --opening-cap-thesis-fade:0;
   --opening-boot-field:0;
+  /* Shared with Portfolio Shortcut panel + case detail */
+  --guide-ivory:rgba(243,239,230,.92);
+  --guide-ivory-muted:rgba(243,239,230,.52);
+  --guide-eyebrow:rgba(210,206,198,.44);
+  --guide-smoke-top:#13151b;
+  --guide-smoke-mid:#0f1115;
+  --guide-smoke-deep:#0a0b0e;
+  --guide-rule:rgba(243,239,230,.045);
+  --guide-rule-strong:rgba(243,239,230,.07);
+  --guide-accent-line:rgba(243,239,230,.22);
 }
 .organic-field-host--viewport{
   position:fixed;
@@ -59,7 +69,7 @@ html.home-scroll-page body{
   top:0;
   left:0;
   right:0;
-  z-index:900;
+  z-index:10300;
   display:grid;
   grid-template-columns:1fr auto 1fr;
   align-items:center;
@@ -67,6 +77,10 @@ html.home-scroll-page body{
   mix-blend-mode:difference;
   color:#eae8e4;
   pointer-events:none;
+}
+/* Portaled to body — above portfolio-guide (10100) and shortcut handle */
+.home-header--portaled{
+  z-index:10350;
 }
 .home-header a,
 .home-header button{
