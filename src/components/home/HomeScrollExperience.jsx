@@ -24,7 +24,7 @@ import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { ProjectAccessProvider } from '../../context/ProjectAccessContext.jsx';
 import { AboutContactSection } from './AboutContactSection.jsx';
 import { MeCurrentWorkSection } from './MeCurrentWorkSection.jsx';
-import { useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { usePovArchiveHandoff } from '../../context/PovArchiveHandoffContext.jsx';
 import { beyondWorkEntranceLayers } from '../../utils/povArchiveHandoff.js';
 import { BeyondWorkCorridor } from './BeyondWorkCorridor.jsx';
@@ -151,12 +151,16 @@ function HomeScrollRootLayout() {
   const { orbScene } = useOrbScene();
   const scrollRootRef = useRef(null);
 
+  useLayoutEffect(() => {
+    const root = scrollRootRef.current;
+    if (!root) return;
+    if (window.scrollY < window.innerHeight * 0.2) {
+      root.dataset.openingBootActive = 'true';
+    }
+  }, []);
+
   return (
-    <div
-      ref={scrollRootRef}
-      className="home-scroll-root"
-      data-opening-boot-active="true"
-    >
+    <div ref={scrollRootRef} className="home-scroll-root">
       <OrbSceneChapterSync activeId={activeId} />
       <OrbSceneContactSync />
       <OrbSceneSemanticRoot activeId={activeId} orbScene={orbScene} />

@@ -293,16 +293,11 @@ html.home-scroll-page body{
 .opening-card--boot .opening-card__field-slot{
   opacity:var(--opening-field-slot-opacity, 0);
 }
-/* Block legacy viewport WebGL (black hole) until boot narrative finishes */
-.home-scroll-root .organic-field-host--viewport{
+/* Hide viewport WebGL only during timed opening boot (not after handoff) */
+.home-scroll-root[data-opening-boot-active='true'] .organic-field-host--viewport{
   opacity:0 !important;
   visibility:hidden !important;
   pointer-events:none !important;
-}
-.home-scroll-root:not([data-opening-boot-active='true']) .organic-field-host--viewport{
-  opacity:var(--orb-host-opacity, 1);
-  visibility:visible;
-  pointer-events:none;
 }
 .opening-card--thesis-state{
   border-color:rgba(14,13,10,.1);
