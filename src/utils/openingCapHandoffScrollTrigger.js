@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { smoothstep } from './fieldNarrative.js';
+import { isPortfolioGuidePanelLocked } from './portfolioGuidePanelState.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -46,6 +47,7 @@ export function createOpeningCapHandoffScrollTrigger({ onProgress, reduceMotion 
   if (typeof window === 'undefined') return () => {};
 
   const apply = (t) => {
+    if (isPortfolioGuidePanelLocked()) return;
     onProgress(mapOpeningCapHandoffProgress(t));
   };
 

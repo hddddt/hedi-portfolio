@@ -15,6 +15,7 @@ import { measureCapWorkOrchestration } from '../utils/capabilitiesChoreography.j
 import { homeCapabilities } from '../data/homeScrollChapters.js';
 import { useOpeningCapHandoffScrollTrigger } from '../hooks/useOpeningCapHandoffScrollTrigger.js';
 import { computeOpeningBootAt } from '../utils/openingBootSequence.js';
+import { isPortfolioGuidePanelLocked } from '../utils/portfolioGuidePanelState.js';
 
 const FieldNarrativeContext = createContext(null);
 
@@ -67,6 +68,11 @@ export function FieldNarrativeProvider({ children }) {
     if (typeof document === 'undefined') return;
     const root = document.querySelector('.home-scroll-root');
     if (!root) return;
+    const chapter = document.documentElement?.dataset?.fieldChapter ?? '';
+    if (chapter && chapter !== 'home-landing') {
+      delete root.dataset.openingBootActive;
+      return;
+    }
     if ((boot?.complete ?? 0) < 0.98) {
       root.dataset.openingBootActive = 'true';
     } else {
@@ -76,6 +82,7 @@ export function FieldNarrativeProvider({ children }) {
   }, []);
 
   const applyHandoffMapped = useCallback((mapped) => {
+    if (isPortfolioGuidePanelLocked()) return;
     const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
     handoffZoneRef.current = mapped.zone;
     openingCapExitWipeRef.current = mapped.wipe;
@@ -97,7 +104,11 @@ export function FieldNarrativeProvider({ children }) {
         }
       }
     }
-    if (mapped.zone < 0.04 && window.scrollY < window.innerHeight * 0.35) {
+    if (
+      !isPortfolioGuidePanelLocked() &&
+      mapped.zone < 0.04 &&
+      window.scrollY < window.innerHeight * 0.35
+    ) {
       openingCompleteRef.current = false;
     }
   }, []);
@@ -155,7 +166,12 @@ export function FieldNarrativeProvider({ children }) {
       openingCompleteRef.current = true;
     } else if (bootDone && raw >= 0.998 && !openingInView) {
       openingCompleteRef.current = true;
-    } else if (openingInView && raw < 0.48 && handoffZoneRef.current < 0.04) {
+    } else if (
+      !isPortfolioGuidePanelLocked() &&
+      openingInView &&
+      raw < 0.48 &&
+      handoffZoneRef.current < 0.04
+    ) {
       openingCompleteRef.current = false;
     }
 

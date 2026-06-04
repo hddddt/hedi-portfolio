@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
-import { useOrganicFieldHost } from '../../context/OrganicFieldHostContext.jsx';
+import { getOrganicFieldViewportPortalNode } from '../../utils/organicFieldViewportPortal.js';
 import { usePerspective } from '../../context/PerspectiveContext.jsx';
 import { applyGreenBreathingLayer } from '../../utils/greenFieldBreathing.js';
 import { createOrganicFieldRenderer } from './organicFieldGl.js';
@@ -786,17 +786,37 @@ export function LandingOrganicField() {
 /** Later chapters — viewport layer behind scroll content. */
 export function ViewportOrganicField() {
   const { progress, openingComplete, openingCapHandoff } = useFieldNarrative();
-  const { rootHostRef, rootHostReady } = useOrganicFieldHost();
+  const { activeId } = useNarrativeScroll();
+  const { orbScene } = useOrbScene();
+  const stayMountedRef = useRef(false);
+  const [viewportHost, setViewportHost] = useState(null);
 
-  const host = rootHostRef.current;
-  if (!rootHostReady || !host) return null;
+  const shouldShow = shouldUseViewportOrganicField(
+    progress,
+    openingComplete,
+    openingCapHandoff,
+  );
 
-  if (!shouldUseViewportOrganicField(progress, openingComplete, openingCapHandoff)) return null;
+  useEffect(() => {
+    if (shouldShow) stayMountedRef.current = true;
+    if (activeId === 'home-landing') stayMountedRef.current = false;
+  }, [shouldShow, activeId]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const host = getOrganicFieldViewportPortalNode();
+    host.dataset.orbScene = orbScene ?? 'landing';
+    setViewportHost(host);
+    return undefined;
+  }, [orbScene]);
+
+  if (!viewportHost) return null;
+  if (!shouldShow && !stayMountedRef.current) return null;
 
   return createPortal(
     <div className="organic-field organic-field--viewport">
       <OrganicFieldCanvas inCard={false} />
     </div>,
-    host,
+    viewportHost,
   );
 }

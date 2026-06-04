@@ -26,10 +26,13 @@
   --portfolio-bug-fill: rgba(250, 248, 243, 0.08);
   --portfolio-bug-mark: rgba(250, 248, 243, 0.9);
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: calc(var(--portfolio-guide-drawer-w) + 96px);
   z-index: 10320;
   pointer-events: none;
-  isolation: isolate;
   opacity: 0;
   visibility: hidden;
   transition:
@@ -46,14 +49,9 @@
   z-index: 10340;
 }
 
-/* Panel open — freeze page scroll; only .portfolio-guide__panel-body scrolls */
+/* Panel open — do not set overflow:hidden on html/body (breaks Cap sticky + viewport field).
+   Scroll is blocked via capture-phase wheel/touch listeners in PortfolioGuide.jsx */
 html.portfolio-guide-panel-open {
-  overflow: hidden !important;
-  overscroll-behavior: none;
-}
-
-html.portfolio-guide-panel-open body {
-  overflow: hidden !important;
   overscroll-behavior: none;
 }
 

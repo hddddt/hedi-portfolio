@@ -614,19 +614,23 @@ export function PortfolioGuide() {
 
   useEffect(() => () => clearTrackedPreview(), [clearTrackedPreview]);
 
-  /* Overflow lock only — avoid body position:fixed (causes background to jump) */
+  /* Panel lock — class only (no overflow:hidden; preserves Cap sticky + field). */
+  const scrollLockYRef = useRef(0);
   useEffect(() => {
     const locked = open || closing;
     const html = document.documentElement;
     if (!locked) {
       html.classList.remove('portfolio-guide-panel-open');
+      const y = scrollLockYRef.current;
+      requestAnimationFrame(() => {
+        if (Math.abs(window.scrollY - y) > 2) {
+          window.scrollTo(0, y);
+        }
+      });
       return undefined;
     }
+    scrollLockYRef.current = window.scrollY;
     html.classList.add('portfolio-guide-panel-open');
-    const scrollRoot = document.querySelector('.home-scroll-root');
-    if (scrollRoot && html.dataset.fieldChapter !== 'home-landing') {
-      delete scrollRoot.dataset.openingBootActive;
-    }
     return () => html.classList.remove('portfolio-guide-panel-open');
   }, [open, closing]);
 

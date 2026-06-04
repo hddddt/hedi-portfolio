@@ -46,10 +46,20 @@ html.home-scroll-page body{
   --guide-rule-strong:rgba(243,239,230,.07);
   --guide-accent-line:rgba(243,239,230,.22);
 }
-.organic-field-host--viewport{
+.organic-field-host--viewport,
+#organic-field-viewport-portal{
   position:fixed;
   inset:0;
   z-index:0;
+  pointer-events:none;
+}
+html.home-scroll-page #root{
+  position:relative;
+  z-index:1;
+}
+/* In-root host kept for layout hooks; canvas lives on body portal */
+.home-scroll-root > .organic-field-host--viewport:not(:has(.organic-field__canvas)){
+  visibility:hidden;
   pointer-events:none;
 }
 /* Shortcut panel open — keep viewport WebGL behind portaled UI (10320+) */
@@ -57,11 +67,9 @@ html.portfolio-guide-panel-open .organic-field-host--viewport{
   z-index:0;
 }
 #portfolio-guide-portal{
-  position:fixed;
-  inset:0;
-  z-index:10320;
+  position:static;
+  z-index:auto;
   pointer-events:none;
-  isolation:isolate;
 }
 .home-scroll-root::before{
   content:'';
@@ -361,6 +369,38 @@ html.portfolio-guide-panel-open .home-scroll-root::before{
 html.portfolio-guide-panel-open .organic-field-host--viewport{
   opacity:1 !important;
   visibility:visible !important;
+}
+html.portfolio-guide-panel-open .home-scroll{
+  visibility:visible;
+  opacity:1;
+}
+html.portfolio-guide-panel-open .capability-sticky,
+html.portfolio-guide-panel-open .cap-dial__text-stage,
+html.portfolio-guide-panel-open .cap-dial__layout{
+  visibility:visible;
+  opacity:1;
+}
+html.portfolio-guide-panel-open .cap-dial__stage-row.motion-reveal-group,
+html.portfolio-guide-panel-open .cap-dial__stage-row.motion-reveal-group > .motion-reveal-child{
+  opacity:1 !important;
+  visibility:visible !important;
+  transform:none !important;
+  filter:none !important;
+}
+html.portfolio-guide-panel-open .cap-dial__state-layer[style*='opacity']{
+  pointer-events:none;
+}
+/* Panel open — keep CSS field fallback if WebGL not painting */
+html.portfolio-guide-panel-open
+  .home-scroll-root:not([data-viewport-field-ready='true'])
+  .cap-dial__atmosphere{
+  opacity:0.92 !important;
+  visibility:visible !important;
+}
+html.portfolio-guide-panel-open
+  .home-scroll-root:not([data-viewport-field-ready='true'])
+  .cap-dial__atmosphere .cap-dial__field{
+  opacity:0.96 !important;
 }
 .opening-card--thesis-state{
   border-color:rgba(14,13,10,.1);

@@ -130,11 +130,38 @@ export function shouldUseInCardOrganicField(_rawProgress, openingComplete = fals
   return !isViewportOrganicFieldReady();
 }
 
+/** Chapters that always use the viewport WebGL field (not opening in-card). */
+export const VIEWPORT_FIELD_CHAPTERS = new Set([
+  'home-capabilities',
+  'home-work-narrative',
+  'home-approach',
+  'home-life-archive',
+]);
+
+function isLandingOpeningBootActive() {
+  if (typeof document === 'undefined') return false;
+  const chapter = document.documentElement?.dataset?.fieldChapter ?? '';
+  if (chapter && chapter !== 'home-landing') return false;
+  const root = document.querySelector('.home-scroll-root');
+  return root?.dataset.openingBootActive === 'true';
+}
+
+/**
+ * @param {string} [chapterId]
+ */
+export function isViewportFieldChapter(chapterId) {
+  return VIEWPORT_FIELD_CHAPTERS.has(chapterId ?? '');
+}
+
 /** Viewport field — after opening boot + handoff; never during timed landing sequence. */
 export function shouldUseViewportOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
+  if (isLandingOpeningBootActive()) return false;
   if (typeof document !== 'undefined') {
-    const root = document.querySelector('.home-scroll-root');
-    if (root?.dataset.openingBootActive === 'true') return false;
+    const chapter = document.documentElement?.dataset?.fieldChapter ?? '';
+    if (isViewportFieldChapter(chapter)) return true;
+    if (document.documentElement.classList.contains('portfolio-guide-panel-open')) {
+      return chapter !== 'home-landing';
+    }
   }
   return openingComplete && capHandoff >= 0.04;
 }
