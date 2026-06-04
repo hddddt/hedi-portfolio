@@ -130,8 +130,12 @@ export function shouldUseInCardOrganicField(_rawProgress, openingComplete = fals
   return !isViewportOrganicFieldReady();
 }
 
-/** Viewport field — after opening hands off; overlaps in-card until canvas is ready. */
+/** Viewport field — after opening boot + handoff; never during timed landing sequence. */
 export function shouldUseViewportOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
+  if (typeof document !== 'undefined') {
+    const root = document.querySelector('.home-scroll-root');
+    if (root?.dataset.openingBootActive === 'true') return false;
+  }
   return openingComplete && capHandoff >= 0.04;
 }
 

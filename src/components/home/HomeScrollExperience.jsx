@@ -152,7 +152,11 @@ function HomeScrollRootLayout() {
   const scrollRootRef = useRef(null);
 
   return (
-    <div ref={scrollRootRef} className="home-scroll-root">
+    <div
+      ref={scrollRootRef}
+      className="home-scroll-root"
+      data-opening-boot-active="true"
+    >
       <OrbSceneChapterSync activeId={activeId} />
       <OrbSceneContactSync />
       <OrbSceneSemanticRoot activeId={activeId} orbScene={orbScene} />

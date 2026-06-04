@@ -64,14 +64,23 @@ export function FieldNarrativeProvider({ children }) {
   const openingBootRef = useRef(computeOpeningBootAt(0, prefersReducedMotion));
   const updateOpeningBoot = useCallback((boot) => {
     openingBootRef.current = boot;
+    if (typeof document === 'undefined') return;
+    const root = document.querySelector('.home-scroll-root');
+    if (!root) return;
+    if ((boot?.complete ?? 0) < 0.98 && (boot?.active ?? true)) {
+      root.dataset.openingBootActive = 'true';
+    } else if ((boot?.complete ?? 0) > 0.98) {
+      delete root.dataset.openingBootActive;
+    }
   }, []);
 
   const applyHandoffMapped = useCallback((mapped) => {
+    const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
     handoffZoneRef.current = mapped.zone;
     openingCapExitWipeRef.current = mapped.wipe;
     setOpeningCapExitWipe(mapped.wipe);
-    openingCapHandoffRef.current = mapped.fieldHandoff;
-    setOpeningCapHandoff(mapped.fieldHandoff);
+    openingCapHandoffRef.current = bootDone ? mapped.fieldHandoff : 0;
+    setOpeningCapHandoff(bootDone ? mapped.fieldHandoff : 0);
     openingCapThesisFadeRef.current = mapped.thesisFade;
     setOpeningCapThesisFade(mapped.thesisFade);
     if (typeof document !== 'undefined') {
@@ -140,9 +149,10 @@ export function FieldNarrativeProvider({ children }) {
       capRect.top < vh * 0.48 &&
       capRect.bottom > vh * 0.12;
 
-    if (pastOpening && capEntering && handoffZoneRef.current > 0.35) {
+    const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
+    if (bootDone && pastOpening && capEntering && handoffZoneRef.current > 0.35) {
       openingCompleteRef.current = true;
-    } else if (raw >= 0.998 && !openingInView) {
+    } else if (bootDone && raw >= 0.998 && !openingInView) {
       openingCompleteRef.current = true;
     } else if (openingInView && raw < 0.48 && handoffZoneRef.current < 0.04) {
       openingCompleteRef.current = false;
@@ -196,7 +206,8 @@ export function FieldNarrativeProvider({ children }) {
     if (typeof window === 'undefined') return undefined;
     const el = openingScrollRef.current;
     const vh = window.innerHeight;
-    if (window.scrollY > vh * 1.25 && !el) {
+    const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
+    if (bootDone && window.scrollY > vh * 1.25 && !el) {
       openingCompleteRef.current = true;
       setProgress(1);
       setOpeningComplete(true);

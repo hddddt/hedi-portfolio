@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { capabilitySectionCopy } from '../../data/homeScrollChapters.js';
 import { useOpeningHeroBoot } from '../../hooks/useOpeningHeroBoot.js';
@@ -133,7 +133,7 @@ export function OpeningBridgeSection() {
     updateOpeningBoot,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.querySelector('.home-scroll-root');
     if (!root) return undefined;
     if (!gates.bootComplete) {
