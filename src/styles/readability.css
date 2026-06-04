@@ -22,11 +22,11 @@
 }
 
 .home-life-archive .narrative-chapter__ribbon {
-  color: rgba(10, 9, 8, 0.62);
+  color: rgba(250, 248, 243, var(--read-ribbon-idle));
 }
 
 .narrative-chapter--active.home-life-archive .narrative-chapter__ribbon {
-  color: rgba(10, 9, 8, 0.86);
+  color: rgba(250, 248, 243, var(--read-ribbon-active));
 }
 
 .narrative-chapter__ribbon-num,

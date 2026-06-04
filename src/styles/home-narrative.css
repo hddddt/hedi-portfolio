@@ -110,14 +110,14 @@
   color:rgba(250,248,243,var(--read-ribbon-active,0.9));
 }
 .home-life-archive .narrative-chapter__ribbon{
-  color:rgba(10,9,8,.62);
-  background:rgba(250,248,243,.5);
-  border-color:rgba(10,9,8,.12);
+  color:rgba(250,248,243,var(--read-ribbon-idle,0.78));
+  background:rgba(10,9,8,.18);
+  border-color:rgba(250,248,243,.12);
 }
 .narrative-chapter--active.home-life-archive .narrative-chapter__ribbon{
-  color:rgba(10,9,8,.86);
-  background:rgba(250,248,243,.72);
-  border-color:rgba(10,9,8,.2);
+  color:rgba(250,248,243,var(--read-ribbon-active,0.9));
+  background:rgba(10,9,8,.3);
+  border-color:rgba(250,248,243,.2);
 }
 .narrative-chapter__body{
   flex:1;

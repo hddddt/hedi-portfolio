@@ -49,18 +49,10 @@ export function ShortcutRoutePanel({
 
   return (
     <section ref={panelRef} className={panelClass} aria-label={route.title}>
-      <nav
-        className={`portfolio-guide__route-panel-nav ${ROUTE_PANEL_PIECE}`}
-        aria-label="Breadcrumb"
-      >
+      <nav className="portfolio-guide__route-panel-nav" aria-label="Back">
         <button type="button" className="portfolio-guide__back portfolio-guide__back--nav" onClick={onBack}>
           ← Back
         </button>
-        <span className="portfolio-guide__route-breadcrumb">
-          <span className="portfolio-guide__route-breadcrumb-root">Routes</span>
-          <span aria-hidden="true"> / </span>
-          <span className="portfolio-guide__route-breadcrumb-current">{route.title}</span>
-        </span>
       </nav>
 
       <header className={`portfolio-guide__route-panel-head ${ROUTE_PANEL_PIECE}`}>
@@ -73,25 +65,12 @@ export function ShortcutRoutePanel({
         <ShortcutRouteVisual kind={panel.visual} />
       </div>
 
-      <div className={`portfolio-guide__route-primary ${ROUTE_PANEL_PIECE}`}>
-        <button
-          type="button"
-          className="portfolio-guide__route-primary-btn"
-          onPointerEnter={() => onEvidencePointerEnter(panel.primary.action)}
-          onPointerLeave={() => onEvidencePointerLeave(panel.primary.action)}
-          onClick={(event) => onEvidenceClick(event, panel.primary.action)}
-        >
-          <span className="portfolio-guide__route-primary-label">{panel.primary.label}</span>
-          <span className="portfolio-guide__route-primary-helper">{panel.primary.helper}</span>
-          <span className="portfolio-guide__route-primary-dest">{panel.primary.destinationLabel}</span>
-          <span className="portfolio-guide__route-primary-arrow" aria-hidden="true">
-            →
-          </span>
-        </button>
-      </div>
+      <p className={`portfolio-guide__route-primary-landmark ${ROUTE_PANEL_PIECE}`}>
+        {panel.primary.label}
+      </p>
 
       {panel.secondary.length ? (
-        <ul className="portfolio-guide__route-secondary" aria-label="Related evidence">
+        <ul className="portfolio-guide__route-secondary" aria-label="Evidence paths">
           {panel.secondary.map((link) => (
             <li
               key={link.label}
@@ -105,7 +84,9 @@ export function ShortcutRoutePanel({
                 onClick={(event) => onEvidenceClick(event, link.action)}
               >
                 <span className="portfolio-guide__route-secondary-label">{link.label}</span>
-                <span className="portfolio-guide__route-secondary-relevance">{link.relevance}</span>
+                <span className="portfolio-guide__route-secondary-arrow" aria-hidden="true">
+                  →
+                </span>
               </button>
             </li>
           ))}

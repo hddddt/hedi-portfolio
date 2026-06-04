@@ -2,6 +2,9 @@ import gsap from 'gsap';
 
 export const ROUTE_PANEL_PIECE = 'portfolio-guide__route-panel-piece';
 
+/** Restrained cinematic easing — panel instrument motion */
+export const GUIDE_EASE_CINEMATIC = 'cubic-bezier(0.19, 1, 0.22, 1)';
+
 const EASE_UI = 'power2.out';
 
 /**
@@ -26,10 +29,18 @@ export function animateRoutePanelEnter(root, pieces) {
     });
     mm.add('(prefers-reduced-motion: no-preference)', () => {
       const tl = gsap.timeline({ defaults: { ease: EASE_UI } });
-      tl.from(root, { opacity: 0, y: 6, duration: 0.42 }).from(
+      /* Opacity-only on root — transform on ancestors breaks sticky Back nav */
+      tl.from(root, { opacity: 0, duration: 0.52, ease: GUIDE_EASE_CINEMATIC }).from(
         pieces,
-        { opacity: 0, y: 14, filter: 'blur(4px)', duration: 0.55, stagger: 0.08 },
-        '-=0.22',
+        {
+          opacity: 0,
+          y: 10,
+          filter: 'blur(3px)',
+          duration: 0.62,
+          stagger: 0.09,
+          ease: GUIDE_EASE_CINEMATIC,
+        },
+        '-=0.28',
       );
       return () => tl.kill();
     });
@@ -44,9 +55,11 @@ export function animateRoutePanelEnter(root, pieces) {
 export function animateGuideHomeEnter(module) {
   const title = module.querySelector('.portfolio-guide__enter-stage--title');
   const paths = module.querySelector('.portfolio-guide__enter-stage--paths');
-  const cards = gsap.utils.toArray('.portfolio-guide__angle-card', module);
+  const evidence = module.querySelector('.portfolio-guide__enter-stage--evidence');
+  const angleCards = gsap.utils.toArray('.portfolio-guide__angle-card', module);
+  const evidenceCards = gsap.utils.toArray('.portfolio-guide__card--evidence', module);
   const search = module.querySelector('.portfolio-guide__enter-stage--search');
-  const targets = [title, paths, search, ...cards].filter(Boolean);
+  const targets = [title, paths, evidence, search, ...angleCards, ...evidenceCards].filter(Boolean);
 
   return runPortfolioGuideMotion((mm) => {
     mm.add('(prefers-reduced-motion: reduce)', () => {
@@ -60,15 +73,25 @@ export function animateGuideHomeEnter(module) {
       if (paths) {
         tl.from(paths, { opacity: 0, x: 10, duration: 0.4 }, 0.1);
       }
-      if (cards.length) {
+      if (angleCards.length) {
         tl.from(
-          cards,
-          { opacity: 0, y: 4, scale: 0.99, duration: 0.36, stagger: 0.05 },
+          angleCards,
+          { opacity: 0, y: 6, duration: 0.34, stagger: 0.06, ease: GUIDE_EASE_CINEMATIC },
           0.12,
         );
       }
+      if (evidence) {
+        tl.from(evidence, { opacity: 0, x: 8, duration: 0.38, ease: GUIDE_EASE_CINEMATIC }, 0.28);
+      }
+      if (evidenceCards.length) {
+        tl.from(
+          evidenceCards,
+          { opacity: 0, y: 5, duration: 0.32, stagger: 0.05, ease: GUIDE_EASE_CINEMATIC },
+          0.32,
+        );
+      }
       if (search) {
-        tl.from(search, { opacity: 0, x: 8, scale: 0.98, duration: 0.42 }, 0.48);
+        tl.from(search, { opacity: 0, x: 6, duration: 0.44, ease: GUIDE_EASE_CINEMATIC }, 0.48);
       }
       return () => tl.kill();
     });
@@ -96,6 +119,40 @@ export function animateEvidencePathsReveal(root, itemSelector, headSelector) {
         tl.from(head, { opacity: 0, x: 10, duration: 0.42 }, 0.04);
       }
       tl.from(items, { opacity: 0, x: 12, duration: 0.46, stagger: 0.07 }, head ? 0.08 : 0.06);
+      return () => tl.kill();
+    });
+  });
+}
+
+/**
+ * Home → route detail: list recedes, selected card confirms (no hard page swap feel).
+ * @param {HTMLElement} module
+ * @param {string} routeId
+ * @returns {() => void}
+ */
+export function animateGuideRouteExpand(module, routeId) {
+  const card = module.querySelector(`[data-route-id="${routeId}"]`);
+  const angles = module.querySelector('.portfolio-guide__angles');
+  const siblings = gsap.utils.toArray(
+    `.portfolio-guide__angle-card:not([data-route-id="${routeId}"])`,
+    module,
+  );
+
+  return runPortfolioGuideMotion((mm) => {
+    mm.add('(prefers-reduced-motion: reduce)', () => {
+      gsap.set([card, angles, ...siblings].filter(Boolean), { clearProps: 'opacity,filter' });
+    });
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      const tl = gsap.timeline({ defaults: { ease: GUIDE_EASE_CINEMATIC } });
+      if (siblings.length) {
+        tl.to(siblings, { opacity: 0.38, filter: 'blur(1px)', duration: 0.28 }, 0);
+      }
+      if (angles) {
+        tl.to(angles, { opacity: 0.52, duration: 0.32 }, 0.04);
+      }
+      if (card) {
+        tl.to(card, { opacity: 1, duration: 0.3 }, 0);
+      }
       return () => tl.kill();
     });
   });

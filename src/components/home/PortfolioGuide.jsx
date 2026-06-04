@@ -17,6 +17,7 @@ import {
 import {
   GUIDE_RESULT_SECTIONS,
   SHORTCUT_ENTRY,
+  SHORTCUT_PROOF_POINTS,
   SHORTCUT_ROUTES,
   SHORTCUT_SECTIONS,
 } from '../../data/portfolioGuideSystem.js';
@@ -34,7 +35,10 @@ import {
 } from '../../utils/portfolioGuideTarget.js';
 import { ShortcutMarkerArt } from './ShortcutMarker.jsx';
 import { useGuidePathsReveal } from '../../hooks/useGuidePathsReveal.js';
-import { animateGuideHomeEnter } from '../../utils/portfolioGuideMotion.js';
+import {
+  animateGuideHomeEnter,
+  animateGuideRouteExpand,
+} from '../../utils/portfolioGuideMotion.js';
 import '../../styles/portfolio-guide.css';
 import '../../styles/portfolio-shortcut-marker.css';
 
@@ -42,10 +46,11 @@ gsap.registerPlugin(useGSAP);
 
 const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
 const ORB_MOOD_CLICK_MS = 1400;
-const PANEL_CLOSE_MS = 420;
+const PANEL_CLOSE_MS = 520;
 const PANEL_PULL_MS = 480;
 const GUIDE_PROCESSING_MS = 520;
 const PANEL_ENTER_MS = 880;
+const ROUTE_EXPAND_MS = 300;
 const PEEK_COOLDOWN_MS = 3200;
 
 /**
@@ -142,6 +147,7 @@ export function PortfolioGuide() {
   const [pulling, setPulling] = useState(false);
   const pullTimerRef = useRef(0);
   const [view, setView] = useState('home');
+  const [routeExpandId, setRouteExpandId] = useState(null);
   const [angleResultId, setAngleResultId] = useState(null);
   const [customQuestion, setCustomQuestion] = useState('');
   const [resultFlowId, setResultFlowId] = useState(null);
@@ -163,6 +169,7 @@ export function PortfolioGuide() {
   const panelEnterTimerRef = useRef(0);
   const pathsRevealTimerRef = useRef(0);
   const processingTimerRef = useRef(0);
+  const routeExpandTimerRef = useRef(0);
   const orbMoodTimerRef = useRef(0);
   const previewTargetIdRef = useRef(null);
   const peekCooldownTimerRef = useRef(0);
@@ -245,11 +252,14 @@ export function PortfolioGuide() {
     resetOrbMood();
     setPanelEntering(false);
     setResultProcessing(false);
+    setFollowUpReading(false);
     setPathsRevealing(false);
     setFollowUpPathsRevealing(false);
     window.clearTimeout(panelEnterTimerRef.current);
     window.clearTimeout(pathsRevealTimerRef.current);
     window.clearTimeout(processingTimerRef.current);
+    window.clearTimeout(routeExpandTimerRef.current);
+    setRouteExpandId(null);
     setPulling(true);
     window.clearTimeout(pullTimerRef.current);
     pullTimerRef.current = window.setTimeout(() => setPulling(false), PANEL_PULL_MS);
@@ -283,6 +293,8 @@ export function PortfolioGuide() {
     pullTimerRef.current = window.setTimeout(() => setPulling(false), PANEL_PULL_MS);
     setOpen(true);
     setView('home');
+    setRouteExpandId(null);
+    window.clearTimeout(routeExpandTimerRef.current);
     setAngleResultId(null);
     setResultFlowId(null);
     setDisplayQuestion('');
@@ -376,23 +388,27 @@ export function PortfolioGuide() {
     (flowId, question) => {
       const flow = getGuideFlow(flowId, question);
       if (!flow) return;
+      setFollowUpReading(false);
       setResultProcessing(true);
       setPathsRevealing(false);
       pulseOrb('strong');
       flashOrbMood('warm');
       window.clearTimeout(processingTimerRef.current);
       processingTimerRef.current = window.setTimeout(() => {
-        setResultFlowId(flow.id);
-        setDisplayQuestion(flow.question);
-        clearFollowUpState();
-        setView('flow');
-        setAngleResultId(null);
-        setResultProcessing(false);
-        saveGuideLog(flow.question, flow.id);
-        window.requestAnimationFrame(() => {
-          panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-          triggerPathsReveal(false);
-        });
+        try {
+          setResultFlowId(flow.id);
+          setDisplayQuestion(flow.question);
+          clearFollowUpState();
+          setView('flow');
+          setAngleResultId(null);
+          saveGuideLog(flow.question, flow.id);
+          window.requestAnimationFrame(() => {
+            panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+            triggerPathsReveal(false);
+          });
+        } finally {
+          setResultProcessing(false);
+        }
       }, GUIDE_PROCESSING_MS);
     },
     [saveGuideLog, pulseOrb, flashOrbMood, clearFollowUpState, triggerPathsReveal],
@@ -405,16 +421,28 @@ export function PortfolioGuide() {
       setAngleResultId(angleId);
       setResultFlowId(null);
       clearFollowUpState();
-      setView('angle');
       setResultProcessing(false);
-      window.requestAnimationFrame(() => {
-        panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+      window.clearTimeout(routeExpandTimerRef.current);
+      const enterAngle = () => {
+        setView('angle');
+        setRouteExpandId(null);
+        window.requestAnimationFrame(() => {
+          panelBodyRef.current?.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+        });
+      };
+      if (reducedMotion) {
+        enterAngle();
+        return;
+      }
+      setRouteExpandId(angleId);
+      routeExpandTimerRef.current = window.setTimeout(enterAngle, ROUTE_EXPAND_MS);
     },
-    [pulseOrb, flashOrbMood, clearFollowUpState],
+    [pulseOrb, flashOrbMood, clearFollowUpState, reducedMotion],
   );
 
   const returnHome = useCallback(() => {
+    window.clearTimeout(routeExpandTimerRef.current);
+    setRouteExpandId(null);
     setView('home');
     setAngleResultId(null);
     setResultFlowId(null);
@@ -437,21 +465,35 @@ export function PortfolioGuide() {
     (question) => {
       pulseOrb();
       flashOrbMood('warm');
+      setResultProcessing(false);
       setFollowUpAnswer(null);
       setFollowUpPathsRevealing(false);
       setFollowUpReading(true);
       window.clearTimeout(processingTimerRef.current);
       processingTimerRef.current = window.setTimeout(() => {
-        const answer = getFreeGuideAnswer(question, resultFlowId);
-        setFollowUpAnswer(answer);
-        setFollowUpReading(false);
-        saveGuideLog(question, 'free');
-        window.requestAnimationFrame(() => {
-          scrollPanelToFollowUp();
-          if (answer.whereToLook?.length) {
-            triggerPathsReveal(true);
+        try {
+          const answer = getFreeGuideAnswer(question, resultFlowId);
+          setFollowUpAnswer(answer);
+          saveGuideLog(question, 'free');
+          window.requestAnimationFrame(() => {
+            scrollPanelToFollowUp();
+            if (answer.whereToLook?.length) {
+              triggerPathsReveal(true);
+            }
+          });
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.error('[PortfolioGuide] free answer failed', err);
           }
-        });
+          setFollowUpAnswer({
+            title: 'Could not load an answer',
+            shortAnswer: 'Please try again in a moment.',
+            points: [],
+            whereToLook: [],
+          });
+        } finally {
+          setFollowUpReading(false);
+        }
       }, GUIDE_PROCESSING_MS);
     },
     [resultFlowId, pulseOrb, flashOrbMood, saveGuideLog, scrollPanelToFollowUp, triggerPathsReveal],
@@ -514,6 +556,16 @@ export function PortfolioGuide() {
     { scope: moduleRef, dependencies: [panelEntering], revertOnUpdate: true },
   );
 
+  useGSAP(
+    () => {
+      if (!routeExpandId) return undefined;
+      const module = moduleRef.current;
+      if (!module) return undefined;
+      return animateGuideRouteExpand(module, routeExpandId);
+    },
+    { scope: moduleRef, dependencies: [routeExpandId], revertOnUpdate: true },
+  );
+
   const idlePeek = useShortcutHandleIdlePeek({
     enabled: !isFullMode,
     paused:
@@ -551,6 +603,65 @@ export function PortfolioGuide() {
   }, []);
 
   useEffect(() => () => clearTrackedPreview(), [clearTrackedPreview]);
+
+  /* Overflow lock only — avoid body position:fixed (causes background to jump) */
+  useEffect(() => {
+    const locked = open || closing;
+    const html = document.documentElement;
+    if (!locked) {
+      html.classList.remove('portfolio-guide-panel-open');
+      return undefined;
+    }
+    html.classList.add('portfolio-guide-panel-open');
+    return () => html.classList.remove('portfolio-guide-panel-open');
+  }, [open, closing]);
+
+  useEffect(() => {
+    if (!open || closing) return undefined;
+
+    const applyPanelScroll = (deltaY) => {
+      const body = panelBodyRef.current;
+      if (!body) return;
+      const maxScroll = Math.max(0, body.scrollHeight - body.clientHeight);
+      body.scrollTop = Math.max(0, Math.min(maxScroll, body.scrollTop + deltaY));
+    };
+
+    const onWheel = (e) => {
+      const body = panelBodyRef.current;
+      const drawer = panelRef.current;
+      if (!body || !drawer) {
+        e.preventDefault();
+        return;
+      }
+
+      if (body.contains(e.target)) {
+        const maxScroll = body.scrollHeight - body.clientHeight;
+        const goingUp = e.deltaY < 0;
+        const goingDown = e.deltaY > 0;
+        if ((goingUp && body.scrollTop <= 0) || (goingDown && body.scrollTop >= maxScroll - 1)) {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      if (drawer.contains(e.target) || rootRef.current?.contains(e.target)) {
+        applyPanelScroll(e.deltaY);
+        e.preventDefault();
+      }
+    };
+
+    const onTouchMove = (e) => {
+      if (panelBodyRef.current?.contains(e.target)) return;
+      e.preventDefault();
+    };
+
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+    return () => {
+      window.removeEventListener('wheel', onWheel, { capture: true });
+      window.removeEventListener('touchmove', onTouchMove, { capture: true });
+    };
+  }, [open, closing]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -624,6 +735,7 @@ export function PortfolioGuide() {
               'portfolio-guide__module',
               view === 'flow' ? 'portfolio-guide__module--result' : '',
               view === 'angle' ? 'portfolio-guide__module--angle' : '',
+              routeExpandId ? 'portfolio-guide__module--route-expanding' : '',
               resultProcessing || followUpReading ? 'is-processing' : '',
             ]
               .filter(Boolean)
@@ -631,7 +743,12 @@ export function PortfolioGuide() {
           >
             {(resultProcessing || followUpReading) && (
               <div className="portfolio-guide__processing" aria-live="polite" aria-busy="true">
-                <span className="portfolio-guide__processing-dot" aria-hidden="true" />
+                <span className="portfolio-guide__processing-scan" aria-hidden="true" />
+                <span className="portfolio-guide__processing-dots" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
                 <span className="portfolio-guide__processing-label">
                   {resultProcessing ? 'Finding evidence' : 'Searching'}
                 </span>
@@ -640,17 +757,16 @@ export function PortfolioGuide() {
             <header className="portfolio-guide__head portfolio-guide__enter-stage portfolio-guide__enter-stage--title">
               <div className="portfolio-guide__head-copy">
                 <h2 className="portfolio-guide__headline">{SHORTCUT_ENTRY.label}</h2>
-                {view === 'home' ? (
-                  <p className="portfolio-guide__tagline">{SHORTCUT_ENTRY.tagline}</p>
-                ) : null}
               </div>
             </header>
 
             <div
               ref={panelBodyRef}
-              className={`portfolio-guide__panel-body${resultProcessing ? ' is-processing' : ''}`}
+              className={`portfolio-guide__panel-body${
+                resultProcessing || followUpReading ? ' is-processing' : ''
+              }`}
             >
-            {view === 'home' ? (
+            {view === 'home' || routeExpandId ? (
               <>
                 <section
                   className="portfolio-guide__angles portfolio-guide__enter-stage portfolio-guide__enter-stage--paths"
@@ -665,15 +781,24 @@ export function PortfolioGuide() {
                       <li key={route.id} className="portfolio-guide__angle-item">
                         <button
                           type="button"
-                          className="portfolio-guide__angle-card"
+                          className={[
+                            'portfolio-guide__angle-card',
+                            routeIndex === 0 ? 'portfolio-guide__angle-card--recommended' : '',
+                            routeExpandId === route.id ? 'portfolio-guide__angle-card--confirmed' : '',
+                            routeExpandId && routeExpandId !== route.id
+                              ? 'portfolio-guide__angle-card--receded'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          data-route-id={route.id}
                           style={{ '--angle-i': routeIndex }}
                           onClick={() => showAngleResult(route.id)}
-                          disabled={followUpReading || resultProcessing}
+                          disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
                         >
                           <span className="portfolio-guide__angle-card-copy">
                             <span className="portfolio-guide__angle-card-eyebrow">{route.eyebrow}</span>
                             <span className="portfolio-guide__angle-card-title">{route.title}</span>
-                            <span className="portfolio-guide__angle-card-oneliner">{route.oneLiner}</span>
                           </span>
                           <span className="portfolio-guide__angle-card-arrow" aria-hidden="true">
                             →
@@ -683,23 +808,60 @@ export function PortfolioGuide() {
                     ))}
                   </ul>
                 </section>
+
+                <section
+                  className="portfolio-guide__evidence-block portfolio-guide__enter-stage portfolio-guide__enter-stage--evidence"
+                  aria-label={SHORTCUT_SECTIONS.proofPoints}
+                >
+                  <p className="portfolio-guide__block-label portfolio-guide__block-label--secondary">
+                    {SHORTCUT_SECTIONS.proofPoints}
+                  </p>
+                  <ul className="portfolio-guide__cards">
+                    {SHORTCUT_PROOF_POINTS.map((item, cardIndex) => (
+                      <li
+                        key={item.id}
+                        className="portfolio-guide__card-item"
+                        style={{ '--card-i': cardIndex }}
+                      >
+                        <button
+                          type="button"
+                          className="portfolio-guide__card portfolio-guide__card--evidence"
+                          onPointerEnter={() => handleEvidencePointerEnter(item.action)}
+                          onPointerLeave={() => handleEvidencePointerLeave(item.action)}
+                          onClick={(event) => handleEvidenceClick(event, item.action)}
+                          disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
+                        >
+                          <span className="portfolio-guide__card-kicker">{item.num}</span>
+                          <span className="portfolio-guide__card-copy">
+                            <span className="portfolio-guide__card-title">{item.title}</span>
+                            <span className="portfolio-guide__card-desc">{item.signal}</span>
+                          </span>
+                          <span className="portfolio-guide__card-arrow" aria-hidden="true">
+                            ↗
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               </>
             ) : null}
 
-            {view === 'home' && followUpAnswer ? (
-              <GuideFollowUpAnswer
-                answer={followUpAnswer}
-                pathsRevealing={followUpPathsRevealing}
+            {view === 'angle' && angleResultId ? (
+              <ShortcutRoutePanel
+                key={angleResultId}
+                routeId={angleResultId}
+                onBack={returnHome}
                 onEvidencePointerEnter={handleEvidencePointerEnter}
                 onEvidencePointerLeave={handleEvidencePointerLeave}
                 onEvidenceClick={handleEvidenceClick}
               />
             ) : null}
 
-            {view === 'angle' && angleResultId ? (
-              <ShortcutRoutePanel
-                routeId={angleResultId}
-                onBack={returnHome}
+            {(view === 'home' || view === 'angle') && followUpAnswer ? (
+              <GuideFollowUpAnswer
+                answer={followUpAnswer}
+                pathsRevealing={followUpPathsRevealing}
                 onEvidencePointerEnter={handleEvidencePointerEnter}
                 onEvidencePointerLeave={handleEvidencePointerLeave}
                 onEvidenceClick={handleEvidenceClick}
@@ -857,7 +1019,7 @@ export function PortfolioGuide() {
                   {SHORTCUT_SECTIONS.search}
                 </p>
                 <form
-                  className="portfolio-guide__search-form portfolio-guide__search-form--secondary"
+                  className="portfolio-guide__search-form portfolio-guide__search-form--secondary portfolio-guide__query-console"
                   onSubmit={handleCustomSubmit}
                 >
                   <input
@@ -884,7 +1046,7 @@ export function PortfolioGuide() {
             {view === 'flow' ? (
               <footer className="portfolio-guide__panel-footer portfolio-guide__enter-stage portfolio-guide__enter-stage--refine">
                 <form
-                  className="portfolio-guide__search-form portfolio-guide__search-form--compact portfolio-guide__search-form--secondary"
+                  className="portfolio-guide__search-form portfolio-guide__search-form--compact portfolio-guide__search-form--secondary portfolio-guide__query-console"
                   onSubmit={handleFollowUpSubmit}
                 >
                   <input
