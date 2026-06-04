@@ -481,27 +481,33 @@
   mix-blend-mode:multiply;
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--a-haze,
+.home-scroll-root:has(#organic-field-viewport-portal .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--a-haze,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient-residual--a-haze{
   opacity:calc(
-    var(--cap-green-haze-opacity, 0.11) *
-    (0.88 + var(--cap-env-in, 0) * 0.12)
+    var(--cap-green-haze-opacity, 0.12) *
+    (0.85 + var(--cap-env-in, 0) * 0.15) *
+    (1 - var(--cap-read-stability, 0) * 0.02)
   );
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--a-gather,
+.home-scroll-root:has(#organic-field-viewport-portal .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--a-gather,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient-residual--a-gather{
   opacity:calc(
-    var(--cap-green-gather-opacity, 0.09) *
-    (0.45 + var(--cap-green-activation, 0) * 0.5) *
-    (0.9 + var(--cap-env-in, 0) * 0.1)
+    var(--cap-green-gather-opacity, 0.1) *
+    (0.4 + var(--cap-green-activation, 0) * 0.55) *
+    (0.85 + var(--cap-env-in, 0) * 0.12) *
+    (1 - var(--cap-read-stability, 0) * 0.03)
   );
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--b,
+.home-scroll-root:has(#organic-field-viewport-portal .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--b,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient-residual--b{
-  opacity:calc(0.16 + var(--cap-env-in, 0) * 0.06);
+  opacity:calc((0.14 + var(--cap-env-in, 0) * 0.06) * (1 - var(--cap-read-stability, 0) * 0.06));
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--c,
+.home-scroll-root:has(#organic-field-viewport-portal .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-residual--c,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient-residual--c{
-  opacity:calc(0.14 + var(--cap-env-in, 0) * 0.05);
+  opacity:calc((0.12 + var(--cap-env-in, 0) * 0.05) * (1 - var(--cap-read-stability, 0) * 0.08));
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient-wash,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient-wash{
@@ -596,25 +602,32 @@
 .cap-dial__atmosphere .cap-dial__field{
   opacity:0.92;
 }
-/* WebGL carries the field when ready — hide CSS disc fallback, keep residuals only */
+/* WebGL + CSS color memory stack — never hide three-disc / residual layer when field paints */
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__ambient,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient{
-  opacity:calc(1 - var(--cap-work-handoff, 0) * 0.94);
+  opacity:calc(
+    (0.88 - var(--cap-work-handoff, 0) * 0.82) *
+    (0.55 + var(--cap-env-in, 0) * 0.45)
+  );
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__atmosphere,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__atmosphere{
-  opacity:0;
-  visibility:hidden;
+  visibility:visible;
+  opacity:calc(0.38 + var(--cap-env-in, 0) * 0.42);
 }
 .home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-ready='true']) .cap-dial__atmosphere .cap-dial__field,
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__atmosphere .cap-dial__field{
-  opacity:0;
+  opacity:calc(0.5 + var(--cap-env-in, 0) * 0.4);
 }
-/* WebGL failed or not ready — keep CSS three-disc fallback visible */
-.home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-failed='true']) .cap-dial__atmosphere{
+/* WebGL failed — full-strength CSS three-disc fallback */
+.home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-failed='true']) .cap-dial__atmosphere,
+.home-scroll-root:has(#organic-field-viewport-portal .organic-field__canvas[data-field-failed='true']) .cap-dial__atmosphere{
   display:block;
+  visibility:visible;
+  opacity:1;
 }
-.home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-failed='true']) .cap-dial__atmosphere .cap-dial__field{
+.home-scroll-root:has(.organic-field-host--viewport .organic-field__canvas[data-field-failed='true']) .cap-dial__atmosphere .cap-dial__field,
+.home-scroll-root:has(#organic-field-viewport-portal .organic-field__canvas[data-field-failed='true']) .cap-dial__atmosphere .cap-dial__field{
   opacity:0.96;
 }
 .cap-dial__field{

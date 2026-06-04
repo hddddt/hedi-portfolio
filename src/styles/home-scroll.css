@@ -53,12 +53,8 @@ html.home-scroll-page body{
   z-index:0;
   pointer-events:none;
 }
-html.home-scroll-page #root{
-  position:relative;
-  z-index:1;
-}
-/* In-root host kept for layout hooks; canvas lives on body portal */
-.home-scroll-root > .organic-field-host--viewport:not(:has(.organic-field__canvas)){
+/* Legacy empty host (pre-portal) — hide when canvas lives on #organic-field-viewport-portal */
+.home-scroll-root > .organic-field-host--legacy:not(:has(.organic-field__canvas)){
   visibility:hidden;
   pointer-events:none;
 }
@@ -390,17 +386,16 @@ html.portfolio-guide-panel-open .cap-dial__stage-row.motion-reveal-group > .moti
 html.portfolio-guide-panel-open .cap-dial__state-layer[style*='opacity']{
   pointer-events:none;
 }
-/* Panel open — keep CSS field fallback if WebGL not painting */
-html.portfolio-guide-panel-open
-  .home-scroll-root:not([data-viewport-field-ready='true'])
-  .cap-dial__atmosphere{
-  opacity:0.92 !important;
-  visibility:visible !important;
+/* Panel open — keep green / blue / amber residuals readable (WebGL may be settling) */
+html.portfolio-guide-panel-open .cap-dial__ambient{
+  opacity:calc((0.92 - var(--cap-work-handoff, 0) * 0.5) * max(0.65, var(--cap-env-in, 0.55))) !important;
 }
-html.portfolio-guide-panel-open
-  .home-scroll-root:not([data-viewport-field-ready='true'])
-  .cap-dial__atmosphere .cap-dial__field{
-  opacity:0.96 !important;
+html.portfolio-guide-panel-open .capability-sticky[data-cap-opening-entry='true'] .cap-dial__ambient-residual--b,
+html.portfolio-guide-panel-open .capability-sticky[data-cap-opening-entry='true'] .cap-dial__ambient-residual--c,
+html.portfolio-guide-panel-open .cap-dial__ambient-residual--b,
+html.portfolio-guide-panel-open .cap-dial__ambient-residual--c{
+  opacity:calc(0.16 + var(--cap-env-in, 0) * 0.08) !important;
+  transform:none !important;
 }
 .opening-card--thesis-state{
   border-color:rgba(14,13,10,.1);

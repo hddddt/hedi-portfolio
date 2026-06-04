@@ -164,7 +164,7 @@ function HomeScrollRootLayout() {
       <OrbSceneSemanticRoot activeId={activeId} orbScene={orbScene} />
       <div
         ref={setRootHost}
-        className="organic-field-host organic-field-host--viewport"
+        className="organic-field-host organic-field-host--viewport organic-field-host--legacy"
         data-orb-scene={orbScene}
         aria-hidden="true"
       />

@@ -118,7 +118,7 @@ function isViewportOrganicFieldReady() {
   if (typeof document === 'undefined') return false;
   return Boolean(
     document.querySelector(
-      '.organic-field-host--viewport .organic-field__canvas[data-field-ready="true"]',
+      '#organic-field-viewport-portal .organic-field__canvas[data-field-ready="true"], .home-scroll-root .organic-field-host--viewport .organic-field__canvas[data-field-ready="true"]',
     ),
   );
 }

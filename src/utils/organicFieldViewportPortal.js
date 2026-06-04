@@ -1,4 +1,4 @@
-/** Viewport WebGL host on `body` (behind #root) — avoids scroll-root stacking when shortcut panel opens. */
+/** Viewport WebGL host inside `.home-scroll-root` (above ::before, below scroll content). */
 
 export const ORGANIC_FIELD_VIEWPORT_PORTAL_ID = 'organic-field-viewport-portal';
 
@@ -16,17 +16,21 @@ export function getOrganicFieldViewportPortalNode() {
     node.className = 'organic-field-host organic-field-host--viewport';
     node.setAttribute('data-layer', 'organic-field-viewport');
     node.setAttribute('aria-hidden', 'true');
-    const appRoot = document.getElementById('root');
-    if (appRoot?.parentNode === document.body) {
-      document.body.insertBefore(node, appRoot);
-    } else {
-      document.body.prepend(node);
+  }
+
+  const scrollRoot = document.querySelector('.home-scroll-root');
+  if (scrollRoot) {
+    if (node.parentNode !== scrollRoot) {
+      scrollRoot.insertBefore(node, scrollRoot.firstChild);
     }
-  } else {
-    const appRoot = document.getElementById('root');
-    if (appRoot?.parentNode === document.body && node.nextElementSibling !== appRoot) {
-      document.body.insertBefore(node, appRoot);
-    }
+    return node;
+  }
+
+  const appRoot = document.getElementById('root');
+  if (appRoot?.parentNode === document.body && node.parentNode !== document.body) {
+    document.body.insertBefore(node, appRoot);
+  } else if (!node.parentNode) {
+    document.body.appendChild(node);
   }
   return node;
 }
