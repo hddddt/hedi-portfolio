@@ -5,15 +5,11 @@ import {
   computeOpeningFieldReveal,
   computeOpeningPulsePresentation,
   deriveOpeningPresentationGates,
+  OPENING_PRESENTATION_MS,
 } from '../utils/openingHeroPresentation.js';
 
 /**
- * Boot narrative clock + shader readiness (decoupled from reveal gates).
- * @param {{
- *   prefersReducedMotion?: boolean,
- *   scrollP?: number,
- *   updateOpeningBoot?: (boot: ReturnType<typeof computeOpeningBootAt>) => void,
- * }} options
+ * Boot narrative clock + shader readiness (presentation clock runs past boot.complete).
  */
 export function useOpeningHeroBoot({
   prefersReducedMotion = false,
@@ -40,7 +36,7 @@ export function useOpeningHeroBoot({
     if (prefersReducedMotion) {
       const done = computeOpeningBootAt(OPENING_BOOT_MS.DONE, true);
       setBoot(done);
-      setElapsedMs(OPENING_BOOT_MS.DONE);
+      setElapsedMs(OPENING_PRESENTATION_MS.SCROLL_CUE_END);
       updateOpeningBoot?.(done);
       setShaderReady(true);
       setShaderVisualReady(true);
@@ -54,7 +50,7 @@ export function useOpeningHeroBoot({
       const nextBoot = computeOpeningBootAt(elapsed, false);
       setBoot(nextBoot);
       updateOpeningBoot?.(nextBoot);
-      if (nextBoot.complete < 0.999) {
+      if (elapsed < OPENING_PRESENTATION_MS.CLOCK_END) {
         raf = requestAnimationFrame(tick);
       }
     };
@@ -64,24 +60,25 @@ export function useOpeningHeroBoot({
 
   useEffect(() => {
     if (prefersReducedMotion) return undefined;
-    const id = window.setTimeout(() => setShaderTimeout(true), 2500);
+    const id = window.setTimeout(
+      () => setShaderTimeout(true),
+      OPENING_PRESENTATION_MS.SHADER_TIMEOUT,
+    );
     return () => clearTimeout(id);
   }, [prefersReducedMotion]);
 
   const gates = deriveOpeningPresentationGates({
     elapsedMs,
-    boot,
     shaderReady,
     shaderVisualReady,
     shaderTimeout,
-    fallbackReady: true,
     scrollP,
     prefersReducedMotion,
   });
 
   const pulse = computeOpeningPulsePresentation(elapsedMs);
   const fieldReveal = computeOpeningFieldReveal(elapsedMs);
-  const copy = computeOpeningCopyPresentation(elapsedMs, boot);
+  const copy = computeOpeningCopyPresentation(elapsedMs, gates);
 
   return {
     elapsedMs,

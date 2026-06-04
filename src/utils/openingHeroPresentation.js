@@ -1,26 +1,47 @@
 /**
- * Opening hero presentation — boot clock × shader readiness gates.
- * Narrative: white field → focus pulse → sphere reveal → signature copy → scroll cue.
+ * Opening hero presentation — presentation clock (independent of boot.complete).
+ * Narrative: white field → focus pulse (kills black) → sphere fade-in → copy → scroll cue.
  */
 
 import { mix, smoothstep } from './fieldNarrative.js';
-import { OPENING_BOOT_MS } from './openingBootSequence.js';
 
 export const OPENING_PRESENTATION_MS = {
-  LATENT_END: 160,
-  PULSE_START: 160,
-  PULSE_PEAK: 820,
-  PULSE_END: 1280,
-  FIELD_REVEAL_START: 700,
-  FIELD_REVEAL_END: 1200,
-  MIN_FIELD_HOLD: 520,
-  SHADER_TIMEOUT: 2500,
-  SHADER_MIN_READY: 320,
-  IDENTITY_AFTER_FIELD_MS: 150,
-  ROLE_STAGGER_MS: 100,
-  DESCRIPTOR_STAGGER_MS: 90,
-  SCROLL_AFTER_DESCRIPTOR_MS: 220,
+  CLOCK_END: 3600,
+  LATENT_END: 180,
+  PULSE_START: 200,
+  PULSE_PEAK: 780,
+  PULSE_END: 1400,
+  PULSE_VISIBLE_END: 1550,
+  FIELD_REVEAL_START: 1080,
+  FIELD_REVEAL_END: 2200,
+  SHADER_TIMEOUT: 2800,
+  SHADER_PAINT_MIN_MS: 900,
+  PLATE_SURFACE_EXTRA_MS: 600,
+  IDENTITY_START: 1980,
+  IDENTITY_END: 2380,
+  ROLE_START: 2120,
+  ROLE_END: 2520,
+  DESCRIPTOR_START: 2220,
+  DESCRIPTOR_END: 2620,
+  SCROLL_CUE_START: 2680,
+  SCROLL_CUE_END: 3000,
 };
+
+/** @param {{ elapsedMs?: number, scrollP?: number, openingCapHandoff?: number, fieldRevealProgress?: number }} input */
+export function shouldKeepOpeningPlateSurface(input = {}) {
+  const elapsedMs = Math.max(0, input.elapsedMs ?? 0);
+  const scrollP = input.scrollP ?? 0;
+  const openingCapHandoff = input.openingCapHandoff ?? 0;
+  const fieldRevealProgress = input.fieldRevealProgress ?? 0;
+
+  if (scrollP > 0.045) return false;
+  if (openingCapHandoff > 0.08) return false;
+  if (elapsedMs < OPENING_PRESENTATION_MS.IDENTITY_START + OPENING_PRESENTATION_MS.PLATE_SURFACE_EXTRA_MS) {
+    return true;
+  }
+  if (fieldRevealProgress > 0.04 && fieldRevealProgress < 0.98) return true;
+  return false;
+}
 
 const REVEAL_EASE = 'cubic-bezier(0.19, 1, 0.22, 1)';
 
@@ -28,40 +49,47 @@ function clamp01(t) {
   return Math.max(0, Math.min(1, t ?? 0));
 }
 
-/** @param {number} t ms */
-function pulsePhase(t) {
+/** Wide plateau so the pulse reads as a held condensation, not a blink. */
+function pulseEnvelope(t) {
   if (t < OPENING_PRESENTATION_MS.PULSE_START) return 0;
-  if (t >= OPENING_PRESENTATION_MS.PULSE_END) return 0;
-  const u = (t - OPENING_PRESENTATION_MS.PULSE_START) / (OPENING_PRESENTATION_MS.PULSE_END - OPENING_PRESENTATION_MS.PULSE_START);
-  const rise = smoothstep(0, 0.55, u);
-  const fall = 1 - smoothstep(0.45, 1, u);
-  return rise * fall;
+  if (t > OPENING_PRESENTATION_MS.PULSE_END) return 0;
+  const u =
+    (t - OPENING_PRESENTATION_MS.PULSE_START) /
+    (OPENING_PRESENTATION_MS.PULSE_END - OPENING_PRESENTATION_MS.PULSE_START);
+  if (u < 0.2) return smoothstep(0, 0.2, u);
+  if (u > 0.78) return 1 - smoothstep(0.78, 1, u);
+  return 1;
 }
 
 /**
- * Single slow condensation pulse (not a blink).
  * @param {number} elapsedMs
  */
 export function computeOpeningPulsePresentation(elapsedMs) {
   const t = Math.max(0, elapsedMs);
-  const active = t >= OPENING_PRESENTATION_MS.PULSE_START && t < OPENING_PRESENTATION_MS.PULSE_END + 200;
-  if (!active) {
-    return { visible: false, opacity: 0, scale: 0.65 };
+  const env = pulseEnvelope(t);
+  if (env < 0.02) {
+    return { visible: false, opacity: 0, scale: 0.5, dissolve: 0 };
   }
-  const u = pulsePhase(t);
-  const mid = smoothstep(OPENING_PRESENTATION_MS.PULSE_START, OPENING_PRESENTATION_MS.PULSE_PEAK, t);
-  const scale = mix(0.55, mix(1.32, 0.88, mid), u);
-  const opacity = mix(0, mix(0.92, 0.42, mid), u);
+  const swell = smoothstep(
+    OPENING_PRESENTATION_MS.PULSE_START,
+    OPENING_PRESENTATION_MS.PULSE_PEAK,
+    t,
+  );
+  const scale = mix(0.48, mix(1.55, 1.05, swell), env);
+  const opacity = mix(0, mix(0.96, 0.52, swell), env);
   return {
-    visible: opacity > 0.02,
+    visible: true,
     opacity,
     scale,
-    dissolve: smoothstep(OPENING_PRESENTATION_MS.FIELD_REVEAL_START, OPENING_PRESENTATION_MS.FIELD_REVEAL_END, t),
+    dissolve: smoothstep(
+      OPENING_PRESENTATION_MS.FIELD_REVEAL_START - 120,
+      OPENING_PRESENTATION_MS.FIELD_REVEAL_START + 480,
+      t,
+    ),
   };
 }
 
 /**
- * Sphere materialize — overlaps pulse tail (point grows into sphere).
  * @param {number} elapsedMs
  */
 export function computeOpeningFieldReveal(elapsedMs) {
@@ -74,42 +102,73 @@ export function computeOpeningFieldReveal(elapsedMs) {
   return {
     progress: u,
     opacity: u,
-    scale: mix(0.96, 1, u),
-    blurPx: mix(8, 0, u),
-    brightness: mix(0.75, 1, u),
-    grain: mix(0.3, 1, u),
-    posterOpacity: 1 - smoothstep(0.35, 0.92, u),
+    scale: mix(0.92, 1, u),
+    blurPx: mix(12, 0, u),
+    brightness: mix(0.7, 1, u),
+    grain: mix(0.25, 1, u),
+    posterOpacity: 1 - smoothstep(0.25, 0.88, u),
   };
 }
 
 /**
  * @param {number} elapsedMs
- * @param {ReturnType<import('./openingBootSequence.js').computeOpeningBootAt>} boot
+ * @param {ReturnType<typeof deriveOpeningPresentationGates>} gates
  */
-export function computeOpeningCopyPresentation(elapsedMs, boot) {
-  const identity = clamp01(boot?.heroReveal ?? 0);
-  const role = clamp01(boot?.subReveal ?? 0);
-  const scrollCue = smoothstep(
-    OPENING_BOOT_MS.TYPO_END,
-    OPENING_BOOT_MS.DONE,
-    elapsedMs,
-  );
+export function computeOpeningCopyPresentation(elapsedMs, gates) {
+  const t = Math.max(0, elapsedMs);
+  const identity = gates?.canRevealIdentity
+    ? clamp01(
+        smoothstep(
+          OPENING_PRESENTATION_MS.IDENTITY_START,
+          OPENING_PRESENTATION_MS.IDENTITY_END,
+          t,
+        ),
+      )
+    : 0;
+  const role = gates?.canRevealRole
+    ? clamp01(
+        smoothstep(
+          OPENING_PRESENTATION_MS.ROLE_START,
+          OPENING_PRESENTATION_MS.ROLE_END,
+          t,
+        ),
+      )
+    : 0;
+  const descriptor = gates?.canRevealDescriptor
+    ? clamp01(
+        smoothstep(
+          OPENING_PRESENTATION_MS.DESCRIPTOR_START,
+          OPENING_PRESENTATION_MS.DESCRIPTOR_END,
+          t,
+        ),
+      )
+    : 0;
+  const scrollCue = gates?.canRevealScrollCue
+    ? clamp01(
+        smoothstep(
+          OPENING_PRESENTATION_MS.SCROLL_CUE_START,
+          OPENING_PRESENTATION_MS.SCROLL_CUE_END,
+          t,
+        ),
+      ) * 0.38
+    : 0;
+
   return {
     identity: {
       opacity: identity,
-      y: mix(7, 0, identity),
+      y: mix(9, 0, identity),
       trackingEm: mix(0.2, 0.14, identity),
     },
     role: {
       opacity: role,
-      y: mix(4, 0, role),
+      y: mix(5, 0, role),
     },
     descriptor: {
-      opacity: Math.max(0, role - 0.06),
-      y: mix(3, 0, Math.max(0, role - 0.1)),
+      opacity: descriptor,
+      y: mix(4, 0, descriptor),
     },
     scrollCue: {
-      opacity: scrollCue * 0.38,
+      opacity: scrollCue,
     },
   };
 }
@@ -117,11 +176,9 @@ export function computeOpeningCopyPresentation(elapsedMs, boot) {
 /**
  * @param {{
  *   elapsedMs: number,
- *   boot: ReturnType<import('./openingBootSequence.js').computeOpeningBootAt>,
  *   shaderReady: boolean,
  *   shaderVisualReady: boolean,
  *   shaderTimeout: boolean,
- *   fallbackReady?: boolean,
  *   scrollP?: number,
  *   prefersReducedMotion?: boolean,
  * }} input
@@ -129,11 +186,9 @@ export function computeOpeningCopyPresentation(elapsedMs, boot) {
 export function deriveOpeningPresentationGates(input) {
   const {
     elapsedMs,
-    boot,
     shaderReady,
     shaderVisualReady,
     shaderTimeout,
-    fallbackReady = true,
     scrollP = 0,
     prefersReducedMotion = false,
   } = input;
@@ -153,50 +208,68 @@ export function deriveOpeningPresentationGates(input) {
     };
   }
 
-  const scrollOverride = scrollP > 0.045 || (boot?.complete ?? 0) > 0.98;
-  const bootFieldPhase =
-    elapsedMs >= OPENING_PRESENTATION_MS.FIELD_REVEAL_START ||
-    (boot?.structure ?? 0) > 0.35;
-  const shaderGate =
-    shaderVisualReady || shaderTimeout || (fallbackReady && elapsedMs >= OPENING_PRESENTATION_MS.SHADER_MIN_READY);
-  const minTime = elapsedMs >= OPENING_PRESENTATION_MS.MIN_FIELD_HOLD;
-
-  const canRevealField = scrollOverride || (bootFieldPhase && shaderGate && minTime);
+  const scrollOverride = scrollP > 0.045;
   const fieldReveal = computeOpeningFieldReveal(elapsedMs);
-  const fieldVisualEntered =
-    scrollOverride || (canRevealField && fieldReveal.progress > 0.88);
 
-  const identityDelay =
-    OPENING_PRESENTATION_MS.FIELD_REVEAL_END + OPENING_PRESENTATION_MS.IDENTITY_AFTER_FIELD_MS;
-  const bootIdentity = (boot?.heroReveal ?? 0) > 0.02 && elapsedMs >= identityDelay - 80;
-  const canRevealIdentity = scrollOverride || (fieldVisualEntered && bootIdentity);
-  const canRevealRole = scrollOverride || (canRevealIdentity && (boot?.subReveal ?? 0) > 0.08);
-  const canRevealDescriptor = scrollOverride || (canRevealRole && (boot?.subReveal ?? 0) > 0.35);
+  const canMountShader =
+    elapsedMs >= OPENING_PRESENTATION_MS.PULSE_START - 20 ||
+    shaderReady ||
+    shaderTimeout;
+
+  const shaderGate =
+    shaderVisualReady ||
+    shaderTimeout ||
+    elapsedMs >=
+      OPENING_PRESENTATION_MS.FIELD_REVEAL_START + OPENING_PRESENTATION_MS.SHADER_PAINT_MIN_MS;
+
+  const canRevealField =
+    scrollOverride ||
+    (elapsedMs >= OPENING_PRESENTATION_MS.FIELD_REVEAL_START && shaderGate);
+
+  const fieldVisualEntered =
+    scrollOverride ||
+    (canRevealField && fieldReveal.progress >= 0.72);
+
+  const canRevealIdentity =
+    scrollOverride ||
+    (fieldVisualEntered && elapsedMs >= OPENING_PRESENTATION_MS.IDENTITY_START);
+
+  const canRevealRole =
+    scrollOverride ||
+    (canRevealIdentity && elapsedMs >= OPENING_PRESENTATION_MS.ROLE_START);
+
+  const canRevealDescriptor =
+    scrollOverride ||
+    (canRevealRole && elapsedMs >= OPENING_PRESENTATION_MS.DESCRIPTOR_START);
+
   const canRevealScrollCue =
-    scrollOverride || (canRevealDescriptor && elapsedMs >= OPENING_BOOT_MS.TYPO_END);
+    scrollOverride ||
+    (canRevealDescriptor && elapsedMs >= OPENING_PRESENTATION_MS.SCROLL_CUE_START);
 
   let phase = 'latent';
-  if (elapsedMs >= OPENING_PRESENTATION_MS.PULSE_START && !canRevealField) phase = 'pulse';
-  else if (canRevealField && !canRevealIdentity) phase = 'field';
-  else if (canRevealIdentity && !canRevealScrollCue) phase = 'identity';
-  else if (canRevealScrollCue) phase = 'ready';
+  if (elapsedMs >= OPENING_PRESENTATION_MS.PULSE_START && !canRevealField) {
+    phase = 'pulse';
+  } else if (canRevealField && !canRevealIdentity) {
+    phase = 'field';
+  } else if (canRevealIdentity && !canRevealScrollCue) {
+    phase = 'identity';
+  } else if (canRevealScrollCue) {
+    phase = 'ready';
+  }
 
   return {
     phase,
     showPulse:
       elapsedMs >= OPENING_PRESENTATION_MS.PULSE_START &&
-      elapsedMs < OPENING_PRESENTATION_MS.PULSE_END + 180,
-    canMountShader:
-      shaderReady ||
-      shaderTimeout ||
-      elapsedMs >= OPENING_PRESENTATION_MS.FIELD_REVEAL_START - 120,
+      elapsedMs < OPENING_PRESENTATION_MS.PULSE_VISIBLE_END,
+    canMountShader,
     canRevealField,
     fieldVisualEntered,
     canRevealIdentity,
     canRevealRole,
     canRevealDescriptor,
     canRevealScrollCue,
-    bootComplete: (boot?.complete ?? 0) > 0.98,
+    bootComplete: fieldVisualEntered,
     shaderGate,
   };
 }

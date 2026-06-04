@@ -67,11 +67,10 @@ export function FieldNarrativeProvider({ children }) {
     if (typeof document === 'undefined') return;
     const root = document.querySelector('.home-scroll-root');
     if (!root) return;
-    if ((boot?.complete ?? 0) < 0.98 && (boot?.active ?? true)) {
+    if ((boot?.complete ?? 0) < 0.98) {
       root.dataset.openingBootActive = 'true';
-    } else if ((boot?.complete ?? 0) > 0.98) {
-      delete root.dataset.openingBootActive;
     }
+    /* Plate surface release is owned by OpeningBridgeSection (post sphere paint). */
   }, []);
 
   const applyHandoffMapped = useCallback((mapped) => {

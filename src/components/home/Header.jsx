@@ -29,7 +29,7 @@ export function Header() {
       <span className="home-header__spacer" aria-hidden="true" />
       <a
         href="#top"
-        className="home-header__mark"
+        className={`home-header__mark${activeId === 'home-landing' ? ' home-header__mark--hidden' : ''}`}
         onClick={(e) => {
           e.preventDefault();
           scrollToFirstScreen();

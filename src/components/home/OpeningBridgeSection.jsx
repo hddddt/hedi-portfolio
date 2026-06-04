@@ -13,6 +13,7 @@ import {
   deriveOpeningHeroPhases,
   HERO_PHASE,
 } from '../../utils/openingHeroProgress.js';
+import { shouldKeepOpeningPlateSurface } from '../../utils/openingHeroPresentation.js';
 import { OpeningShaderGradientHero } from './OpeningShaderGradientHero.jsx';
 
 /** Shared oblique system (~30°), flattened vertically in SVG group space */
@@ -119,11 +120,13 @@ export function OpeningBridgeSection() {
 
   const prm = prefersReducedMotion;
   const {
+    elapsedMs,
     boot,
     gates,
     pulse,
     fieldReveal,
     copy,
+    shaderVisualReady,
     onShaderReady,
     onShaderVisualReady,
     onShaderTimeout,
@@ -133,26 +136,35 @@ export function OpeningBridgeSection() {
     updateOpeningBoot,
   });
 
+  const keepOpeningPlate = shouldKeepOpeningPlateSurface({
+    elapsedMs,
+    scrollP: p,
+    openingCapHandoff: openingCapHandoff ?? 0,
+    fieldRevealProgress: fieldReveal.progress,
+  });
+
   useLayoutEffect(() => {
     const root = document.querySelector('.home-scroll-root');
     if (!root) return undefined;
-    if (!gates.bootComplete) {
+    if (keepOpeningPlate) {
       root.dataset.openingBootActive = 'true';
-      root.dataset.openingPresentationPhase = gates.phase;
     } else {
       delete root.dataset.openingBootActive;
-      delete root.dataset.openingPresentationPhase;
     }
+    root.dataset.openingPresentationPhase = gates.phase;
     return () => {
       delete root.dataset.openingBootActive;
       delete root.dataset.openingPresentationPhase;
     };
-  }, [gates.bootComplete, gates.phase]);
+  }, [keepOpeningPlate, gates.phase]);
 
-  const fieldBootHidden = gates.phase === 'latent' || gates.phase === 'pulse';
+  const fieldBootHidden =
+    gates.phase === 'latent' || gates.phase === 'pulse' || !gates.canRevealField;
   const fieldScrollFadeEarly =
     (1 - smoothstep(0.52, 0.78, p)) * (1 - (openingCapExitWipe ?? 0) * 0.85) * (1 - (openingCapHandoff ?? 0) * 0.9);
-  const fieldSlotOpacity = fieldBootHidden ? 0 : fieldScrollFadeEarly;
+  const fieldSlotOpacity = fieldBootHidden
+    ? 0
+    : fieldScrollFadeEarly * (fieldReveal.opacity ?? 1);
 
   const heroNarrative = computeHeroScrollNarrative(p, prm);
   const phases = deriveOpeningHeroPhases(p);
@@ -293,6 +305,7 @@ export function OpeningBridgeSection() {
   };
 
   const heroAnchored = heroTravelT < 0.18;
+  const heroCopyOpacity = gates.canRevealIdentity ? heroOpacity : 0;
   const heroSlotStyle = heroAnchored
     ? {
         position: 'absolute',
@@ -303,8 +316,9 @@ export function OpeningBridgeSection() {
         width: '100%',
         height: '100%',
         transform: `scale(${heroScale})`,
-        opacity: heroOpacity,
-        visibility: heroOpacity < 0.04 ? 'hidden' : 'visible',
+        opacity: heroCopyOpacity,
+        visibility:
+          gates.canRevealIdentity && heroCopyOpacity >= 0.04 ? 'visible' : 'hidden',
       }
     : {
         top: `${heroTopPct}%`,
@@ -314,8 +328,9 @@ export function OpeningBridgeSection() {
         display: 'grid',
         placeItems: 'center',
         transform: `translate3d(-50%, calc(-50% + ${heroLiftVh}vh), 0) scale(${heroScale})`,
-        opacity: heroOpacity,
-        visibility: heroOpacity < 0.04 ? 'hidden' : 'visible',
+        opacity: heroCopyOpacity,
+        visibility:
+          gates.canRevealIdentity && heroCopyOpacity >= 0.04 ? 'visible' : 'hidden',
       };
   const thesisSlotStyle = {
     top: `${thesisTopPct}%`,
@@ -383,6 +398,7 @@ export function OpeningBridgeSection() {
                 openingCapExitWipe={openingCapExitWipe ?? 0}
                 canMountShader={gates.canMountShader}
                 canRevealField={gates.canRevealField}
+                shaderVisualReady={shaderVisualReady}
                 fieldReveal={fieldReveal}
                 onShaderReady={onShaderReady}
                 onShaderVisualReady={onShaderVisualReady}
@@ -402,7 +418,7 @@ export function OpeningBridgeSection() {
                 className="opening-card__focus-pulse"
                 aria-hidden="true"
                 style={{
-                  opacity: pulse.opacity,
+                  opacity: pulse.opacity * (1 - (pulse.dissolve ?? 0) * 0.85),
                   transform: `translate(-50%, -50%) scale(${pulse.scale})`,
                 }}
               />
