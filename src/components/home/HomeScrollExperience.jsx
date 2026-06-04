@@ -153,11 +153,9 @@ function HomeScrollRootLayout() {
 
   useLayoutEffect(() => {
     const root = scrollRootRef.current;
-    if (!root) return;
-    if (window.scrollY < window.innerHeight * 0.2) {
-      root.dataset.openingBootActive = 'true';
-    }
-  }, []);
+    if (!root || activeId === 'home-landing') return;
+    delete root.dataset.openingBootActive;
+  }, [activeId]);
 
   return (
     <div ref={scrollRootRef} className="home-scroll-root">

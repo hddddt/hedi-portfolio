@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { useShortcutHandleIdlePeek } from '../../hooks/useShortcutHandleIdlePeek.js';
@@ -6,6 +6,7 @@ import { usePortfolioShortcutSurface } from '../../hooks/usePortfolioShortcutSur
 import { useScrollActivityPause } from '../../hooks/useScrollActivityPause.js';
 import { useShortcutProximity } from '../../hooks/useShortcutProximity.js';
 import { createPortal } from 'react-dom';
+import { getPortfolioGuidePortalNode } from '../../utils/portfolioGuidePortal.js';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { PortfolioGuideOrbSync } from './PortfolioGuideOrbSync.jsx';
@@ -123,6 +124,11 @@ const GUIDE_TRIGGER_MODE =
 export function PortfolioGuide() {
   const { activeId } = useNarrativeScroll();
   const { setGuideOpen } = useOrbScene();
+
+  useLayoutEffect(() => {
+    getPortfolioGuidePortalNode();
+  }, []);
+
   const isOpeningChapter =
     activeId === 'home-landing' || activeId === 'home-capabilities';
   const isFullMode = false;
@@ -174,6 +180,10 @@ export function PortfolioGuide() {
   const previewTargetIdRef = useRef(null);
   const peekCooldownTimerRef = useRef(0);
   const [peekCooldown, setPeekCooldown] = useState(false);
+
+  useLayoutEffect(() => {
+    if (open || closing) getPortfolioGuidePortalNode();
+  }, [open, closing]);
 
   const resultFlow = useMemo(
     () => (resultFlowId ? getGuideFlow(resultFlowId, displayQuestion) : null),
@@ -613,6 +623,10 @@ export function PortfolioGuide() {
       return undefined;
     }
     html.classList.add('portfolio-guide-panel-open');
+    const scrollRoot = document.querySelector('.home-scroll-root');
+    if (scrollRoot && html.dataset.fieldChapter !== 'home-landing') {
+      delete scrollRoot.dataset.openingBootActive;
+    }
     return () => html.classList.remove('portfolio-guide-panel-open');
   }, [open, closing]);
 
@@ -1128,7 +1142,7 @@ export function PortfolioGuide() {
   );
 
   if (typeof document !== 'undefined') {
-    return createPortal(shell, document.body);
+    return createPortal(shell, getPortfolioGuidePortalNode());
   }
   return shell;
 }

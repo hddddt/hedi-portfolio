@@ -98,11 +98,11 @@ const CHAPTER_TO_SCENE = {
 };
 
 /**
- * @param {{ activeChapterId?: string | null, guideOpen?: boolean, caseDetailOpen?: boolean, contactBlend?: number }} ctx
+ * @param {{ activeChapterId?: string | null, guideOpen?: boolean, caseDetailOpen?: boolean, contactBlend?: number }} ctx — guideOpen ignored; chapter scene persists when shortcut panel is open
  * @returns {keyof typeof ORB_SCENE_SPECS}
  */
 export function resolveOrbScene(ctx) {
-  if (ctx.guideOpen) return 'guide';
+  /* Panel open keeps the active chapter scene — do not swap to `guide` (near-empty field). */
   if (ctx.caseDetailOpen) return 'case';
   if (ctx.activeChapterId === 'home-life-archive' && (ctx.contactBlend ?? 0) > 0.62) {
     return 'contact';

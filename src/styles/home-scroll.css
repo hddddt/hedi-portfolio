@@ -5,7 +5,10 @@ html.home-scroll-page{
   overflow-y:auto;
   scrollbar-width:none; /* Firefox: hide scrollbar, keep scroll behavior */
 }
-html.home-scroll-page:has(.home-scroll-root[data-opening-boot-active='true']){
+/* Light opening plate — landing only (not Cap / Work when boot flag lingers) */
+html.home-scroll-page[data-field-chapter='home-landing']:has(
+    .home-scroll-root[data-opening-boot-active='true']
+  ){
   background:rgb(240, 240, 238);
 }
 html.home-scroll-page::-webkit-scrollbar{
@@ -49,6 +52,17 @@ html.home-scroll-page body{
   z-index:0;
   pointer-events:none;
 }
+/* Shortcut panel open — keep viewport WebGL behind portaled UI (10320+) */
+html.portfolio-guide-panel-open .organic-field-host--viewport{
+  z-index:0;
+}
+#portfolio-guide-portal{
+  position:fixed;
+  inset:0;
+  z-index:10320;
+  pointer-events:none;
+  isolation:isolate;
+}
 .home-scroll-root::before{
   content:'';
   position:fixed;
@@ -58,7 +72,8 @@ html.home-scroll-page body{
   background:var(--canvas, #060606);
   transition:none;
 }
-.home-scroll-root[data-opening-boot-active='true']::before{
+html[data-field-chapter='home-landing']
+  .home-scroll-root[data-opening-boot-active='true']::before{
   background:linear-gradient(
     178deg,
     rgb(240, 240, 238) 0%,
@@ -89,7 +104,7 @@ html.home-scroll-page body{
   color:#eae8e4;
   pointer-events:none;
 }
-/* Portaled to body — above portfolio-guide (10100) and shortcut handle */
+/* Portaled to body — above portfolio-guide portal (10320) and shortcut handle */
 .home-header--portaled{
   z-index:10350;
 }
@@ -321,11 +336,31 @@ html:has(.home-scroll-root[data-opening-boot-active='true']) .home-header__mark,
 .opening-card--boot .opening-card__field-slot{
   opacity:var(--opening-field-slot-opacity, 0);
 }
-/* Hide viewport WebGL only during timed opening boot (not after handoff) */
-.home-scroll-root[data-opening-boot-active='true'] .organic-field-host--viewport{
+/* Hide viewport WebGL only during landing opening boot */
+html[data-field-chapter='home-landing']
+  .home-scroll-root[data-opening-boot-active='true']
+  .organic-field-host--viewport{
   opacity:0 !important;
   visibility:hidden !important;
   pointer-events:none !important;
+}
+/* Cap+ — never white-out viewport when boot flag stuck or panel opens */
+html:not([data-field-chapter='home-landing'])
+  .home-scroll-root[data-opening-boot-active='true']::before{
+  background:var(--canvas, #060606);
+}
+html:not([data-field-chapter='home-landing'])
+  .home-scroll-root[data-opening-boot-active='true']
+  .organic-field-host--viewport{
+  opacity:1 !important;
+  visibility:visible !important;
+}
+html.portfolio-guide-panel-open .home-scroll-root::before{
+  background:var(--canvas, #060606);
+}
+html.portfolio-guide-panel-open .organic-field-host--viewport{
+  opacity:1 !important;
+  visibility:visible !important;
 }
 .opening-card--thesis-state{
   border-color:rgba(14,13,10,.1);
@@ -405,13 +440,14 @@ html:has(.home-scroll-root[data-opening-boot-active='true']) .home-header__mark,
 .opening-shader-gradient-hero__poster{
   transition:opacity 0.72s cubic-bezier(0.19, 1, 0.22, 1);
 }
-/* WebGL sphere loads off-screen — no black hole in the white opening plate */
+/* WebGL sphere warms up in-card — avoid viewport-fixed layer over shortcut panel */
 .opening-shader-gradient-hero__live.is-preparing{
-  position:fixed;
-  left:-120vw;
-  top:0;
-  width:100vw;
-  height:100vh;
+  position:absolute;
+  inset:0;
+  left:auto;
+  top:auto;
+  width:100%;
+  height:100%;
   opacity:0 !important;
   visibility:hidden !important;
   pointer-events:none !important;

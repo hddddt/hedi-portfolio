@@ -69,6 +69,8 @@ export function FieldNarrativeProvider({ children }) {
     if (!root) return;
     if ((boot?.complete ?? 0) < 0.98) {
       root.dataset.openingBootActive = 'true';
+    } else {
+      delete root.dataset.openingBootActive;
     }
     /* Plate surface release is owned by OpeningBridgeSection (post sphere paint). */
   }, []);

@@ -27,8 +27,9 @@
   --portfolio-bug-mark: rgba(250, 248, 243, 0.9);
   position: fixed;
   inset: 0;
-  z-index: 10100;
+  z-index: 10320;
   pointer-events: none;
+  isolation: isolate;
   opacity: 0;
   visibility: hidden;
   transition:
@@ -42,7 +43,7 @@
 }
 
 .portfolio-guide.is-open {
-  z-index: 10200;
+  z-index: 10340;
 }
 
 /* Panel open — freeze page scroll; only .portfolio-guide__panel-body scrolls */
@@ -56,10 +57,7 @@ html.portfolio-guide-panel-open body {
   overscroll-behavior: none;
 }
 
-html.portfolio-guide-panel-open .home-scroll-root,
-html.portfolio-guide-panel-open .home-scroll-main {
-  overflow: hidden !important;
-}
+/* Do not clip .home-scroll-root — viewport field is position:fixed inside it */
 
 .portfolio-guide__backdrop {
   position: fixed;
@@ -675,7 +673,7 @@ html.portfolio-guide-panel-open .home-scroll-main {
   top: 50%;
   right: 0;
   bottom: auto;
-  z-index: 5;
+  z-index: 12;
   width: var(--portfolio-guide-drawer-w);
   height: var(--portfolio-guide-drawer-h);
   max-width: calc(100vw - 32px);
