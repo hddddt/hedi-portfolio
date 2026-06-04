@@ -4,7 +4,12 @@
  */
 
 import { OPENING_LINEAR_SCALE, OPENING_SCROLL_SCALE } from '../data/fieldSizeHierarchy.js';
-import { HERO_BLOB_INTRO, HERO_GREEN_ROTATION } from '../data/organicFieldPalette.js';
+import {
+  HERO_BLOB_INTRO,
+  HERO_GALAXY_FOCAL,
+  HERO_GREEN_ROTATION,
+} from '../data/organicFieldPalette.js';
+import { computeOpeningBootFieldStates } from './openingBootSequence.js';
 import {
   easeScrollBreath,
   mix,
@@ -26,8 +31,8 @@ import {
  */
 
 const PHASE = {
-  introEnd: 0.4,
-  thesisStart: 0.7,
+  introEnd: 0.32,
+  thesisStart: 0.52,
 };
 
 function elasticCompress(u) {
@@ -50,15 +55,18 @@ function potentialSnap(u) {
 }
 
 /** Raw scroll segment boundaries (0–1 through .opening-scroll) */
-export const OPENING_PHASE1_END = 0.08;
-export const OPENING_PHASE2_END = 0.26;
-export const OPENING_PHASE3_END = 0.5;
+export const OPENING_PHASE1_END = 0.22;
+/** Screen 1 — Recognition (hero legible) */
+export const OPENING_SCREEN1_END = 0.3;
+/** Screen 2 — Promise (thesis owns the card) */
+export const OPENING_SCREEN2_ENTER = OPENING_SCREEN1_END;
+export const OPENING_SCREEN2_DWELL_END = 0.58;
+export const OPENING_PHASE2_END = OPENING_SCREEN2_ENTER;
+export const OPENING_PHASE3_END = OPENING_SCREEN2_DWELL_END;
 export const OPENING_EXIT_END = 1;
 
-/** @deprecated */
-export const OPENING_SCREEN1_END = OPENING_PHASE1_END;
-export const OPENING_SCREEN2_ENTER = OPENING_PHASE2_END;
-export const OPENING_SCREEN2_DWELL_END = OPENING_PHASE3_END;
+export const OPENING_HERO_EXIT_START = 0.14;
+export const OPENING_HERO_EXIT_END = OPENING_SCREEN2_ENTER;
 export const OPENING_FIELD_SHRINK_END = 0.88;
 export const OPENING_SHRINK_START = OPENING_PHASE2_END;
 export const OPENING_SHRINK_END = OPENING_EXIT_END;
@@ -73,7 +81,7 @@ export const OPENING_CHAPTER_ID = 'home-landing';
 export const OPENING_SCROLL_COMPLETE = 1;
 
 /** Thesis exit → Capabilities — shared cluster (no outward scatter). */
-export const OPENING_CAP_HANDOFF_FOCAL = { x: 0.452, y: 0.572 };
+export const OPENING_CAP_HANDOFF_FOCAL = HERO_GALAXY_FOCAL;
 export const OPENING_CAP_HANDOFF_ECHO = {
   a: { x: -0.032, y: -0.018, scale: 1.04, opacityMul: 0.94 },
   b: { x: 0.034, y: 0.014, scale: 0.94, opacityMul: 0.72 },
@@ -106,15 +114,25 @@ export function openingCapHandoffResidualTargets() {
   };
 }
 
-/** Opening chapter — in-card field through thesis exit (handoff blend starts here). */
-export function shouldUseInCardOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
-  if (openingComplete && capHandoff > 0.2) return false;
-  return !openingComplete || capHandoff < 0.2;
+function isViewportOrganicFieldReady() {
+  if (typeof document === 'undefined') return false;
+  return Boolean(
+    document.querySelector(
+      '.organic-field-host--viewport .organic-field__canvas[data-field-ready="true"]',
+    ),
+  );
 }
 
-/** Viewport field — after opening hands off to capabilities. */
+/** Opening chapter — in-card field until viewport field is actually painting. */
+export function shouldUseInCardOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
+  if (!openingComplete) return true;
+  if (capHandoff < 0.32) return true;
+  return !isViewportOrganicFieldReady();
+}
+
+/** Viewport field — after opening hands off; overlaps in-card until canvas is ready. */
 export function shouldUseViewportOrganicField(_rawProgress, openingComplete = false, capHandoff = 0) {
-  return openingComplete && capHandoff >= 0.08;
+  return openingComplete && capHandoff >= 0.04;
 }
 
 /** @deprecated use openingFieldScrollDrive(rawP) during opening */
@@ -122,17 +140,33 @@ export const HERO_SCROLL_DRIVE_START = 0.006;
 export const HERO_SCROLL_DRIVE_END = 0.09;
 
 /** Raw scroll — gather → settle → reveal rhythm (first scroll = system entry). */
-const OPENING_IMPACT_START = 0.004;
-const OPENING_GATHER_END = 0.24;
-export const OPENING_SETTLE_END = 0.38;
-export const OPENING_THESIS_REVEAL_END = 0.5;
-const OPENING_HERO_EXIT_START = 0.16;
-const OPENING_HERO_EXIT_END = 0.38;
-const OPENING_THESIS_HOLD = 0.34;
-/** Thesis copy — shorter window, less time spent in half-visible haze. */
-const OPENING_THESIS_REVEAL_START = 0.32;
+const OPENING_IMPACT_START = 0.006;
+const OPENING_GATHER_END = 0.18;
+export const OPENING_SETTLE_END = 0.32;
+export const OPENING_THESIS_REVEAL_END = 0.46;
+const OPENING_THESIS_HOLD = 0.52;
+const OPENING_THESIS_REVEAL_START = OPENING_SCREEN2_ENTER;
 const OPENING_DECK_REVEAL_START = 0.4;
-const OPENING_DECK_REVEAL_END = 0.56;
+const OPENING_DECK_REVEAL_END = 0.54;
+
+/** @typedef {'recognition' | 'shift' | 'promise' | 'handoff'} OpeningNarrativeBeat */
+
+/**
+ * Narrative beat for opening UI (screen 1 → screen 2 → Cap handoff).
+ * @param {number} rawP
+ * @param {boolean} [prm]
+ * @returns {OpeningNarrativeBeat}
+ */
+export function openingNarrativeBeat(rawP, prm = false) {
+  if (prm) {
+    return rawP < 0.45 ? 'recognition' : rawP < 0.82 ? 'promise' : 'handoff';
+  }
+  const p = Math.max(0, Math.min(1, rawP));
+  if (p < OPENING_SCREEN1_END) return 'recognition';
+  if (p < OPENING_HERO_EXIT_END) return 'shift';
+  if (p < OPENING_SCREEN2_DWELL_END) return 'promise';
+  return 'handoff';
+}
 
 /**
  * Master opening orchestration from raw scroll — single source for UI + field.
@@ -165,17 +199,17 @@ export function computeOpeningScrollOrchestration(rawP) {
   /** Blob hero timeline — locked to gather → settle, not a long intro plateau. */
   let heroProgress;
   if (p <= OPENING_GATHER_END) {
-    heroProgress = gather * 0.58;
+    heroProgress = gather * 0.52;
   } else if (p <= OPENING_SETTLE_END) {
-    heroProgress = 0.58 + settle * 0.22;
+    heroProgress = 0.52 + settle * 0.24;
   } else if (p <= OPENING_PHASE3_END) {
-    heroProgress = 0.8 + smoothstep(OPENING_SETTLE_END, OPENING_PHASE3_END, p) * 0.16;
+    heroProgress = 0.76 + smoothstep(OPENING_SETTLE_END, OPENING_PHASE3_END, p) * 0.14;
   } else {
     const t = (p - OPENING_PHASE3_END) / (OPENING_EXIT_END - OPENING_PHASE3_END);
-    heroProgress = 0.8 + t * 0.2;
+    heroProgress = 0.9 + t * 0.1;
   }
 
-  /** Screen handoff — hero out during settle; thesis only after field lock (move → settle → reveal). */
+  /** Screen 1 → 2: hero exits before thesis copy owns the frame. */
   const fadeHero = smoothstep(OPENING_HERO_EXIT_START, OPENING_HERO_EXIT_END, p);
   const thesisHold = smoothstep(OPENING_SETTLE_END, OPENING_THESIS_HOLD, p);
   const fadeThesis = smoothstep(OPENING_THESIS_REVEAL_START, OPENING_THESIS_REVEAL_END, p);
@@ -191,13 +225,13 @@ export function computeOpeningScrollOrchestration(rawP) {
     compressedScale + thesisRelease * 0.08 + thesisNucleus * 0.12;
   const condenseBeat = smoothstep(OPENING_IMPACT_START, OPENING_SETTLE_END + 0.04, p);
   const headlineReveal = smoothstep(
-    OPENING_SETTLE_END * 0.55,
-    OPENING_THESIS_REVEAL_END - 0.06,
+    OPENING_HERO_EXIT_END,
+    OPENING_THESIS_REVEAL_END - 0.04,
     p,
   );
   const deckReveal = smoothstep(OPENING_DECK_REVEAL_START, OPENING_DECK_REVEAL_END, p);
   const exitDissolve = smoothstep(0.64, 0.96, p);
-  const thesisExit = smoothstep(0.82, 0.98, p);
+  const thesisExit = smoothstep(0.8, 0.98, p);
 
   let phase = /** @type {HeroPhase} */ ('intro');
   if (p > OPENING_PHASE3_END) phase = 'exit';
@@ -206,6 +240,7 @@ export function computeOpeningScrollOrchestration(rawP) {
 
   return {
     rawP: p,
+    beat: openingNarrativeBeat(p),
     heroProgress,
     phase,
     idleStillness,
@@ -426,6 +461,8 @@ export function computeOpeningFieldPresence(rawP, prm = false) {
   return computeHeroScrollNarrative(rawP, prm);
 }
 
+export { mergeOpeningBootOrchestration } from './openingBootSequence.js';
+
 /**
  * @param {number} heroProgress
  * @param {number} [time]
@@ -433,7 +470,10 @@ export function computeOpeningFieldPresence(rawP, prm = false) {
  * @param {object} [orch] opening orchestration slice
  */
 export function computeHeroFieldTargets(heroProgress, time = 0, prm = false, orch = null) {
-  const states = applyBlobOpacity(blobStatesAtProgress(heroProgress), orch?.thesisNucleus ?? 0);
+  const states =
+    orch?.boot?.active && (orch?.rawP ?? 0) < 0.045
+      ? computeOpeningBootFieldStates(orch.boot)
+      : applyBlobOpacity(blobStatesAtProgress(heroProgress), orch?.thesisNucleus ?? 0);
   const gather = orch?.gather ?? smoothstep(PHASE.introEnd * 0.5, PHASE.thesisStart + 0.02, heroProgress);
   const settle = orch?.settle ?? 0;
   const nucleus = orch?.thesisNucleus ?? settle;

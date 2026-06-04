@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { useShortcutHandleIdlePeek } from '../../hooks/useShortcutHandleIdlePeek.js';
 import { usePortfolioShortcutSurface } from '../../hooks/usePortfolioShortcutSurface.js';
 import { useScrollActivityPause } from '../../hooks/useScrollActivityPause.js';
@@ -31,8 +33,12 @@ import {
   scrollToGuideAction,
 } from '../../utils/portfolioGuideTarget.js';
 import { ShortcutMarkerArt } from './ShortcutMarker.jsx';
+import { useGuidePathsReveal } from '../../hooks/useGuidePathsReveal.js';
+import { animateGuideHomeEnter } from '../../utils/portfolioGuideMotion.js';
 import '../../styles/portfolio-guide.css';
 import '../../styles/portfolio-shortcut-marker.css';
+
+gsap.registerPlugin(useGSAP);
 
 const GUIDE_LOG_KEY = 'portfolioGuideQuestions';
 const ORB_MOOD_CLICK_MS = 1400;
@@ -57,11 +63,12 @@ function GuideFollowUpAnswer({
   onEvidenceClick,
   pathsRevealing = false,
 }) {
+  const followUpRef = useGuidePathsReveal(pathsRevealing, {
+    itemSelector: '.portfolio-guide__followup-links li',
+  });
+
   return (
-    <div
-      className={`portfolio-guide__followup-answer${pathsRevealing ? ' is-paths-revealing' : ''}`}
-      aria-live="polite"
-    >
+    <div ref={followUpRef} className="portfolio-guide__followup-answer" aria-live="polite">
       <p className="portfolio-guide__result-block-label">{GUIDE_RESULT_SECTIONS.followUp}</p>
       <p className="portfolio-guide__followup-title">{answer.title}</p>
       <p className="portfolio-guide__followup-short">{answer.shortAnswer}</p>
@@ -125,6 +132,7 @@ export function PortfolioGuide() {
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const panelRef = useRef(null);
+  const moduleRef = useRef(null);
   const panelBodyRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -147,6 +155,10 @@ export function PortfolioGuide() {
   const [resultProcessing, setResultProcessing] = useState(false);
   const [pathsRevealing, setPathsRevealing] = useState(false);
   const [followUpPathsRevealing, setFollowUpPathsRevealing] = useState(false);
+  const pathModuleRef = useGuidePathsReveal(pathsRevealing, {
+    itemSelector: '.portfolio-guide__path-track-item',
+    headSelector: '.portfolio-guide__path-module-head',
+  });
   const [reducedMotion, setReducedMotion] = useState(false);
   const panelEnterTimerRef = useRef(0);
   const pathsRevealTimerRef = useRef(0);
@@ -492,6 +504,16 @@ export function PortfolioGuide() {
     enabled: !open,
   });
 
+  useGSAP(
+    () => {
+      if (!panelEntering) return undefined;
+      const module = moduleRef.current;
+      if (!module) return undefined;
+      return animateGuideHomeEnter(module);
+    },
+    { scope: moduleRef, dependencies: [panelEntering], revertOnUpdate: true },
+  );
+
   const idlePeek = useShortcutHandleIdlePeek({
     enabled: !isFullMode,
     paused:
@@ -597,11 +619,11 @@ export function PortfolioGuide() {
           aria-label="Portfolio Shortcut"
         >
           <div
+            ref={moduleRef}
             className={[
               'portfolio-guide__module',
               view === 'flow' ? 'portfolio-guide__module--result' : '',
               view === 'angle' ? 'portfolio-guide__module--angle' : '',
-              panelEntering ? 'is-entering' : '',
               resultProcessing || followUpReading ? 'is-processing' : '',
             ]
               .filter(Boolean)
@@ -773,6 +795,7 @@ export function PortfolioGuide() {
 
                 {whereToLook.length ? (
                   <div
+                    ref={pathModuleRef}
                     className={[
                       'portfolio-guide__path-module',
                       'portfolio-guide__path-module--nav',
@@ -780,7 +803,6 @@ export function PortfolioGuide() {
                         ? 'portfolio-guide__path-module--after-framing'
                         : 'portfolio-guide__path-module--compact',
                       resultPresentation?.hasReadUnderstand ? 'portfolio-guide__path-module--after-read' : '',
-                      pathsRevealing ? 'is-revealing' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}

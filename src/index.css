@@ -44,6 +44,10 @@
   --display-sans:'Instrument Sans', 'DM Sans', Inter, ui-sans-serif, system-ui, sans-serif;
   /** Identity wordmark — geometric display sans (architectural / studio weight, not Inter) */
   --font-identity-display:'Syne','Space Grotesk','DM Sans',system-ui,sans-serif;
+  /** Opening hero — system / metadata / nav (quiet grotesk) */
+  --font-hero-sans:'DM Sans',Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
+  /** Opening hero — editorial statement (title card) */
+  --font-hero-serif:'Newsreader','Georgia','Times New Roman',serif;
   /** Statements + supporting text — mature neo-grotesk sans */
   --font-editorial:'IBM Plex Sans','DM Sans',system-ui,sans-serif;
   /** Narrow interface / nav / metadata — mono, quiet */
@@ -72,10 +76,15 @@
   --border-subtle:1px solid var(--line);
 
   /* Readability floors (body / labels / UI type) */
-  --read-body-opacity:0.68;
-  --read-label-opacity:0.58;
-  --read-font-min:14px;
-  --read-font-chip:15px;
+  --read-body-opacity:0.78;
+  --read-label-opacity:0.65;
+  --read-rail-body-opacity:0.82;
+  --read-rail-muted-opacity:0.72;
+  --read-font-min:15px;
+  --read-font-body:16px;
+  --read-font-body-sm:15px;
+  --read-font-body-lg:18px;
+  --read-font-chip:16px;
   --read-lede-opacity:0.88;
   --read-ribbon-idle:0.78;
   --read-ribbon-active:0.95;
@@ -284,7 +293,7 @@ svg{display:block;max-width:100%}
   line-height:.92;letter-spacing:-.065em;font-weight:600;
 }
 .ov-sub{
-  font-size:14px;line-height:1.62;color:var(--ink2);max-width:520px;padding-bottom:4px;font-weight:400;
+  font-size:var(--read-font-body);line-height:1.62;color:var(--ink2);max-width:520px;padding-bottom:4px;font-weight:400;
 }
 
 /* Selected work — board header (display sans) */
@@ -427,8 +436,8 @@ svg{display:block;max-width:100%}
   margin-bottom:6px;
 }
 .overview-ev-card__body{
-  font-size:14px;
-  line-height:1.5;
+  font-size:var(--read-font-body);
+  line-height:1.52;
   color:var(--ink);
   font-weight:400;
   margin:0;
@@ -566,14 +575,14 @@ svg text{dominant-baseline:middle}
 .aside-layer{font-family:var(--mono-label);font-size:var(--mono-label-size);letter-spacing:.12em;color:var(--gold);margin-bottom:20px;text-transform:uppercase}
 .aside-judge{
   border-left:2px solid var(--gold);padding-left:14px;
-  font-size:13px;line-height:1.56;color:var(--ink2);margin-bottom:24px;
+  font-size:var(--read-font-body);line-height:1.56;color:var(--ink2);margin-bottom:24px;
 }
 .aside-judge b{color:var(--ink);font-weight:500}
 .aside-label{font-family:var(--mono-label);font-size:var(--mono-label-size-sm);letter-spacing:var(--mono-label-track);text-transform:uppercase;color:var(--mono-label-color);margin:16px 0 8px}
 .aside-path{display:grid;gap:8px}
 .aside-path div{display:grid;grid-template-columns:24px 1fr;gap:8px;font-size:12px;color:var(--ink2);line-height:1.38}
 .aside-path span:first-child{font-family:var(--mono-label);font-size:var(--mono-label-size-sm);color:var(--gold);padding-top:2px}
-.aside-signal{font-size:12px;line-height:1.56;color:var(--ink2)}
+.aside-signal{font-size:var(--read-font-body-sm);line-height:1.56;color:var(--ink2)}
 .aside-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .aside-tags span{font-size:10px;color:var(--mono-label-color);border:var(--border-subtle);border-radius:999px;padding:5px 9px;background:rgba(250,248,243,.68)}
 .case-body{padding:clamp(44px,5vw,52px) 0 clamp(88px,10vw,100px) clamp(40px,4.5vw,52px)}
@@ -585,7 +594,7 @@ svg text{dominant-baseline:middle}
 .case-title{
   font-size:clamp(48px,5.4vw,100px);line-height:.88;letter-spacing:-.08em;font-weight:600;
 }
-.case-intro{font-size:17px;line-height:1.58;color:var(--ink2);max-width:560px;padding-bottom:10px}
+.case-intro{font-size:var(--read-font-body-lg);line-height:1.58;color:var(--ink2);max-width:560px;padding-bottom:10px}
 .hero-graphic{
   border-radius:var(--radius-outer);background:var(--dark);border:1px solid rgba(14,13,10,.12);color:var(--cream);
   padding:clamp(24px,3vw,28px);box-shadow:0 22px 56px rgba(14,13,10,.1);
@@ -598,7 +607,7 @@ svg text{dominant-baseline:middle}
   position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
 }
 .decisions-intro{
-  font-size:15px;line-height:1.58;color:var(--ink2);max-width:620px;
+  font-size:var(--read-font-body);line-height:1.58;color:var(--ink2);max-width:620px;
   margin:0 0 clamp(36px,4.5vw,48px);
 }
 

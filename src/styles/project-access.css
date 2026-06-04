@@ -3,32 +3,43 @@
 .project-access-modal{
   position:fixed;
   inset:0;
-  z-index:2000;
+  z-index:11050;
   display:flex;
   align-items:center;
   justify-content:center;
   padding:24px;
+  pointer-events:none;
 }
 .project-access-modal__backdrop{
   position:absolute;
   inset:0;
   border:0;
-  background:rgba(3,3,3,.62);
+  background:rgba(6,6,6,.22);
+  backdrop-filter:blur(14px) saturate(1.08);
+  -webkit-backdrop-filter:blur(14px) saturate(1.08);
   cursor:pointer;
+  pointer-events:auto;
 }
 .project-access-modal__panel{
   position:relative;
+  z-index:1;
   display:flex;
   flex-direction:column;
   gap:18px;
   width:min(100%,320px);
   padding:clamp(20px,4vw,26px);
   border-radius:16px;
-  background:rgba(8,8,8,.48);
-  border:1px solid rgba(250,248,243,.12);
-  box-shadow:0 24px 64px rgba(0,0,0,.48);
-  backdrop-filter:blur(22px) saturate(1.12);
-  -webkit-backdrop-filter:blur(22px) saturate(1.12);
+  background:rgba(12,12,12,.78);
+  border:1px solid rgba(250,248,243,.14);
+  box-shadow:
+    0 20px 50px rgba(0,0,0,.38),
+    0 0 0 1px rgba(255,255,255,.04) inset;
+  backdrop-filter:blur(28px) saturate(1.15);
+  -webkit-backdrop-filter:blur(28px) saturate(1.15);
+  pointer-events:auto;
+}
+html[data-project-access-modal='open'] .portfolio-guide{
+  pointer-events:none;
 }
 .project-access-modal__panel.is-shake{
   animation:project-access-shake 0.42s ease;
@@ -148,13 +159,15 @@
   outline-offset:2px;
 }
 
-.work-narrative__visual--locked .work-narrative__cover{
-  filter:grayscale(0.15) brightness(0.92);
+.work-narrative__visual--locked:hover .work-narrative__cover,
+.work-narrative__visual--locked:focus-visible .work-narrative__cover{
+  filter:grayscale(0.12) brightness(0.9);
 }
 .work-narrative__lock{
   position:absolute;
   top:12px;
   right:12px;
+  z-index:2;
   display:flex;
   align-items:center;
   justify-content:center;

@@ -2,11 +2,13 @@
 
 .portfolio-guide--seam-marker {
   --portfolio-guide-companion-w: 72px;
-  --portfolio-marker-teal: rgba(108, 148, 128, 0.72);
-  --portfolio-marker-teal-muted: rgba(88, 128, 108, 0.32);
-  --portfolio-marker-core: rgba(204, 228, 214, 0.92);
-  --portfolio-marker-core-hot: rgba(218, 238, 226, 0.96);
-  --portfolio-marker-seam: rgba(168, 198, 178, 0.78);
+  /* Icy cyan + warm edge — matches ShaderGradient hero, not SaaS green */
+  --portfolio-marker-teal: rgba(148, 188, 208, 0.72);
+  --portfolio-marker-teal-muted: rgba(108, 148, 168, 0.32);
+  --portfolio-marker-core: rgba(198, 228, 238, 0.94);
+  --portfolio-marker-core-hot: rgba(232, 244, 248, 0.98);
+  --portfolio-marker-seam: rgba(178, 208, 220, 0.82);
+  --portfolio-marker-warm: rgba(212, 188, 168, 0.14);
 }
 
 .portfolio-guide {
@@ -19,7 +21,7 @@
   --portfolio-marker-slide-hover: 10px;
   --portfolio-marker-slide-pull: 14px;
   --portfolio-marker-slide-open: 10px;
-  --portfolio-marker-stroke: rgba(248, 246, 240, 0.42);
+  --portfolio-marker-stroke: rgba(243, 239, 230, 0.52);
 }
 
 .portfolio-guide:not(.is-light-backdrop):not(.is-open) {
@@ -31,20 +33,21 @@
   --portfolio-marker-slide-peek: 4px;
   --portfolio-marker-slide-hover: 20px;
   --portfolio-marker-slide-pull: 26px;
-  --portfolio-marker-teal: rgba(118, 158, 138, 0.82);
-  --portfolio-marker-teal-muted: rgba(92, 132, 112, 0.36);
-  --portfolio-marker-core: rgba(210, 234, 220, 0.94);
-  --portfolio-marker-core-hot: rgba(226, 244, 232, 0.98);
-  --portfolio-marker-seam: rgba(182, 212, 192, 0.88);
+  --portfolio-marker-teal: rgba(158, 198, 218, 0.82);
+  --portfolio-marker-teal-muted: rgba(118, 158, 178, 0.38);
+  --portfolio-marker-core: rgba(210, 234, 244, 0.96);
+  --portfolio-marker-core-hot: rgba(238, 248, 252, 0.99);
+  --portfolio-marker-seam: rgba(192, 218, 228, 0.9);
 }
 
+/* Opening / light surfaces — same language as hero, no neon green */
 .portfolio-guide.is-light-backdrop:not(.is-open) {
-  --portfolio-marker-stroke: rgba(32, 36, 34, 0.55);
-  --portfolio-marker-teal: rgba(48, 255, 144, 0.78);
-  --portfolio-marker-teal-muted: rgba(32, 240, 128, 0.42);
-  --portfolio-marker-core: rgba(210, 255, 232, 0.98);
-  --portfolio-marker-core-hot: rgba(235, 255, 244, 1);
-  --portfolio-marker-seam: rgba(80, 255, 168, 0.88);
+  --portfolio-marker-stroke: rgba(243, 239, 230, 0.72);
+  --portfolio-marker-teal: rgba(150, 192, 212, 0.78);
+  --portfolio-marker-teal-muted: rgba(110, 150, 172, 0.36);
+  --portfolio-marker-core: rgba(214, 236, 246, 0.98);
+  --portfolio-marker-core-hot: rgba(244, 250, 252, 1);
+  --portfolio-marker-seam: rgba(188, 214, 226, 0.88);
 }
 
 .portfolio-guide--seam-marker.is-opening-chapter:not(.is-open) {
@@ -132,9 +135,19 @@
 .portfolio-guide:not(.is-light-backdrop) .portfolio-guide__companion-hint {
   font-size: 9px;
   letter-spacing: 0.12em;
-  padding: 4px 7px 5px;
-  color: rgba(248, 246, 240, 0.62);
-  background: rgba(8, 10, 9, 0.55);
+  padding: 5px 8px 6px;
+  color: rgba(243, 239, 230, 0.88);
+  background: rgba(10, 12, 14, 0.78);
+  border: 1px solid rgba(243, 239, 230, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: -6px 4px 20px rgba(0, 0, 0, 0.28);
+}
+
+.portfolio-guide.is-light-backdrop:not(.is-open) .portfolio-guide__companion-hint {
+  color: rgba(243, 239, 230, 0.9);
+  background: rgba(10, 12, 14, 0.82);
+  border: 1px solid rgba(243, 239, 230, 0.14);
 }
 
 .portfolio-guide--seam-marker .portfolio-guide__companion-plinth {
@@ -142,19 +155,20 @@
   height: calc(var(--portfolio-marker-h) + 32px);
   background: radial-gradient(
     ellipse 110% 95% at 100% 50%,
-    rgba(108, 148, 128, 0.24) 0%,
-    rgba(88, 128, 108, 0.1) 44%,
+    rgba(140, 180, 200, 0.12) 0%,
+    var(--portfolio-marker-warm, rgba(212, 188, 168, 0.04)) 36%,
+    rgba(88, 118, 132, 0.04) 48%,
     transparent 72%
   );
-  filter: blur(12px);
-  opacity: 0.38;
+  filter: blur(10px);
+  opacity: 0.22;
 }
 
 .portfolio-guide--seam-marker:not(.is-light-backdrop) .portfolio-guide__companion.is-awake .portfolio-guide__companion-plinth,
 .portfolio-guide--seam-marker:not(.is-light-backdrop)
   .portfolio-guide__companion:focus-visible
   .portfolio-guide__companion-plinth {
-  opacity: 0.44;
+  opacity: 0.28;
 }
 
 .portfolio-guide--seam-marker .portfolio-guide__companion-art {
@@ -182,8 +196,8 @@
 }
 
 .portfolio-guide--seam-marker:not(.is-light-backdrop):not(.is-open) .portfolio-guide__marker-visual {
-  filter: drop-shadow(-3px 1px 14px rgba(88, 128, 108, 0.36))
-    drop-shadow(-1px 0 22px rgba(108, 148, 128, 0.24));
+  filter: drop-shadow(-3px 1px 12px rgba(0, 0, 0, 0.28))
+    drop-shadow(-1px 0 16px rgba(140, 180, 200, 0.14));
 }
 
 /* Restrained halo — always on */
@@ -198,12 +212,12 @@
   border-radius: 50% 0 0 50% / 50% 0 0 50%;
   background: radial-gradient(
     ellipse 100% 82% at 100% 50%,
-    rgba(118, 168, 142, 0.38) 0%,
+    rgba(150, 198, 218, 0.18) 0%,
     var(--portfolio-marker-teal-muted) 38%,
     transparent 74%
   );
-  filter: blur(10px);
-  opacity: 0.68;
+  filter: blur(9px);
+  opacity: 0.38;
   pointer-events: none;
   transition: opacity 320ms ease, filter 420ms ease;
 }
@@ -216,18 +230,18 @@
   border-radius: 38% 10% 38% 10% / 48% 48% 48% 48%;
   background: linear-gradient(
     180deg,
-    rgba(196, 228, 210, 0.42) 0%,
-    rgba(138, 178, 158, 0.72) 18%,
-    rgba(72, 108, 92, 0.92) 52%,
-    rgba(28, 40, 34, 0.98) 100%
+    rgba(188, 218, 228, 0.44) 0%,
+    rgba(128, 168, 188, 0.74) 18%,
+    rgba(48, 62, 72, 0.94) 52%,
+    rgba(14, 18, 22, 0.98) 100%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
     inset 0 -2px 3px rgba(0, 0, 0, 0.42),
     inset -1px 0 0 rgba(255, 255, 255, 0.1),
     -2px 2px 6px rgba(0, 0, 0, 0.45),
-    0 0 18px rgba(108, 148, 128, 0.42),
-    0 0 32px rgba(88, 128, 108, 0.22);
+    0 0 14px rgba(140, 180, 200, 0.2),
+    0 0 24px rgba(100, 140, 160, 0.1);
   opacity: 1;
   pointer-events: none;
   transition:
@@ -238,28 +252,28 @@
 .portfolio-guide--seam-marker:not(.is-light-backdrop):not(.is-open) .portfolio-guide__marker-body {
   background: linear-gradient(
     180deg,
-    rgba(208, 236, 218, 0.48) 0%,
-    rgba(128, 168, 148, 0.78) 20%,
-    rgba(58, 88, 74, 0.94) 54%,
-    rgba(18, 26, 22, 0.98) 100%
+    rgba(210, 234, 244, 0.5) 0%,
+    rgba(138, 178, 198, 0.8) 20%,
+    rgba(42, 56, 66, 0.94) 54%,
+    rgba(12, 16, 20, 0.98) 100%
   );
 }
 
-/* Light backdrop — fluorescent green glow (high chroma, no grey shadow stack) */
+/* Light backdrop — same graphite / icy gem (readable on ShaderGradient) */
 .portfolio-guide--seam-marker.is-light-backdrop:not(.is-open) .portfolio-guide__companion-plinth {
   background: radial-gradient(
     ellipse 115% 98% at 100% 50%,
-    rgba(64, 255, 160, 0.22) 0%,
-    rgba(48, 240, 144, 0.1) 42%,
+    rgba(150, 192, 212, 0.1) 0%,
+    var(--portfolio-marker-warm, rgba(212, 188, 168, 0.04)) 40%,
     transparent 72%
   );
   filter: blur(7px);
-  opacity: 0.28;
+  opacity: 0.18;
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop:not(.is-open) .portfolio-guide__marker-visual {
-  filter: drop-shadow(-1px 0 14px rgba(48, 255, 144, 0.32))
-    drop-shadow(-2px 0 24px rgba(64, 255, 160, 0.2));
+  filter: drop-shadow(-2px 0 12px rgba(0, 0, 0, 0.22))
+    drop-shadow(-1px 0 14px rgba(150, 192, 212, 0.16));
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop:not(.is-open) .portfolio-guide__marker-halo {
@@ -267,56 +281,56 @@
   height: 380%;
   background: radial-gradient(
     ellipse 100% 86% at 100% 50%,
-    rgba(80, 255, 168, 0.36) 0%,
-    rgba(48, 255, 144, 0.18) 34%,
-    rgba(32, 240, 128, 0.07) 56%,
+    rgba(160, 204, 224, 0.18) 0%,
+    rgba(120, 168, 188, 0.08) 34%,
+    rgba(90, 130, 150, 0.03) 56%,
     transparent 78%
   );
   filter: blur(7px);
-  opacity: 0.46;
+  opacity: 0.3;
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop:not(.is-open) .portfolio-guide__marker-body {
   background: linear-gradient(
     180deg,
-    rgba(220, 255, 236, 0.96) 0%,
-    rgba(148, 248, 188, 0.9) 24%,
-    rgba(88, 198, 142, 0.86) 56%,
-    rgba(64, 168, 118, 0.82) 100%
+    rgba(220, 238, 246, 0.94) 0%,
+    rgba(158, 198, 218, 0.88) 24%,
+    rgba(72, 92, 104, 0.9) 56%,
+    rgba(28, 36, 42, 0.94) 100%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    inset 0 -1px 1px rgba(48, 180, 120, 0.12),
-    inset -1px 0 0 rgba(255, 255, 255, 0.55),
-    0 0 12px rgba(48, 255, 144, 0.28),
-    0 0 22px rgba(64, 255, 160, 0.18),
-    0 0 36px rgba(80, 255, 168, 0.1);
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.12),
+    inset -1px 0 0 rgba(255, 255, 255, 0.45),
+    0 0 10px rgba(150, 192, 212, 0.14),
+    0 0 18px rgba(120, 168, 188, 0.08),
+    0 0 28px rgba(100, 140, 160, 0.04);
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop:not(.is-open) .portfolio-guide__marker-core {
   background: radial-gradient(
     circle at 38% 32%,
-    rgba(240, 255, 248, 1) 0%,
-    rgba(180, 255, 216, 0.92) 38%,
-    rgba(96, 240, 160, 0.55) 68%,
+    rgba(248, 252, 254, 1) 0%,
+    rgba(198, 228, 238, 0.92) 38%,
+    rgba(120, 168, 188, 0.5) 68%,
     transparent 84%
   );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 0 10px rgba(64, 255, 160, 0.38),
-    0 0 20px rgba(48, 255, 144, 0.24);
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 10px rgba(180, 220, 235, 0.36),
+    0 0 20px rgba(140, 190, 210, 0.2);
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop:not(.is-open) .portfolio-guide__marker-edge-seam {
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(120, 255, 184, 0.55) 20%,
-    rgba(160, 255, 200, 0.92) 50%,
-    rgba(120, 255, 184, 0.55) 80%,
+    rgba(170, 210, 226, 0.5) 20%,
+    rgba(210, 234, 244, 0.9) 50%,
+    rgba(170, 210, 226, 0.5) 80%,
     transparent 100%
   );
-  box-shadow: 0 0 8px rgba(64, 255, 160, 0.32);
+  box-shadow: 0 0 6px rgba(150, 192, 212, 0.16);
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop .portfolio-guide__companion.is-awake .portfolio-guide__marker-visual,
@@ -324,8 +338,8 @@
   .portfolio-guide__companion:focus-visible
   .portfolio-guide__marker-visual {
   transform: translateX(-3px);
-  filter: drop-shadow(-2px 0 16px rgba(48, 255, 144, 0.36))
-    drop-shadow(-3px 0 28px rgba(80, 255, 168, 0.24));
+  filter: drop-shadow(-2px 0 14px rgba(0, 0, 0, 0.24))
+    drop-shadow(-3px 0 18px rgba(150, 192, 212, 0.18));
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop .portfolio-guide__companion.is-awake .portfolio-guide__marker-body,
@@ -333,20 +347,20 @@
   .portfolio-guide__companion:focus-visible
   .portfolio-guide__marker-body {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    inset 0 -1px 1px rgba(48, 180, 120, 0.1),
-    inset -1px 0 0 rgba(255, 255, 255, 0.6),
-    0 0 16px rgba(48, 255, 144, 0.32),
-    0 0 28px rgba(64, 255, 160, 0.22),
-    0 0 42px rgba(80, 255, 168, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.1),
+    inset -1px 0 0 rgba(255, 255, 255, 0.55),
+    0 0 12px rgba(150, 192, 212, 0.16),
+    0 0 20px rgba(120, 168, 188, 0.1),
+    0 0 32px rgba(100, 140, 160, 0.05);
 }
 
 .portfolio-guide--seam-marker.is-light-backdrop .portfolio-guide__companion.is-awake .portfolio-guide__marker-halo,
 .portfolio-guide--seam-marker.is-light-backdrop
   .portfolio-guide__companion:focus-visible
   .portfolio-guide__marker-halo {
-  opacity: 0.54;
-  filter: blur(8px);
+  opacity: 0.34;
+  filter: blur(7px);
 }
 
 /* Inner core — always visible */
@@ -364,13 +378,13 @@
     circle at 38% 32%,
     var(--portfolio-marker-core-hot) 0%,
     var(--portfolio-marker-core) 45%,
-    rgba(88, 128, 108, 0.4) 70%,
+    rgba(100, 140, 160, 0.4) 70%,
     transparent 82%
   );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 0 8px rgba(118, 158, 138, 0.52),
-    0 0 14px rgba(98, 138, 118, 0.28);
+    0 0 6px rgba(150, 192, 212, 0.28),
+    0 0 12px rgba(120, 168, 188, 0.14);
   opacity: 1;
   pointer-events: none;
   transition:
@@ -394,7 +408,7 @@
     color-mix(in srgb, var(--portfolio-marker-seam) 60%, transparent) 80%,
     transparent 100%
   );
-  box-shadow: 0 0 4px rgba(108, 148, 128, 0.4);
+  box-shadow: 0 0 3px rgba(140, 180, 200, 0.2);
   opacity: 1;
   pointer-events: none;
 }
@@ -405,8 +419,8 @@
   .portfolio-guide__companion:focus-visible
   .portfolio-guide__marker-visual {
   transform: translateX(-3px);
-  filter: drop-shadow(-6px 2px 16px rgba(88, 128, 108, 0.45))
-    drop-shadow(-2px 0 24px rgba(108, 148, 128, 0.32));
+  filter: drop-shadow(-6px 2px 14px rgba(0, 0, 0, 0.3))
+    drop-shadow(-2px 0 16px rgba(140, 180, 200, 0.18));
 }
 
 .portfolio-guide--seam-marker:not(.is-light-backdrop) .portfolio-guide__companion.is-awake .portfolio-guide__marker-body,
@@ -418,16 +432,16 @@
     inset 0 -2px 3px rgba(0, 0, 0, 0.38),
     inset -1px 0 0 rgba(255, 255, 255, 0.14),
     -3px 3px 8px rgba(0, 0, 0, 0.42),
-    0 0 22px rgba(118, 158, 138, 0.48),
-    0 0 38px rgba(98, 138, 118, 0.26);
+    0 0 16px rgba(150, 192, 212, 0.24),
+    0 0 26px rgba(120, 168, 188, 0.12);
 }
 
 .portfolio-guide--seam-marker:not(.is-light-backdrop) .portfolio-guide__companion.is-awake .portfolio-guide__marker-halo,
 .portfolio-guide--seam-marker:not(.is-light-backdrop)
   .portfolio-guide__companion:focus-visible
   .portfolio-guide__marker-halo {
-  opacity: 0.78;
-  filter: blur(11px);
+  opacity: 0.46;
+  filter: blur(9px);
 }
 
 .portfolio-guide--seam-marker

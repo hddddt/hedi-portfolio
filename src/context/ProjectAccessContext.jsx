@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const ProjectAccessContext = createContext(null);
+/** Legacy key — cleared on load so old sessions do not skip the gate */
 const PROJECT_UNLOCKED_KEY = 'portfolioProjectUnlocked';
 
 /** Client-side gate for portfolio case details — use server auth for confidential work. */
@@ -11,8 +12,8 @@ export function ProjectAccessProvider({ children }) {
 
   useEffect(() => {
     try {
-      const saved = window.sessionStorage.getItem(PROJECT_UNLOCKED_KEY) === 'true';
-      if (saved) setUnlocked(true);
+      sessionStorage.removeItem(PROJECT_UNLOCKED_KEY);
+      localStorage.removeItem(PROJECT_UNLOCKED_KEY);
     } catch {
       // Ignore storage failures (private mode / disabled storage).
     }
@@ -20,11 +21,6 @@ export function ProjectAccessProvider({ children }) {
 
   const persistUnlock = useCallback(() => {
     setUnlocked(true);
-    try {
-      window.sessionStorage.setItem(PROJECT_UNLOCKED_KEY, 'true');
-    } catch {
-      // Ignore storage failures.
-    }
   }, []);
 
   const requestAccess = useCallback(

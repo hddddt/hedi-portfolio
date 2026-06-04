@@ -1,6 +1,6 @@
 /**
- * Three independent organic masks — motion driven by uniforms from organicFieldMotion.js.
- * Calm silhouette, living interior: soft superellipse fields + internal density.
+ * Opening hero — compound editorial pigment field (light mode).
+ * Three masks feed one envelope + weighted pigment blend (not stacked orbs).
  */
 
 const VERTEX_SRC = `
@@ -126,11 +126,25 @@ float fieldMaskCore(
   float nudge = broadEdgeNudge(p, seed, wobbleAmp * 0.55);
   float breath = radialBreath(p, seed, rot, wobbleAmp * 0.35);
 
-  float d = superMetric(p / max(1.0 + wobble + nudge + breath, 0.94), shapeN);
+  vec2 q = p;
+  if (u_light > 0.5) {
+    float lobes = sin(ang * 2.0 + seed * 1.3 + rot * 0.25) * 0.068;
+    lobes += cos(ang * 3.0 - seed * 0.75) * 0.04;
+    q.x *= 1.0 + lobes + sin(ang + rot * 0.35) * 0.048;
+    q.y *= 1.0 - lobes * 0.52 + cos(ang * 1.5 + seed * 1.1) * 0.042;
+  }
+
+  float d = superMetric(q / max(1.0 + wobble + nudge + breath, 0.94), shapeN);
   return softMask(d, edgeStart, edgeEnd);
 }
 
 float fieldMaskGreen(vec2 uv, vec2 center, vec2 radii, float scale, float seed, float rot) {
+  if (u_light > 0.5) {
+    return fieldMaskCore(
+      uv, center, radii, scale, 1.78, seed, rot,
+      0.0038, 0.76, 1.06, 0.18
+    );
+  }
   float shapeN = mix(2.58, 2.82, u_organic * 0.35);
   return fieldMaskCore(
     uv, center, radii, scale, shapeN, seed, rot,
@@ -139,6 +153,12 @@ float fieldMaskGreen(vec2 uv, vec2 center, vec2 radii, float scale, float seed, 
 }
 
 float fieldMaskBlue(vec2 uv, vec2 center, vec2 radii, float scale, float seed, float rot) {
+  if (u_light > 0.5) {
+    return fieldMaskCore(
+      uv, center, radii, scale, 2.18, seed, rot,
+      0.0032, 0.78, 1.04, 0.14
+    );
+  }
   float shapeN = mix(2.42, 2.62, u_organic * 0.4);
   return fieldMaskCore(
     uv, center, radii, scale, shapeN, seed, rot,
@@ -147,6 +167,12 @@ float fieldMaskBlue(vec2 uv, vec2 center, vec2 radii, float scale, float seed, f
 }
 
 float fieldMaskYellow(vec2 uv, vec2 center, vec2 radii, float scale, float seed, float rot) {
+  if (u_light > 0.5) {
+    return fieldMaskCore(
+      uv, center, radii, scale, 2.12, seed, rot,
+      0.0032, 0.74, 1.02, 0.1
+    );
+  }
   float shapeN = mix(2.46, 2.58, u_organic * 0.25);
   return fieldMaskCore(
     uv, center, radii, scale, shapeN, seed, rot,
@@ -261,45 +287,97 @@ vec3 heroChroma(vec3 col, float sat) {
   return clamp(mix(vec3(l), col, sat), 0.0, 1.0);
 }
 
+float editorialMottle(vec2 p, float seed) {
+  float a = fbm(p * 2.15 + vec2(seed * 1.2, seed * 0.5));
+  float b = fbm(p * 3.6 + vec2(seed * 2.1, 1.7));
+  return (a - 0.5) * 0.032 + (b - 0.5) * 0.018;
+}
+
+float pigmentCoreLobe(vec2 p, vec2 coreBias, float power) {
+  vec2 c = coreBias * 0.14;
+  float rc = length(p - c);
+  return exp(-rc * rc * power);
+}
+
+float pigmentBodyField(float r, float reach) {
+  float t = 1.0 - smoothstep(0.0, reach, r);
+  return t * t * (3.0 - 2.0 * t);
+}
+
+vec3 pigmentInternalTone(vec2 p, float seed, vec3 base, float amp) {
+  float n1 = fbm(p * 2.05 + vec2(seed * 1.05, seed * 0.35)) - 0.5;
+  float n2 = fbm(p * 4.8 + vec2(seed * 2.2, 1.6)) - 0.5;
+  return base * (1.0 + (n1 * 0.55 + n2 * 0.25) * amp);
+}
+
+/*
+ * Airbrush pigment mass — off-center core, broad field, atmospheric fade, thin haze.
+ * No white peaks, no edge rim; core color keyed to core lobe only (anti-ring).
+ */
+vec3 editorialPigmentMass(
+  vec2 p,
+  float r,
+  vec2 coreBias,
+  vec3 ink,
+  vec3 field,
+  vec3 coreCol,
+  vec3 hazeTint,
+  float seed,
+  float corePower,
+  float fieldReach,
+  float hazeStrength
+) {
+  float core = pigmentCoreLobe(p, coreBias, corePower);
+  float body = pigmentBodyField(r, fieldReach);
+  float density = clamp(core * 0.7 + body * 0.52 - core * body * 0.12, 0.0, 1.0);
+  density += editorialMottle(p, seed) * smoothstep(0.28, 0.88, r) * 0.14;
+  density = clamp(density, 0.0, 1.0);
+
+  vec3 toned = pigmentInternalTone(p, seed, field, 0.14);
+  vec3 col = mix(ink, toned, smoothstep(0.04, 0.58, density));
+  col = mix(col, coreCol, smoothstep(0.2, 0.72, core));
+
+  float atm = smoothstep(0.48, 0.9, r);
+  col = mix(col, mix(col, field * 0.9, 0.45), atm * 0.38);
+
+  float haze = smoothstep(0.76, 1.04, r) * hazeStrength;
+  col = mix(col, hazeTint, haze * 0.22);
+
+  return col;
+}
+
+vec3 editorialAmberPigment(vec2 p, float r) {
+  vec2 coreBias = vec2(0.02, 0.01);
+  vec3 ink = vec3(0.72, 0.34, 0.04);
+  vec3 field = vec3(0.86, 0.46, 0.08);
+  vec3 coreCol = vec3(0.94, 0.58, 0.13);
+  vec3 haze = vec3(0.94, 0.82, 0.58);
+  float core = pigmentCoreLobe(p, coreBias, 3.6);
+  float body = pigmentBodyField(r, 0.68);
+  float density = clamp(core * 0.75 + body * 0.5 - core * body * 0.1, 0.0, 1.0);
+  density += editorialMottle(p, 4.6) * 0.08;
+  vec3 col = mix(ink, pigmentInternalTone(p, 4.6, field, 0.1), smoothstep(0.06, 0.5, density));
+  col = mix(col, coreCol, smoothstep(0.22, 0.68, core));
+  col = mix(col, haze, smoothstep(0.7, 0.98, r) * 0.18);
+  return heroChroma(col, 0.96);
+}
+
 vec3 meshGreenHero(vec2 p, float rot) {
   float r = length(p);
-  float cloud = (fbm(p * 1.6 + vec2(rot * 0.1, u_time * 0.008)) - 0.5) * 0.048;
-  float micro = (vnoise(p * 6.5 + vec2(rot * 0.15, u_time * 0.012)) - 0.5) * 0.022;
-  float layer = (fbm(p * 3.2 + vec2(rot * 0.08, u_time * 0.006)) - 0.5) * 0.032;
-  float t = clamp(r * 0.42 + cloud + micro + layer * 0.5, 0.0, 1.0);
-  vec3 deep = vec3(0.16, 0.5, 0.38);
-  vec3 shade = vec3(0.24, 0.62, 0.44);
-  vec3 mid = vec3(0.32, 0.74, 0.5);
-  vec3 accent = vec3(0.4, 0.82, 0.56);
-  vec3 lift = vec3(0.5, 0.88, 0.64);
-  vec3 hi = vec3(0.58, 0.94, 0.7);
-  vec3 wash = vec3(0.68, 0.96, 0.78);
-  vec3 mist = vec3(0.76, 0.98, 0.84);
-  vec3 col = heroRichGradient(t, r, p, rot, 1.3, deep, shade, mid, accent, lift, hi, wash, mist);
-  col = heroLayerBlur(
-    p, rot, 1.3, col,
-    vec3(0.44, 0.86, 0.58),
-    vec3(0.62, 0.96, 0.72),
-    0.38
+  vec3 col = editorialPigmentMass(
+    p,
+    r,
+    vec2(0.1, 0.03),
+    vec3(0.05, 0.28, 0.2),
+    vec3(0.11, 0.44, 0.3),
+    vec3(0.18, 0.5, 0.36),
+    vec3(0.82, 0.9, 0.84),
+    1.3,
+    2.6,
+    0.94,
+    0.32
   );
-  float tBlur = clamp(length(p + vec2(0.035, -0.018)) * 0.36 + fbm(p * 1.05) * 0.1, 0.0, 1.0);
-  vec3 blurWash = mix(vec3(0.48, 0.82, 0.58), vec3(0.76, 0.98, 0.8), smoothstep(0.15, 0.88, tBlur));
-  col = mix(col, blurWash, 0.28 * (1.0 - smoothstep(0.25, 0.92, r)));
-  float dome = 1.0 - smoothstep(0.38, 1.08, r);
-  col *= 0.96 + dome * 0.06;
-  col += internalHighlight(p, 1.3, vec3(0.1, 0.2, 0.12), 0.06);
-  float vein = heroVein(p, rot, 1.3);
-  col += vec3(0.05, 0.1, 0.06) * (vein - 0.5) * 0.055 * (1.0 - r * 0.38);
-  col += heroFineLines(p, rot, 1.3, vec3(0.04, 0.09, 0.05), 0.048);
-  col += heroFieldTexture(
-    p, rot, 1.3,
-    vec3(0.07, 0.14, 0.08),
-    vec3(0.06, 0.12, 0.07)
-  );
-  float grain = (vnoise(p * 16.0 + vec2(rot * 0.12, r)) - 0.5) * 0.034;
-  float grain2 = (vnoise(p * 34.0 + vec2(rot * 0.2, r * 1.4)) - 0.5) * 0.018;
-  col += vec3(grain * 0.014 + grain2 * 0.008, grain * 0.032 + grain2 * 0.012, grain * 0.02 + grain2 * 0.009);
-  return heroChroma(col, 1.28) * 1.16;
+  return heroChroma(col, 0.93);
 }
 
 vec3 meshGreen(vec2 p, float rot) {
@@ -349,43 +427,20 @@ vec3 meshGreen(vec2 p, float rot) {
 
 vec3 meshBlueHero(vec2 p, float flow, float rot) {
   float r = length(p);
-  float cloud = (fbm(p * 1.75 + vec2(flow * 0.03, u_time * 0.01)) - 0.5) * 0.046;
-  float micro = (vnoise(p * 7.5 + vec2(rot * 0.2, flow * 0.03)) - 0.5) * 0.024;
-  float layer = (fbm(p * 3.4 + vec2(flow * 0.02, rot * 0.06)) - 0.5) * 0.03;
-  float t = clamp(r * 0.44 + cloud + micro + layer * 0.45, 0.0, 1.0);
-  vec3 deep = vec3(0.12, 0.22, 0.62);
-  vec3 shade = vec3(0.18, 0.3, 0.72);
-  vec3 mid = vec3(0.24, 0.38, 0.8);
-  vec3 accent = vec3(0.3, 0.44, 0.86);
-  vec3 lift = vec3(0.36, 0.5, 0.9);
-  vec3 hi = vec3(0.44, 0.56, 0.94);
-  vec3 wash = vec3(0.52, 0.62, 0.96);
-  vec3 mist = vec3(0.62, 0.7, 0.98);
-  vec3 col = heroRichGradient(t, r, p, rot, 2.9, deep, shade, mid, accent, lift, hi, wash, mist);
-  col = heroLayerBlur(
-    p, rot, 2.9, col,
-    vec3(0.34, 0.42, 0.82),
-    vec3(0.48, 0.54, 0.9),
-    0.3
+  vec3 col = editorialPigmentMass(
+    p,
+    r,
+    vec2(-0.09, 0.02),
+    vec3(0.1, 0.12, 0.46),
+    vec3(0.16, 0.24, 0.58),
+    vec3(0.24, 0.34, 0.72),
+    vec3(0.8, 0.84, 0.92),
+    2.9,
+    3.8,
+    0.82,
+    0.26
   );
-  float tBlur = clamp(length(p + vec2(-0.028, 0.022)) * 0.34 + fbm(p * 1.08 + vec2(flow * 0.02, 0.0)) * 0.11, 0.0, 1.0);
-  vec3 blurWash = mix(vec3(0.36, 0.44, 0.78), vec3(0.54, 0.6, 0.92), smoothstep(0.12, 0.9, tBlur));
-  col = mix(col, blurWash, 0.2 * (1.0 - smoothstep(0.22, 0.94, r)));
-  float dome = 1.0 - smoothstep(0.4, 1.1, r);
-  col *= 0.93 + dome * 0.05;
-  col += internalHighlight(p, 2.9, vec3(0.12, 0.14, 0.28), 0.038);
-  float vein = heroVein(p, rot, 2.9);
-  col += vec3(0.06, 0.07, 0.12) * (vein - 0.5) * 0.04 * (1.0 - r * 0.4);
-  col += heroFineLines(p, rot, 2.9, vec3(0.06, 0.07, 0.11), 0.034);
-  col += heroFieldTexture(
-    p, rot, 2.9,
-    vec3(0.07, 0.08, 0.14),
-    vec3(0.06, 0.07, 0.12)
-  );
-  float grain = (vnoise(p * 18.0 + u_time * 0.015) - 0.5) * 0.028;
-  float grain2 = (vnoise(p * 36.0 + vec2(rot * 0.14, r * 1.3)) - 0.5) * 0.014;
-  col += vec3(grain * 0.014 + grain2 * 0.008, grain * 0.018 + grain2 * 0.008, grain * 0.028 + grain2 * 0.01);
-  return heroChroma(col, 1.14) * 1.08;
+  return heroChroma(col, 0.94);
 }
 
 vec3 meshBlue(vec2 p, float flow, float rot) {
@@ -413,35 +468,7 @@ vec3 meshBlue(vec2 p, float flow, float rot) {
 }
 
 vec3 meshAmberHero(vec2 p) {
-  float r = length(p);
-  float cloud = (fbm(p * 1.7 + vec2(u_time * 0.009, 4.6)) - 0.5) * 0.042;
-  float micro = (vnoise(p * 8.0) - 0.5) * 0.024;
-  float layer = (fbm(p * 3.0 + vec2(u_time * 0.007, 4.6)) - 0.5) * 0.028;
-  float t = clamp(r * 0.43 + micro + cloud * 0.35 + layer * 0.4, 0.0, 1.0);
-  vec3 deep = vec3(0.92, 0.42, 0.04);
-  vec3 shade = vec3(0.98, 0.54, 0.08);
-  vec3 mid = vec3(1.0, 0.64, 0.12);
-  vec3 accent = vec3(1.0, 0.72, 0.16);
-  vec3 lift = vec3(1.0, 0.8, 0.22);
-  vec3 hi = vec3(1.0, 0.88, 0.32);
-  vec3 wash = vec3(1.0, 0.92, 0.44);
-  vec3 mist = vec3(1.0, 0.96, 0.56);
-  vec3 col = heroRichGradient(t, r, p, 0.0, 4.6, deep, shade, mid, accent, lift, hi, wash, mist);
-  float dome = 1.0 - smoothstep(0.38, 1.08, r);
-  col *= 0.98 + dome * 0.1;
-  col += internalHighlight(p, 4.6, vec3(0.28, 0.12, 0.02), 0.072);
-  float vein = heroVein(p, 0.0, 4.6);
-  col += vec3(0.18, 0.08, 0.01) * (vein - 0.5) * 0.055 * (1.0 - r * 0.4);
-  col += heroFineLines(p, 0.0, 4.6, vec3(0.16, 0.07, 0.01), 0.046);
-  col += heroFieldTexture(
-    p, 0.0, 4.6,
-    vec3(0.2, 0.1, 0.02),
-    vec3(0.16, 0.08, 0.01)
-  );
-  float grain = (vnoise(p * 17.0) - 0.5) * 0.03;
-  float grain2 = (vnoise(p * 33.0 + vec2(r * 1.2, 4.6)) - 0.5) * 0.016;
-  col += vec3(grain * 0.05 + grain2 * 0.016, grain * 0.034 + grain2 * 0.011, grain * 0.012 + grain2 * 0.004);
-  return heroChroma(col, 1.3) * 1.18;
+  return editorialAmberPigment(p, length(p));
 }
 
 vec3 meshAmber(vec2 p) {
@@ -474,14 +501,18 @@ vec3 meshAmber(vec2 p) {
 
 vec4 layerFromMask(float mask, vec3 rgb, float opacity, vec2 pLocal, float seed, float internalAmp) {
   if (mask < 0.004) return vec4(0.0);
-  float amp = internalAmp * (u_light > 0.5 ? 1.62 : 1.0);
-  float dens = internalDensity(pLocal, seed, amp);
-  float densN = clamp(dens, u_light > 0.5 ? 0.9 : 0.94, u_light > 0.5 ? 1.1 : 1.06);
+  if (u_light > 0.5) {
+    float a = clamp(mask * opacity * u_globalOpacity, 0.0, 0.68);
+    vec3 premul = rgb * a;
+    return vec4(premul, a);
+  }
+  float dens = internalDensity(pLocal, seed, internalAmp);
+  float densN = clamp(dens, 0.94, 1.06);
   vec3 col = rgb * mix(1.06, 1.0, densN);
-  col *= 1.0 + (densN - 1.0) * (u_light > 0.5 ? 3.6 : 2.8);
+  col *= 1.0 + (densN - 1.0) * 2.8;
   float a = mask * opacity * u_globalOpacity;
-  a *= mix(1.0, densN, u_light > 0.5 ? 0.22 : 0.12);
-  a = clamp(a, 0.0, u_light > 0.5 ? 0.94 : 0.88);
+  a *= mix(1.0, densN, 0.12);
+  a = clamp(a, 0.0, 0.88);
   return vec4(col * a, a);
 }
 
@@ -496,6 +527,44 @@ vec4 screenLayer(vec4 dst, vec4 src) {
   vec3 screenUn = 1.0 - (1.0 - srcUn) * (1.0 - dstUn);
   vec4 screened = vec4(screenUn * src.a, src.a);
   return over(dst, screened);
+}
+
+float compoundEnvelope(float a, float b, float c) {
+  float uni = 1.0 - (1.0 - a) * (1.0 - b) * (1.0 - c * 0.88);
+  float peak = max(a, max(b, c * 0.92));
+  return mix(peak, uni, 0.52);
+}
+
+vec3 pigmentMultiply(vec3 a, vec3 b) {
+  return sqrt(clamp(a * b * 1.04, vec3(0.0003), vec3(1.0)));
+}
+
+vec4 compoundEditorialField(
+  float maskA,
+  float maskB,
+  float maskC,
+  vec3 rgbA,
+  vec3 rgbB,
+  vec3 rgbC,
+  float opA,
+  float opB,
+  float opC
+) {
+  float hub = smoothstep(0.035, 0.2, maskA * maskB);
+  vec3 hubCol = mix(mix(rgbA, rgbB, 0.5), pigmentMultiply(rgbA, rgbB), hub * 0.62);
+  hubCol = mix(hubCol, vec3(0.09, 0.33, 0.34), hub * 0.18);
+
+  float wG = pow(maskA, 1.05) * 0.54;
+  float wB = pow(maskB, 1.02) * 0.32;
+  float wA = pow(maskC, 1.15) * 0.11;
+  float wSum = wG + wB + wA + 0.0001;
+  vec3 col = (rgbA * wG + rgbB * wB + rgbC * wA) / wSum;
+  col = mix(col, hubCol, hub * 0.45);
+
+  float envelope = compoundEnvelope(maskA, maskB, maskC);
+  float opMix = (opA * maskA + opB * maskB + opC * maskC) / (maskA + maskB + maskC + 0.001);
+  float alpha = clamp(envelope * opMix * u_globalOpacity, 0.0, 0.72);
+  return vec4(col * alpha, alpha);
 }
 
 void main() {
@@ -529,19 +598,26 @@ void main() {
 
   float opacityC = u_opacity.z * u_extraC;
   if (u_light > 0.5) {
-    opacityC = min(opacityC * 1.06, 0.74);
+    opacityC = min(opacityC * 0.96, 0.58);
   }
 
-  vec4 layerB = layerFromMask(maskB, rgbB, u_opacity.y, pB, 2.9, 0.04);
-  vec4 layerC = layerFromMask(maskC, rgbC, opacityC, pC, 4.6, 0.06);
-
   vec4 acc = vec4(0.0);
-  acc = over(acc, layerFromMask(maskA, rgbA, u_opacity.x, pA, 1.3, 0.08));
-  /* Light opening: over; dark chapters: over for blue (atmospheric), screen for amber accent */
   if (u_light > 0.5) {
-    acc = over(acc, layerB);
-    acc = over(acc, layerC);
+    acc = compoundEditorialField(
+      maskA,
+      maskB,
+      maskC,
+      rgbA,
+      rgbB,
+      rgbC,
+      u_opacity.x,
+      u_opacity.y,
+      opacityC
+    );
   } else {
+    vec4 layerB = layerFromMask(maskB, rgbB, u_opacity.y, pB, 2.9, 0.04);
+    vec4 layerC = layerFromMask(maskC, rgbC, opacityC, pC, 4.6, 0.0);
+    acc = over(acc, layerFromMask(maskA, rgbA, u_opacity.x, pA, 1.3, 0.08));
     acc = screenLayer(acc, layerB);
     acc = screenLayer(acc, layerC);
   }
@@ -550,9 +626,14 @@ void main() {
   float grainMed = (vnoise(uv * 240.0 + vec2(31.0, 9.2) + u_time * 0.008) - 0.5) * 0.024;
   float grainUltra = (hash21(uv * 680.0 + vec2(17.0, 41.0)) - 0.5) * 0.014;
   float grain = grainFine + grainMed * 0.7 + grainUltra * 0.45;
-  float grainGain = u_light > 0.5 ? 1.48 : 1.0;
-  acc.rgb += vec3(grain * 0.026, grain * 0.03, grain * 0.022) * u_globalOpacity * grainGain
-    * smoothstep(0.06, 0.38, acc.a);
+  float grainGain = u_light > 0.5 ? 0.16 : 1.0;
+  acc.rgb += vec3(grain * 0.012, grain * 0.014, grain * 0.011) * u_globalOpacity * grainGain
+    * smoothstep(0.14, 0.44, acc.a);
+  if (u_light > 0.5 && acc.a > 0.02) {
+    float g = hash21(uv * 820.0 + vec2(4.0, 19.0)) - 0.5;
+    vec3 film = acc.rgb + vec3(g * 0.005, g * 0.006, g * 0.004);
+    acc.rgb = mix(acc.rgb, film, acc.a * 0.1);
+  }
 
   gl_FragColor = vec4(clamp(acc.rgb, 0.0, 1.0), clamp(acc.a, 0.0, 1.0));
 }

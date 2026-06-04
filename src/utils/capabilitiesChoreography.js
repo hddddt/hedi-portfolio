@@ -750,33 +750,6 @@ export function measureCapabilityWorkHandoff(floatIndex, panelCount, capRect = n
   return clamp01((floatIndex - (last + 0.06)) / (releaseEnd - (last + 0.06)));
 }
 
-function parseRgba(str) {
-  const m = String(str).match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/);
-  if (!m) return { r: 0, g: 0, b: 0, a: 0 };
-  return {
-    r: Number(m[1]),
-    g: Number(m[2]),
-    b: Number(m[3]),
-    a: m[4] != null ? Number(m[4]) : 1,
-  };
-}
-
-function formatRgba({ r, g, b, a }) {
-  return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a.toFixed(3)})`;
-}
-
-function blendRgba(a, b, t) {
-  const u = clamp01(t);
-  const c0 = parseRgba(a);
-  const c1 = parseRgba(b);
-  return formatRgba({
-    r: c0.r + (c1.r - c0.r) * u,
-    g: c0.g + (c1.g - c0.g) * u,
-    b: c0.b + (c1.b - c0.b) * u,
-    a: c0.a + (c1.a - c0.a) * u,
-  });
-}
-
 /**
  * Scroll-driven ambient tokens for capability residual fields.
  * @param {number} floatIndex
@@ -800,18 +773,16 @@ export function capabilityAmbientStyle(floatIndex, themes, capIds) {
 
   const n = capIds.length;
   const fi = Math.max(0, Math.min(n - 1, floatIndex ?? 0));
-  const i0 = Math.floor(fi);
-  const i1 = Math.min(n - 1, i0 + 1);
-  const t = fi - i0;
-  const theme0 = themes[capIds[i0]] ?? themes[capIds[0]];
-  const theme1 = themes[capIds[i1]] ?? theme0;
+  /* Discrete themes per panel — avoid mid-scroll RGB blend that reads as three blobs clustering. */
+  const panelIdx = Math.min(n - 1, Math.max(0, Math.round(fi)));
+  const theme = themes[capIds[panelIdx]] ?? themes[capIds[0]];
 
   return {
-    themeId: t < 0.5 ? capIds[i0] : capIds[i1],
-    '--cap-residual-a': blendRgba(theme0.residualA, theme1.residualA, t),
-    '--cap-residual-b': blendRgba(theme0.residualB, theme1.residualB, t),
-    '--cap-residual-c': blendRgba(theme0.residualC, theme1.residualC, t),
-    '--cap-wash': blendRgba(theme0.wash, theme1.wash, t),
+    themeId: capIds[panelIdx],
+    '--cap-residual-a': theme.residualA,
+    '--cap-residual-b': theme.residualB,
+    '--cap-residual-c': theme.residualC,
+    '--cap-wash': theme.wash,
   };
 }
 

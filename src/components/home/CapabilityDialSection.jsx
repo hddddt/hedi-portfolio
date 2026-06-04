@@ -42,6 +42,11 @@ function wheelDeltaY(e) {
   return dy;
 }
 
+function applyCapStepRelease(inputLockRef, accumResetRef) {
+  inputLockRef.current = performance.now() + CAP_STEP_INPUT_LOCK_MS;
+  accumResetRef.current?.();
+}
+
 function resolveCapWorkHandoffY(cachedY) {
   if (cachedY != null && Number.isFinite(cachedY)) return cachedY;
   const workTrack = document.getElementById('home-work-strongest');
@@ -65,6 +70,16 @@ function capScrollPastWorkHandoff(cachedY, bufferPx = 12) {
   return window.scrollY >= handoffY - bufferPx && isWorkChapterPinned(workTrack);
 }
 
+/** Work chapter owns wheel/scroll — Cap handler must not capture. */
+function workChapterOwnsScroll(activeId, workHandoffY, vh = window.innerHeight) {
+  const workTrack = document.getElementById('home-work-strongest');
+  if (!workTrack) return activeId === 'home-work-narrative';
+  if (activeId === 'home-work-narrative') return true;
+  if (capScrollPastWorkHandoff(workHandoffY, 24)) return true;
+  const wr = workTrack.getBoundingClientRect();
+  return wr.top <= PIN_TOP_TOLERANCE_PX + 16 && wr.bottom > vh * 0.4;
+}
+
 /** Left-edge capability rail — large-radius arc (open parenthesis curve). */
 const ARC_VIEW_H = 1000;
 const ARC_CHORD_INSET = 72;
@@ -72,12 +87,16 @@ const ARC_R = 800;
 const ARC_PATH_D = `M 0 ${ARC_CHORD_INSET} A ${ARC_R} ${ARC_R} 0 0 1 0 ${ARC_VIEW_H - ARC_CHORD_INSET}`;
 const ARC_VIEW_W = 360;
 const FIELD_TILT_DEG = -45;
-const WHEEL_STEP_THRESHOLD = 22;
+/** Same scroll impulse for every cap step (panel N→N+1 and AI continuity→case). */
+const CAP_WHEEL_STEP_THRESHOLD = 22;
+/** Brief window after chapter entry — only block wheel while snap/tween runs. */
+const CAP_ENTRY_LATCH_MS = 480;
 const SCROLL_TWEEN_MS = 480;
-const CHAPTER_SNAP_SETTLE_MS = 280;
+const CHAPTER_SNAP_SETTLE_MS = 200;
 const PANEL_SNAP_EPSILON = 0.05;
-/** Ignore further wheel events in the same gesture until the current step tween finishes. */
-const STEP_INPUT_LOCK_MS = 480;
+const CAP_STEP_INPUT_LOCK_MS = 320;
+/** Last-panel release zone — native scroll into Work (no wheel hijack). */
+const CAP_RELEASE_NATIVE_THRESHOLD = 0.06;
 const PIN_TOP_TOLERANCE_PX = 3;
 
 /** Sticky chapter is pinned only while its top edge sits at the viewport top (not after scrolling past). */
@@ -164,6 +183,10 @@ export function CapabilityDialSection({ trackRef }) {
   const [panelTransit, setPanelTransit] = useState(false);
   const chapterPinnedRef = useRef(false);
   const forceFirstPanelOnEntryRef = useRef(false);
+  /** True only while settling onto panel 0 after Opening — not for the whole Cap chapter. */
+  const openingEntrySettlingRef = useRef(false);
+  const [openingEntrySettling, setOpeningEntrySettling] = useState(false);
+  const openingEntrySnapPendingRef = useRef(false);
   /** Brief window after entering from above — block wheel only while snapping to panel 0. */
   const entryLatchUntilRef = useRef(0);
   const prevActiveIdRef = useRef(null);
@@ -230,6 +253,29 @@ export function CapabilityDialSection({ trackRef }) {
     return () => setCapabilityFloat(null);
   }, [activeId, floatIndex, setCapabilityFloat]);
 
+  /** Align window scroll to a panel index even when step anchor already matches (fixes drift on chapter entry). */
+  const alignScrollToPanel = useCallback(
+    (index, behavior = 'auto') => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const clamped = Math.min(n - 1, Math.max(0, index));
+      const targetY = trackScrollTargetY(el, clamped, n);
+      const behaviorResolved = reducedMotion ? 'auto' : behavior;
+      if (Math.abs(window.scrollY - targetY) > 6) {
+        window.scrollTo({ top: targetY, behavior: behaviorResolved });
+      }
+      stepAnchorRef.current = clamped;
+      transitionFromRef.current = clamped;
+      transitionToRef.current = clamped;
+      setFloatIndex(clamped);
+      setPanelIndex(clamped);
+      wheelCooldownRef.current = false;
+      wheelStepConsumedRef.current = false;
+      setPanelTransit(false);
+    },
+    [n, reducedMotion],
+  );
+
   const scrollToPanel = useCallback(
     (index, behavior = 'smooth') => {
       const el = wrapRef.current;
@@ -241,6 +287,11 @@ export function CapabilityDialSection({ trackRef }) {
         clamped = current + Math.sign(clamped - current);
       }
       if (clamped === current) {
+        const targetY = trackScrollTargetY(el, clamped, n);
+        if (Math.abs(window.scrollY - targetY) > 6) {
+          alignScrollToPanel(clamped, behavior);
+          return;
+        }
         wheelStepConsumedRef.current = false;
         return;
       }
@@ -274,21 +325,16 @@ export function CapabilityDialSection({ trackRef }) {
         wheelCooldownRef.current = false;
         wheelStepConsumedRef.current = false;
         setPanelTransit(false);
-        inputLockUntilRef.current = performance.now() + STEP_INPUT_LOCK_MS;
+        applyCapStepRelease(inputLockUntilRef, wheelAccumResetRef);
         if (to === 0) {
-          entryLatchUntilRef.current = Math.min(
-            entryLatchUntilRef.current,
-            performance.now() + 72,
-          );
+          entryLatchUntilRef.current = 0;
         }
         if (to >= n - 1) {
           chapterExitArmedRef.current = true;
-          inputLockUntilRef.current = 0;
           entryLatchUntilRef.current = 0;
         } else {
           chapterExitArmedRef.current = false;
         }
-        wheelAccumResetRef.current?.();
       };
 
       const targetY = trackScrollTargetY(el, to, n);
@@ -309,7 +355,7 @@ export function CapabilityDialSection({ trackRef }) {
         onComplete: finish,
       });
     },
-    [n, reducedMotion],
+    [alignScrollToPanel, n, reducedMotion],
   );
 
   const startCapWorkHandoff = useCallback(() => {
@@ -335,8 +381,7 @@ export function CapabilityDialSection({ trackRef }) {
       capExitingToWorkRef.current = false;
       wheelCooldownRef.current = false;
       wheelStepConsumedRef.current = false;
-      inputLockUntilRef.current = performance.now() + 120;
-      wheelAccumResetRef.current?.();
+      applyCapStepRelease(inputLockUntilRef, wheelAccumResetRef);
     };
 
     capExitingToWorkRef.current = true;
@@ -347,9 +392,21 @@ export function CapabilityDialSection({ trackRef }) {
     scrollTweenRef.current?.cancel();
 
     window.dispatchEvent(new CustomEvent(CAP_WORK_HANDOFF_EVENT));
-    window.scrollTo(0, targetY);
-    finish();
-  }, [n]);
+
+    if (reducedMotion) {
+      finish();
+      return;
+    }
+
+    if (!scrollTweenRef.current) {
+      scrollTweenRef.current = createTrackScrollTween();
+    }
+    scrollTweenRef.current.tweenTo(targetY, {
+      duration: SCROLL_TWEEN_MS,
+      ease: easeInOutCubic,
+      onComplete: finish,
+    });
+  }, [n, reducedMotion]);
 
   const snapToChapterStart = useCallback(
     (behavior = 'smooth') => {
@@ -381,8 +438,7 @@ export function CapabilityDialSection({ trackRef }) {
     if (!el) return undefined;
 
     const rect = el.getBoundingClientRect();
-    if (rect.top > window.innerHeight * 0.55) return undefined;
-
+    const vh = window.innerHeight;
     const rawFi = measureCapabilityFloatIndex(rect, n);
     const target = Math.min(n - 1, Math.max(0, Math.round(rawFi)));
     const enteringFromOpening = prevId === 'home-landing' || prevId == null;
@@ -399,6 +455,8 @@ export function CapabilityDialSection({ trackRef }) {
 
     if (fromBelow) {
       forceFirstPanelOnEntryRef.current = false;
+      openingEntrySettlingRef.current = false;
+      setOpeningEntrySettling(false);
       entryLatchUntilRef.current = 0;
       applyPanel(target);
       if (Math.abs(rawFi - target) > 0.06) {
@@ -408,19 +466,54 @@ export function CapabilityDialSection({ trackRef }) {
     }
 
     forceFirstPanelOnEntryRef.current = true;
-    entryLatchUntilRef.current = performance.now() + SCROLL_TWEEN_MS + 160;
+    openingEntrySettlingRef.current = true;
+    openingEntrySnapPendingRef.current = true;
+    setOpeningEntrySettling(true);
+    entryLatchUntilRef.current = performance.now() + CAP_ENTRY_LATCH_MS;
     applyPanel(0);
+
+    const runOpeningPanelSnap = () => {
+      alignScrollToPanel(0, 'auto');
+      openingEntrySnapPendingRef.current = false;
+    };
+
     if (rect.top > PIN_TOP_TOLERANCE_PX) {
       const raf = requestAnimationFrame(() => {
         snapToChapterStart('auto');
+        requestAnimationFrame(runOpeningPanelSnap);
       });
       return () => cancelAnimationFrame(raf);
     }
-    if (Math.abs(rawFi) > 0.06) {
-      scrollToPanel(0, 'auto');
-    }
+    requestAnimationFrame(runOpeningPanelSnap);
     return undefined;
-  }, [activeId, n, scrollToPanel, snapToChapterStart]);
+  }, [activeId, alignScrollToPanel, n, snapToChapterStart]);
+
+  /** Opening exit wipe — snap to panel 0 when Cap engages mid-scroll (activeId may lag). */
+  const prevCapExitWipeRef = useRef(0);
+  useEffect(() => {
+    const wipe = openingCapExitWipe ?? 0;
+    const crossed = prevCapExitWipeRef.current < 0.24 && wipe >= 0.24;
+    prevCapExitWipeRef.current = wipe;
+    if (!crossed) return undefined;
+    const el = wrapRef.current;
+    if (!el) return undefined;
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight;
+    if (rect.bottom < vh * 0.2 || rect.top > vh * 0.72) return undefined;
+
+    forceFirstPanelOnEntryRef.current = true;
+    openingEntrySettlingRef.current = true;
+    openingEntrySnapPendingRef.current = true;
+    setOpeningEntrySettling(true);
+    stepAnchorRef.current = 0;
+    setFloatIndex(0);
+    setPanelIndex(0);
+    const raf = requestAnimationFrame(() => {
+      alignScrollToPanel(0, 'auto');
+      openingEntrySnapPendingRef.current = false;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [alignScrollToPanel, openingCapExitWipe]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -440,6 +533,18 @@ export function CapabilityDialSection({ trackRef }) {
       const releaseP = measureCapabilityReleaseProgress(rect, n);
       if (capEngaged) setReleaseProgress(releaseP);
 
+      if (
+        openingEntrySnapPendingRef.current &&
+        isPinned &&
+        !scrollTweenRef.current?.isRunning() &&
+        !panelTransit &&
+        rawFi > 0.08
+      ) {
+        alignScrollToPanel(0, 'auto');
+        openingEntrySnapPendingRef.current = false;
+        return;
+      }
+
       if (isPinned && !chapterPinnedRef.current) {
         chapterPinnedRef.current = true;
         setChapterPinned(true);
@@ -449,18 +554,40 @@ export function CapabilityDialSection({ trackRef }) {
         stepAnchorRef.current = target;
         setFloatIndex(target);
         setPanelIndex(target);
-        forceFirstPanelOnEntryRef.current = false;
         if (snapFirstPanel) {
-          entryLatchUntilRef.current = performance.now() + SCROLL_TWEEN_MS + 100;
+          entryLatchUntilRef.current = performance.now() + CAP_ENTRY_LATCH_MS;
+        } else {
+          forceFirstPanelOnEntryRef.current = false;
+          if (target === 0 && Math.abs(rawFi) < 0.12) {
+            entryLatchUntilRef.current = 0;
+          }
         }
-        if (Math.abs(rawFi - target) > PANEL_SNAP_EPSILON && !scrollTweenRef.current?.isRunning()) {
-          scrollToPanel(target, 'auto');
+        if (snapFirstPanel && target === 0 && Math.abs(rawFi) < 0.15) {
+          openingEntrySettlingRef.current = false;
+          setOpeningEntrySettling(false);
+          forceFirstPanelOnEntryRef.current = false;
+          entryLatchUntilRef.current = 0;
+        }
+        if (
+          snapFirstPanel &&
+          rawFi > 0.08 &&
+          !scrollTweenRef.current?.isRunning() &&
+          !snapInProgressRef.current
+        ) {
+          alignScrollToPanel(0, 'auto');
+          openingEntrySnapPendingRef.current = false;
           return;
         }
       }
-      if (rect.top > window.innerHeight * 0.5) {
+      if (rect.top > vh * 0.5) {
         chapterPinnedRef.current = false;
         setChapterPinned(false);
+        if (!openingEntrySettlingRef.current) {
+          forceFirstPanelOnEntryRef.current = false;
+          entryLatchUntilRef.current = 0;
+        }
+      }
+      if (activeId !== 'home-capabilities' && rect.bottom < vh * 0.15) {
         forceFirstPanelOnEntryRef.current = false;
         entryLatchUntilRef.current = 0;
       }
@@ -480,9 +607,6 @@ export function CapabilityDialSection({ trackRef }) {
           if (workTrack && workN > 0) {
             workHandoffYRef.current = workTrackScrollTargetY(workTrack, 0, workN);
           }
-        }
-        if (releaseP > 0.05 && anchor < n - 1) {
-          return;
         }
         const target = Math.round(rawFi);
         const atEnd = anchor >= n - 1;
@@ -520,7 +644,7 @@ export function CapabilityDialSection({ trackRef }) {
     return () => {
       window.removeEventListener('scroll', onScroll);
     };
-  }, [activeId, n, panelTransit, scrollToPanel, snapToChapterStart]);
+  }, [activeId, alignScrollToPanel, n, panelTransit, scrollToPanel, snapToChapterStart]);
 
   useLayoutEffect(() => {
     const path = pathRef.current;
@@ -535,10 +659,7 @@ export function CapabilityDialSection({ trackRef }) {
     setPathReady((v) => v + 1);
   }, [n]);
 
-  useEffect(
-    () => () => scrollTweenRef.current?.cancel(),
-    [],
-  );
+  useEffect(() => () => scrollTweenRef.current?.cancel(), []);
 
   const bumpScroll = useCallback(
     (dir) => {
@@ -553,6 +674,9 @@ export function CapabilityDialSection({ trackRef }) {
       if (next === anchor) return;
 
       entryLatchUntilRef.current = 0;
+      forceFirstPanelOnEntryRef.current = false;
+      openingEntrySettlingRef.current = false;
+      setOpeningEntrySettling(false);
       wheelStepConsumedRef.current = true;
       scrollToPanel(next, 'smooth');
     },
@@ -570,6 +694,11 @@ export function CapabilityDialSection({ trackRef }) {
       if (wheelStepConsumedRef.current) return false;
       if (wheelCooldownRef.current || scrollTweenRef.current?.isRunning()) return false;
       if (performance.now() < inputLockUntilRef.current) return false;
+      if (dir === 1 && stepAnchorRef.current >= n - 1) {
+        wheelAccum = 0;
+        startCapWorkHandoff();
+        return true;
+      }
       bumpScroll(dir);
       wheelAccum = 0;
       return true;
@@ -582,60 +711,37 @@ export function CapabilityDialSection({ trackRef }) {
       const rect = el.getBoundingClientRect();
       if (rect.bottom < 48 || rect.top > vh + 48) return;
 
-      const workTrack = document.getElementById('home-work-strongest');
-      const rawFi = measureCapabilityFloatIndex(rect, n);
-      const onLastPanel =
-        panelIndexRef.current >= n - 1 ||
-        stepAnchorRef.current >= n - 1 ||
-        rawFi >= n - 1 - 0.35;
+      if (workChapterOwnsScroll(activeId, workHandoffYRef.current, vh)) {
+        return;
+      }
+
+      const anchor = stepAnchorRef.current;
+      const onLastPanel = anchor >= n - 1;
+      const releaseP = measureCapabilityReleaseProgress(rect, n);
       const deltaY = wheelDeltaY(e);
       const scrollingDown = deltaY > 0.5;
       const scrollingUp = deltaY < -0.5;
 
-      if (scrollingDown && onLastPanel) {
-        if (workTrack && isWorkChapterPinned(workTrack, vh) && activeId === 'home-work-narrative') {
-          return;
-        }
-        if (capScrollPastWorkHandoff(workHandoffYRef.current)) {
-          return;
-        }
-        e.preventDefault();
-        if (!capExitingToWorkRef.current) {
-          scrollTweenRef.current?.cancel();
-          wheelCooldownRef.current = false;
-          wheelStepConsumedRef.current = false;
-          setPanelTransit(false);
-          inputLockUntilRef.current = 0;
-          startCapWorkHandoff();
-        }
+      if (onLastPanel && releaseP > CAP_RELEASE_NATIVE_THRESHOLD && scrollingDown) {
         return;
       }
 
+      if (capExitingToWorkRef.current) return;
+
       const isPinned = isChapterStickyPinned(rect);
       const wheelEngaged = isCapabilityWheelEngaged(rect, vh);
-
-      if (workTrack) {
-        const wr = workTrack.getBoundingClientRect();
-        const workPinned =
-          wr.top <= PIN_TOP_TOLERANCE_PX && wr.bottom > vh * 0.45;
-        if (workPinned && activeId === 'home-work-narrative') {
-          return;
-        }
-      }
 
       const capEngaged =
         capExitingToWorkRef.current ||
         activeId === 'home-capabilities' ||
         (isPinned && rect.bottom > vh * 0.45) ||
-        wheelEngaged ||
-        onLastPanel;
+        wheelEngaged;
       if (!capEngaged) return;
       if (!onLastPanel && !isPinned && !wheelEngaged) return;
 
       const inEntryLatch = performance.now() < entryLatchUntilRef.current;
       if (inEntryLatch && !(onLastPanel && scrollingDown)) {
         const latchBusy =
-          !isPinned ||
           snapInProgressRef.current ||
           wheelCooldownRef.current ||
           scrollTweenRef.current?.isRunning() ||
@@ -647,9 +753,7 @@ export function CapabilityDialSection({ trackRef }) {
       }
       if (!scrollingDown && !scrollingUp) return;
 
-      const atFirst = stepAnchorRef.current <= 0;
-
-      if (scrollingUp && atFirst) {
+      if (scrollingUp && anchor <= 0) {
         return;
       }
 
@@ -657,6 +761,7 @@ export function CapabilityDialSection({ trackRef }) {
         wheelStepConsumedRef.current ||
         wheelCooldownRef.current ||
         scrollTweenRef.current?.isRunning() ||
+        panelTransit ||
         performance.now() < inputLockUntilRef.current
       ) {
         e.preventDefault();
@@ -666,17 +771,18 @@ export function CapabilityDialSection({ trackRef }) {
       e.preventDefault();
 
       const wheelDir = scrollingDown ? 1 : -1;
-      const delta = deltaY;
 
-      if (Math.abs(delta) >= WHEEL_STEP_THRESHOLD) {
+      if (Math.abs(deltaY) >= CAP_WHEEL_STEP_THRESHOLD) {
         tryWheelStep(wheelDir);
         return;
       }
 
-      wheelAccum += delta;
+      wheelAccum += deltaY;
 
-      if (Math.abs(wheelAccum) >= WHEEL_STEP_THRESHOLD) {
-        tryWheelStep(wheelAccum > 0 ? 1 : -1);
+      if (wheelAccum >= CAP_WHEEL_STEP_THRESHOLD) {
+        tryWheelStep(1);
+      } else if (wheelAccum <= -CAP_WHEEL_STEP_THRESHOLD) {
+        tryWheelStep(-1);
       }
     };
 
@@ -685,7 +791,7 @@ export function CapabilityDialSection({ trackRef }) {
       window.removeEventListener('wheel', onWheel, { capture: true });
       wheelAccumResetRef.current = null;
     };
-  }, [activeId, bumpScroll, snapToChapterStart, startCapWorkHandoff]);
+  }, [activeId, bumpScroll, n, panelTransit, startCapWorkHandoff]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -710,9 +816,16 @@ export function CapabilityDialSection({ trackRef }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [bumpScroll]);
 
+  const lockOpeningEntry =
+    openingEntrySettling &&
+    effectiveEntryProgress < 0.96 &&
+    panelIndex === 0 &&
+    (panelTransit || !chapterPinned || floatIndex > 0.1);
+
   const motionFloatIndex = panelTransit ? floatIndex : panelIndex;
-  const arcFloat = motionFloatIndex;
-  const crossfadeFloatIndex = motionFloatIndex;
+  const displayFloatIndex = lockOpeningEntry ? 0 : motionFloatIndex;
+  const arcFloat = displayFloatIndex;
+  const crossfadeFloatIndex = displayFloatIndex;
 
   const arcDotPoint = useMemo(
     () => getArcPointAtFloat(arcFloat, n, pathRef.current),
@@ -720,8 +833,8 @@ export function CapabilityDialSection({ trackRef }) {
   );
 
   const narrativeState = useMemo(
-    () => capabilityNarrativeState(motionFloatIndex, panelIndex, n),
-    [motionFloatIndex, panelIndex, n],
+    () => capabilityNarrativeState(displayFloatIndex, lockOpeningEntry ? 0 : panelIndex, n),
+    [displayFloatIndex, lockOpeningEntry, panelIndex, n],
   );
 
   const atmosphere = useMemo(() => {
@@ -769,8 +882,8 @@ export function CapabilityDialSection({ trackRef }) {
   }, []);
 
   const greenFieldStyle = useMemo(
-    () => signalGreenFieldPresentation(motionFloatIndex, { greenAttention }),
-    [motionFloatIndex, greenAttention],
+    () => signalGreenFieldPresentation(displayFloatIndex, { greenAttention }),
+    [displayFloatIndex, greenAttention],
   );
 
   const activePanelIndex = panelIndex;
@@ -780,9 +893,21 @@ export function CapabilityDialSection({ trackRef }) {
   const capEnvIn = useMemo(() => {
     const handoffVis = openingCapHandoffVisual(openingCapHandoff ?? 0, openingCapExitWipe ?? 0);
     if (activeId !== 'home-capabilities') return handoffVis * 0.2;
-    if (chapterPinned) return Math.max(handoffVis, 0.94);
-    return Math.max(handoffVis * 0.42, effectiveEntryProgress * handoffVis * 0.72);
-  }, [activeId, chapterPinned, effectiveEntryProgress, openingCapHandoff, openingCapExitWipe]);
+    if (chapterPinned && !lockOpeningEntry) return Math.max(handoffVis, 0.94);
+    const entryIn = Math.max(handoffVis * 0.42, effectiveEntryProgress * handoffVis * 0.72);
+    return lockOpeningEntry ? entryIn * Math.min(1, effectiveEntryProgress / 0.55) : entryIn;
+  }, [
+    activeId,
+    chapterPinned,
+    effectiveEntryProgress,
+    lockOpeningEntry,
+    openingCapHandoff,
+    openingCapExitWipe,
+  ]);
+
+  const openingAmbientIn = lockOpeningEntry
+    ? Math.max(0, Math.min(1, (effectiveEntryProgress - 0.38) / 0.42))
+    : 1;
 
   const workHandoff = releaseProgress;
 
@@ -939,8 +1064,11 @@ export function CapabilityDialSection({ trackRef }) {
         className="capability-sticky"
         data-cap-theme={ambientStyle.themeId}
         data-cap-phase={narrativeState.sectionPhase}
+        data-cap-opening-entry={openingEntrySettling ? 'true' : undefined}
+        data-cap-settled={!lockOpeningEntry && panelIndex === 0 && !panelTransit ? 'true' : 'false'}
         style={{
           '--cap-env-in': String(capEnvIn),
+          '--cap-opening-ambient-in': String(openingAmbientIn),
           '--cap-work-handoff': String(workHandoff),
           '--cap-residual-a': ambientStyle['--cap-residual-a'],
           '--cap-residual-b': ambientStyle['--cap-residual-b'],
@@ -949,7 +1077,11 @@ export function CapabilityDialSection({ trackRef }) {
           ...greenFieldStyle,
         }}
       >
-        <div className="cap-dial__ambient" aria-hidden="true">
+        <div
+          className="cap-dial__ambient"
+          style={{ opacity: openingAmbientIn }}
+          aria-hidden="true"
+        >
           <div className="cap-dial__ambient-residual cap-dial__ambient-residual--a-haze" />
           <div className="cap-dial__ambient-residual cap-dial__ambient-residual--a-gather" aria-hidden="true" />
           <div className="cap-dial__ambient-residual cap-dial__ambient-residual--b" />

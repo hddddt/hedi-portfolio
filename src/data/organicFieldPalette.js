@@ -22,47 +22,74 @@ export const HERO_OPENING_PALETTE = {
 /** Opening green blob — 25° counterclockwise (shader applies -rotation) */
 export const HERO_GREEN_ROTATION = -(25 * Math.PI) / 180;
 
+/** Shared gravity hub — green–blue overlap (structure lines align here) */
+export const HERO_GALAXY_FOCAL = { x: 0.466, y: 0.446 };
+
+/**
+ * Visual weight targets (area-ish): green ~58%, blue ~32%, amber ~8–10%.
+ */
+export const OPENING_HERO_MASS_SCALE = {
+  green: 1.1,
+  blue: 0.94,
+  amber: 0.48,
+};
+
+/** Green anchor + blue embedded; amber on overlap upper edge (not inside green) */
+export const HERO_GALAXY_BODY_OFFSET = {
+  a: { dx: -0.036, dy: 0.002 },
+  b: { dx: 0.026, dy: 0.003 },
+  c: { dx: -0.004, dy: -0.01 },
+};
+
+function galaxyCenter(id) {
+  const o = HERO_GALAXY_BODY_OFFSET[id];
+  return {
+    centerX: HERO_GALAXY_FOCAL.x + o.dx,
+    centerY: HERO_GALAXY_FOCAL.y + o.dy,
+  };
+}
+
 /** Landing — balanced low-opacity spectrum (all supporting = slow ambient drift) */
 export const HERO_LANDING_ORBS = {
-  green: { tier: 'supporting', opacity: 0.66, scale: OPENING_LINEAR_SCALE.green, stretchX: 1.02, stretchY: 0.98 },
-  blue: { tier: 'supporting', opacity: 0.62, scale: OPENING_LINEAR_SCALE.blue, stretchX: 1.06, stretchY: 0.84 },
-  yellow: { tier: 'supporting', opacity: 0.66, scale: OPENING_LINEAR_SCALE.amber, stretchX: 1, stretchY: 1.02 },
+  green: { tier: 'supporting', opacity: 0.86, scale: OPENING_LINEAR_SCALE.green * OPENING_HERO_MASS_SCALE.green * 0.86, stretchX: 1.08, stretchY: 0.92 },
+  blue: { tier: 'supporting', opacity: 0.78, scale: OPENING_LINEAR_SCALE.blue * OPENING_HERO_MASS_SCALE.blue, stretchX: 1.02, stretchY: 0.96 },
+  yellow: { tier: 'supporting', opacity: 0.64, scale: OPENING_LINEAR_SCALE.amber * OPENING_HERO_MASS_SCALE.amber, stretchX: 0.96, stretchY: 0.94 },
 };
 
 /** Rest positions + layout multipliers for warm / landing motion */
 export const HERO_LANDING_FIELD = {
   rest: {
-    a: { x: 0.34, y: 0.54 },
-    b: { x: 0.8, y: 0.72 },
-    c: { x: 0.56, y: 0.76 },
+    a: { x: galaxyCenter('a').centerX, y: galaxyCenter('a').centerY },
+    b: { x: galaxyCenter('b').centerX, y: galaxyCenter('b').centerY },
+    c: { x: galaxyCenter('c').centerX, y: galaxyCenter('c').centerY },
   },
   layout: {
     a: {
       opacity: 1,
-      scale: OPENING_LINEAR_SCALE.green,
+      scale: OPENING_LINEAR_SCALE.green * OPENING_HERO_MASS_SCALE.green * 0.86,
       dx: 0,
       dy: 0,
-      stretchX: 1.02,
-      stretchY: 0.98,
+      stretchX: 1.08,
+      stretchY: 0.92,
       rotation: HERO_GREEN_ROTATION,
     },
     b: {
       opacity: 1,
-      scale: OPENING_LINEAR_SCALE.blue,
+      scale: OPENING_LINEAR_SCALE.blue * OPENING_HERO_MASS_SCALE.blue,
       dx: 0,
       dy: 0,
-      stretchX: 1.06,
-      stretchY: 0.84,
-      rotation: -0.32,
+      stretchX: 1.02,
+      stretchY: 0.96,
+      rotation: -0.24,
     },
     c: {
       opacity: 1,
-      scale: OPENING_LINEAR_SCALE.amber,
+      scale: OPENING_LINEAR_SCALE.amber * OPENING_HERO_MASS_SCALE.amber,
       dx: 0,
       dy: 0,
-      stretchX: 1,
-      stretchY: 1.02,
-      rotation: 0.06,
+      stretchX: 0.94,
+      stretchY: 0.92,
+      rotation: 0.08,
     },
   },
 };
@@ -70,43 +97,41 @@ export const HERO_LANDING_FIELD = {
 /** Scroll narrative blob anchors at hero intro */
 export const HERO_BLOB_INTRO = {
   a: {
-    centerX: 0.34,
-    centerY: 0.54,
-    scale: OPENING_SCROLL_SCALE.intro.green,
-    opacity: 0.96,
-    stretchX: 1.06,
-    stretchY: 0.94,
+    ...galaxyCenter('a'),
+    scale: OPENING_SCROLL_SCALE.intro.green * OPENING_HERO_MASS_SCALE.green * 0.86,
+    opacity: 0.88,
+    stretchX: 1.08,
+    stretchY: 0.92,
     rotation: HERO_GREEN_ROTATION,
   },
   b: {
-    centerX: 0.8,
-    centerY: 0.74,
-    scale: OPENING_SCROLL_SCALE.intro.blue,
-    opacity: 0.9,
-    stretchX: 1.06,
-    stretchY: 0.84,
-    rotation: -0.32,
+    ...galaxyCenter('b'),
+    scale: OPENING_SCROLL_SCALE.intro.blue * OPENING_HERO_MASS_SCALE.blue,
+    opacity: 0.78,
+    stretchX: 1.02,
+    stretchY: 0.96,
+    rotation: -0.24,
   },
   c: {
-    centerX: 0.56,
-    centerY: 0.78,
-    scale: OPENING_SCROLL_SCALE.intro.amber,
-    opacity: 0.84,
-    stretchX: 1,
-    stretchY: 1.02,
+    ...galaxyCenter('c'),
+    scale: OPENING_SCROLL_SCALE.intro.amber * OPENING_HERO_MASS_SCALE.amber,
+    opacity: 0.64,
+    stretchX: 0.96,
+    stretchY: 0.94,
+    rotation: 0.08,
   },
 };
 
 export const HERO_WARM_AMBIENT = {
   opacityMult: 1.06,
-  scaleMult: 1.06,
-  extraC: 1.1,
+  scaleMult: 0.96,
+  extraC: 1.02,
 };
 
 export const DISC_ANCHORS = {
-  a: { baseX: 0.35, baseY: 0.47 },
-  b: { baseX: 0.61, baseY: 0.42 },
-  veil: { baseX: 0.5, baseY: 0.54 },
+  a: { baseX: galaxyCenter('a').centerX, baseY: galaxyCenter('a').centerY - 0.06 },
+  b: { baseX: galaxyCenter('b').centerX, baseY: galaxyCenter('b').centerY - 0.1 },
+  veil: { baseX: HERO_GALAXY_FOCAL.x, baseY: HERO_GALAXY_FOCAL.y - 0.03 },
 };
 
 /** CSS radial gradients — applied inline on opening discs (cannot be missed by cache) */

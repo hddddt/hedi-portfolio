@@ -22,6 +22,69 @@
   pointer-events:none;
 }
 
+/* Visible floor if WebGL is slow or unavailable — matches editorial mass layout */
+.opening-field-fallback{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+}
+.opening-field-fallback__blob{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(34px);
+  opacity:0.62;
+  mix-blend-mode:multiply;
+}
+.opening-field-fallback__blob--green{
+  left:30%;
+  top:34%;
+  width:38%;
+  height:34%;
+  background:radial-gradient(
+    ellipse 70% 68% at 42% 44%,
+    rgba(22, 92, 64, 0.5) 0%,
+    rgba(36, 108, 76, 0.36) 38%,
+    rgba(68, 138, 104, 0.14) 62%,
+    transparent 82%
+  );
+}
+.opening-field-fallback__blob--blue{
+  left:40%;
+  top:35%;
+  width:32%;
+  height:30%;
+  background:radial-gradient(
+    ellipse 74% 64% at 56% 48%,
+    rgba(32, 52, 128, 0.44) 0%,
+    rgba(52, 76, 152, 0.3) 40%,
+    rgba(100, 124, 184, 0.1) 64%,
+    transparent 84%
+  );
+}
+.opening-field-fallback__blob--amber{
+  left:44%;
+  top:33%;
+  width:10%;
+  height:9%;
+  background:radial-gradient(
+    ellipse 66% 62% at 50% 50%,
+    rgba(196, 96, 22, 0.44) 0%,
+    rgba(218, 138, 48, 0.28) 42%,
+    rgba(240, 200, 120, 0.1) 66%,
+    transparent 84%
+  );
+}
+.opening-card__field-slot .organic-field--in-card:has(.organic-field__canvas[data-field-ready='true']) .opening-field-fallback{
+  opacity:0;
+  transition:opacity 0.85s ease;
+}
+.opening-card__field-slot .organic-field__canvas{
+  position:relative;
+  z-index:1;
+}
+
 .organic-field__canvas{
   display:block;
   width:100%;
@@ -39,6 +102,12 @@
   transition:
     opacity var(--orb-transition) ease,
     filter var(--orb-transition) ease;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .organic-field-host--viewport{
+    --orb-transition: 0.01s;
+  }
 }
 
 .organic-field-host--viewport[data-orb-scene='landing']{

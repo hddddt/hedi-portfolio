@@ -1060,11 +1060,13 @@ function DecisionArtifacts({ items, uxArtifact, knowledgeArtifact, flowArtifact 
 
 function DecisionJudgmentHeader({ node }) {
   return (
-    <header className="case01-decision-module__layer case01-decision-module__layer--judgment">
-      <p className="case01-decision-module__d">{node.d}</p>
-      <h3 className="case01-decision-module__title">{node.title}</h3>
+    <>
+      <header className="case01-decision-module__layer case01-decision-module__layer--judgment">
+        <p className="case01-decision-module__d">{node.d}</p>
+        <h3 className="case01-decision-module__title">{node.title}</h3>
+      </header>
       {node.coreMove ? <p className="case01-decision-module__core-move">{node.coreMove}</p> : null}
-    </header>
+    </>
   );
 }
 

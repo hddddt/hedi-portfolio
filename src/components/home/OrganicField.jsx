@@ -12,6 +12,7 @@ import {
   computeOpeningFieldPresence,
   computeOpeningScrollOrchestration,
   heroScrollDrive,
+  mergeOpeningBootOrchestration,
   shouldUseInCardOrganicField,
   shouldUseViewportOrganicField,
 } from '../../utils/heroFieldMotion.js';
@@ -43,7 +44,7 @@ export const ORGANIC_FIELD_CONFIG = {
     c: { radii: FIELD_BASE_RADII.c },
   },
   ambient: {
-    warm: { opacityMult: 1, scaleMult: 1.03, light: true, extraC: 1.04 },
+    warm: { opacityMult: 1.02, scaleMult: 1.02, light: true, extraC: 1.02 },
     signal: { opacityMult: 0.84, scaleMult: 1, light: false, extraC: 1.02, organic: 0.62 },
     work: { opacityMult: 0.82, scaleMult: 1.06, light: false, extraC: 0.96, organic: 0.72 },
     depth: { opacityMult: 0.86, scaleMult: 1.12, light: false, extraC: 1, organic: 0.68 },
@@ -143,6 +144,7 @@ function OrganicFieldCanvas({ inCard = false }) {
     progress: heroScrollProgress,
     openingComplete,
     openingCapHandoffRef,
+    openingBootRef,
   } = useFieldNarrative();
   const { perspectiveKey } = usePerspective();
   const canvasRef = useRef(null);
@@ -352,7 +354,11 @@ function OrganicFieldCanvas({ inCard = false }) {
           : null;
       const amb = ambientState(ambKey);
       const openingPresence = inOpening
-        ? computeOpeningFieldPresence(rawOpen, reducedMotion)
+        ? mergeOpeningBootOrchestration(
+            computeOpeningFieldPresence(rawOpen, reducedMotion),
+            openingBootRef?.current,
+            rawOpen,
+          )
         : null;
       const heroProgress = openingPresence?.heroProgress ?? null;
       const fieldEnvelope = openingPresence?.fieldEnvelope ?? 1;
@@ -487,9 +493,13 @@ function OrganicFieldCanvas({ inCard = false }) {
         openingHandoff > 0.2 ||
         (capActiveForMotion && capHold > 0.5);
       const gatherDamp = inOpening && openingPresence ? 1 - openingGather * 0.99 : 1;
+      const bootMotionDamp =
+        inOpening && openingPresence?.boot?.active
+          ? 1 - (openingPresence.boot.structure ?? 0) * 0.92
+          : 1;
       const idleMotion =
         inOpening && openingPresence && isWarmLand
-          ? openingPresence.idleStillness * gatherDamp * (1 - chapterScrollDrive * 0.88)
+          ? openingPresence.idleStillness * gatherDamp * (1 - chapterScrollDrive * 0.88) * bootMotionDamp
           : (1 - heroDrive) * (1 - chapterScrollDrive * 0.88);
       const decorativeDrift = scrollEventActive ? 0 : idleMotion * (capActivation?.driftDamp ?? 1);
 
@@ -655,9 +665,11 @@ function OrganicFieldCanvas({ inCard = false }) {
       const kAmb = 1 - Math.exp(-MOTION_SMOOTH.ambient * dt);
       const openingScale = inOpening ? openingFieldScale : 1;
       const warmAmb = ambientState('warm');
-      let targetOpacity = amb.opacityMult * fieldEnvelope;
+      const bootGain = inOpening ? (openingPresence?.fieldGain ?? 1) : 1;
+      const bootLight = inOpening && (openingPresence?.boot?.light ?? false);
+      let targetOpacity = amb.opacityMult * fieldEnvelope * bootGain;
       let targetScale = amb.scaleMult * openingScale;
-      let targetLight = amb.light ?? false;
+      let targetLight = bootLight || (amb.light ?? false);
       if (!inOpening && ambKey === 'signal' && capHandoff < 0.999) {
         const u = capHandoff * capHandoff * (3 - 2 * capHandoff);
         targetOpacity = lerp(warmAmb.opacityMult, amb.opacityMult, u) * fieldEnvelope;
@@ -761,6 +773,11 @@ export function LandingOrganicField() {
 
   return (
     <div className="organic-field organic-field--in-card">
+      <div className="opening-field-fallback" aria-hidden="true">
+        <span className="opening-field-fallback__blob opening-field-fallback__blob--green" />
+        <span className="opening-field-fallback__blob opening-field-fallback__blob--blue" />
+        <span className="opening-field-fallback__blob opening-field-fallback__blob--amber" />
+      </div>
       <OrganicFieldCanvas inCard />
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useProjectAccess } from '../../context/ProjectAccessContext.jsx';
 
 const EXPECTED =
@@ -80,16 +81,15 @@ export function ProjectPasswordModal() {
       if (e.key === 'Escape') cancelAccess();
     };
     document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.documentElement.dataset.projectAccessModal = 'open';
     return () => {
       cancelAnimationFrame(t);
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
+      delete document.documentElement.dataset.projectAccessModal;
     };
   }, [modalOpen, cancelAccess]);
 
-  if (!modalOpen) return null;
+  if (!modalOpen || typeof document === 'undefined') return null;
 
   const submit = (e) => {
     e.preventDefault();
@@ -102,7 +102,7 @@ export function ProjectPasswordModal() {
     window.setTimeout(() => setShake(false), 420);
   };
 
-  return (
+  return createPortal(
     <div className="project-access-modal" role="presentation">
       <button
         type="button"
@@ -153,6 +153,7 @@ export function ProjectPasswordModal() {
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }

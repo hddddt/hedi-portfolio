@@ -29,11 +29,14 @@
   filter: none;
 }
 
-/* Hero / opening — visible on load (do not wait for IO) */
+/* Hero / opening — boot copy uses inline opacity (opening-copy-driven) */
 .opening-card .motion-reveal-group.is-visible,
-.opening-card .motion-reveal-group.is-visible > .motion-reveal-child {
+.opening-card .motion-reveal-group.is-visible > .motion-reveal-child:not(.opening-copy-driven) {
   opacity: 1;
   transform: translateY(0);
+  filter: blur(0);
+}
+.opening-card .motion-reveal-group.is-visible > .motion-reveal-child.opening-copy-driven {
   filter: blur(0);
 }
 

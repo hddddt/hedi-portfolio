@@ -16,30 +16,30 @@ export const FIELD_ID = /** @type {Record<FieldHue, FieldId>} */ ({
 
 /** Opening linear scales — blue is the 1.0 anchor */
 export const OPENING_LINEAR_SCALE = {
-  green: 1.24,
+  green: 1.28,
   blue: 1.0,
-  amber: 0.8,
+  amber: 0.76,
 };
 
 /** Scroll narrative scales — green always > blue > amber */
 export const OPENING_SCROLL_SCALE = {
-  intro: { green: 1.24, blue: 1.0, amber: 0.8 },
+  intro: { green: 1.28, blue: 1.0, amber: 0.76 },
   transition: { green: 1.2, blue: 0.98, amber: 0.78 },
   thesis: { green: 1.36, blue: 1.1, amber: 0.94 },
 };
 
 /** Base shader radii [rx, ry] before scene multiplier */
 export const FIELD_BASE_RADII = {
-  a: [0.104, 0.134],
-  b: [0.094, 0.12],
-  c: [0.074, 0.094],
+  a: [0.092, 0.102],
+  b: [0.088, 0.104],
+  c: [0.058, 0.066],
 };
 
 /** Warm landing / opening — modest mult; hierarchy lives in linear scale */
 export const FIELD_WARM_RADII_MULT = {
-  a: 1.12,
-  b: 1.06,
-  c: 1.0,
+  a: 1.03,
+  b: 1.02,
+  c: 0.94,
 };
 
 /** Capabilities signal chapter — no oversized green wall */

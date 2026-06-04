@@ -1,3 +1,10 @@
+import { useRef } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { animateRouteVisual } from '../../utils/portfolioGuideMotion.js';
+
+gsap.registerPlugin(useGSAP);
+
 /**
  * Second-level route mini visuals (80–110px, system-line aesthetic).
  */
@@ -6,8 +13,20 @@
  * @param {{ kind: 'convergence' | 'operationalization' | 'scope' | 'relationship' }} props
  */
 export function ShortcutRouteVisual({ kind }) {
+  const visualRef = useRef(null);
+
+  useGSAP(
+    () => {
+      const root = visualRef.current;
+      if (!root) return undefined;
+      return animateRouteVisual(root, kind);
+    },
+    { scope: visualRef, dependencies: [kind], revertOnUpdate: true },
+  );
+
   return (
     <div
+      ref={visualRef}
       className={`shortcut-route-visual shortcut-route-visual--${kind}`}
       aria-hidden="true"
     >

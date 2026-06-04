@@ -1,0 +1,41 @@
+/** Portfolio Shortcut marker — compact ShaderGradient preset (premium, low outer bloom). */
+
+export const SHORTCUT_MARKER_GRADIENT = {
+  animate: 'on',
+  brightness: 0.92,
+  cAzimuthAngle: -42,
+  cDistance: 9,
+  cPolarAngle: 118,
+  cameraZoom: 9.5,
+  color1: '#b8e6d2',
+  color2: '#c4a06a',
+  color3: '#94b4c8',
+  envPreset: 'city',
+  grain: 'on',
+  grainBlending: 0.35,
+  lightType: 'env',
+  positionX: 0,
+  positionY: 0,
+  positionZ: 0,
+  range: 'enabled',
+  rangeStart: 0.8,
+  rangeEnd: 28,
+  reflection: 0.32,
+  rotationX: 0,
+  rotationY: 108,
+  rotationZ: 58,
+  shader: 'defaults',
+  type: 'sphere',
+  uAmplitude: 1.4,
+  uDensity: 0.42,
+  uFrequency: 5.5,
+  uSpeed: 0.22,
+  uStrength: 0.11,
+  wireframe: false,
+  zoomOut: true,
+};
+
+export const SHORTCUT_MARKER_CANVAS = {
+  pixelDensity: 1.25,
+  fov: 38,
+};

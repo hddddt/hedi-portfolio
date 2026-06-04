@@ -223,7 +223,7 @@ export function openingCapHandoffVisual(handoff, exitWipe = 0) {
   const c = Math.max(0, Math.min(1, handoff ?? 0));
   const peel = Math.max(0, Math.min(1, exitWipe ?? 0));
   if (c <= 0.001) return 0;
-  const gate = smoothstep(0.02, 0.3, peel);
+  const gate = smoothstep(0.02, 0.24, peel);
   return smoothstep(0, 1, c * gate);
 }
 
@@ -279,7 +279,7 @@ export function measureOpeningCapabilitiesHandoff(
   let handoff = Math.max(fromChapter, fromSticky) * exitGate;
 
   if (openingProgress != null && Number.isFinite(openingProgress)) {
-    handoff *= smoothstep(0.68, 0.9, openingProgress);
+    handoff *= smoothstep(0.66, 0.9, openingProgress);
   }
 
   return Math.max(0, Math.min(1, handoff));

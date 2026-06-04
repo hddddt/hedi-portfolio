@@ -65,7 +65,7 @@
 .case01-body{
   margin:0 0 clamp(14px,1.6vh,16px);
   font-family:var(--font-editorial);
-  font-size:clamp(1.125rem,1.25vw,1.25rem);
+  font-size:clamp(1.2rem,1.35vw,1.375rem);
   line-height:1.62;
   color:var(--case1-text-secondary,rgba(250,248,243,.72));
   max-width:52ch;
@@ -418,7 +418,8 @@
   transform:translateY(0);
 }
 
-.case01-chapter--decision .case01-decision-module__layer--judgment > *{
+.case01-chapter--decision .case01-decision-module__layer--judgment > *,
+.case01-chapter--decision .case01-decision-module__core-move{
   opacity:0;
   transform:translateY(20px);
   transition:opacity 520ms cubic-bezier(0.22,1,0.36,1), transform 620ms cubic-bezier(0.22,1,0.36,1);
@@ -443,16 +444,19 @@
   transition:opacity 480ms cubic-bezier(0.22,1,0.36,1), transform 560ms cubic-bezier(0.22,1,0.36,1);
 }
 
-.case01-chapter--decision[data-stage="0"] .case01-decision-module__layer--judgment > *{
+.case01-chapter--decision[data-stage="0"] .case01-decision-module__layer--judgment > *,
+.case01-chapter--decision[data-stage="0"] .case01-decision-module__core-move{
   opacity:1;
   transform:translateY(0);
 }
 .case01-chapter--decision[data-stage="1"] .case01-decision-module__layer--judgment > *,
+.case01-chapter--decision[data-stage="1"] .case01-decision-module__core-move,
 .case01-chapter--decision[data-stage="1"] .case01-judgment-pair{
   opacity:1;
   transform:translateY(0) scale(1);
 }
 .case01-chapter--decision[data-stage="2"] .case01-decision-module__layer--judgment > *,
+.case01-chapter--decision[data-stage="2"] .case01-decision-module__core-move,
 .case01-chapter--decision[data-stage="2"] .case01-judgment-pair,
 .case01-chapter--decision[data-stage="2"] .case01-project-pills,
 .case01-chapter--decision[data-stage="2"] .case01-meta-strip{
@@ -460,6 +464,7 @@
   transform:translateY(0) scale(1);
 }
 .case01-chapter--decision[data-stage="3"] .case01-decision-module__layer--judgment > *,
+.case01-chapter--decision[data-stage="3"] .case01-decision-module__core-move,
 .case01-chapter--decision[data-stage="3"] .case01-judgment-pair,
 .case01-chapter--decision[data-stage="3"] .case01-project-pills,
 .case01-chapter--decision[data-stage="3"] .case01-meta-strip,
@@ -471,6 +476,7 @@
   transform:translateY(0) scale(1);
 }
 .case01-chapter--decision[data-stage="4"] .case01-decision-module__layer--judgment > *,
+.case01-chapter--decision[data-stage="4"] .case01-decision-module__core-move,
 .case01-chapter--decision[data-stage="4"] .case01-judgment-pair,
 .case01-chapter--decision[data-stage="4"] .case01-project-pills,
 .case01-chapter--decision[data-stage="4"] .case01-meta-strip,
@@ -501,6 +507,7 @@
   .case01-chapter--decision .case01-decision-module__layer--judgment,
   .case01-chapter--decision .case01-decision-module__layer--evidence,
   .case01-chapter--decision .case01-decision-module__layer--judgment > *,
+  .case01-chapter--decision .case01-decision-module__core-move,
   .case01-chapter--decision .case01-judgment-pair,
   .case01-chapter--decision .case01-project-pills,
   .case01-chapter--decision .case01-meta-strip,
@@ -537,7 +544,7 @@
   color:var(--case1-accent,#49E3DD);
 }
 .case01-decision-module__title{
-  margin:0 0 clamp(14px,1.6vh,18px);
+  margin:0;
   max-width:28ch;
   font-family:var(--display-sans);
   font-size:clamp(1.15rem,1.45vw,1.35rem);
@@ -596,7 +603,7 @@
 .case01-judgment-card__text{
   margin:0;
   font-family:var(--font-editorial);
-  font-size:clamp(0.9375rem,1vw,1rem);
+  font-size:clamp(1.0625rem,1.15vw,1.125rem);
   line-height:1.6;
   color:var(--case1-text-secondary,rgba(250,248,243,.72));
   max-width:40ch;
@@ -644,7 +651,7 @@
   border-top:none;
   font-family:var(--font-editorial);
   font-style:italic;
-  font-size:14px;
+  font-size:var(--read-font-body,16px);
   line-height:1.5;
   color:rgba(250,248,243,var(--read-body-opacity,0.68));
   max-width:48ch;
@@ -956,7 +963,7 @@
   padding-left:clamp(14px,1.4vw,18px);
   border-left:1px solid rgba(250,248,243,.14);
   font-family:var(--font-editorial);
-  font-size:clamp(0.9375rem,1vw,1rem);
+  font-size:clamp(1.0625rem,1.15vw,1.125rem);
   line-height:1.5;
   color:rgba(250,248,243,var(--read-body-opacity,0.68));
   max-width:48ch;
@@ -2627,12 +2634,6 @@
 }
 .case01-decision-layout__media.case01-decision-module__layer--evidence{
   margin-top:0;
-}
-.case01-flow--case02 .case01-decision-layout__text{
-  position:sticky;
-  top:0;
-  align-self:start;
-  z-index:3;
 }
 .case01-flow--case02 .case01-decision-layout__text .case01-decision-module__layer--judgment{
   top:0;

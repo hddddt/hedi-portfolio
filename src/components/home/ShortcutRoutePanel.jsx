@@ -1,5 +1,14 @@
+import { useRef } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { getShortcutRoute, getShortcutRoutePanel } from '../../data/portfolioShortcutContent.js';
+import {
+  ROUTE_PANEL_PIECE,
+  animateRoutePanelEnter,
+} from '../../utils/portfolioGuideMotion.js';
 import { ShortcutRouteVisual } from './ShortcutRouteVisual.jsx';
+
+gsap.registerPlugin(useGSAP);
 
 /**
  * @param {{
@@ -17,8 +26,20 @@ export function ShortcutRoutePanel({
   onEvidencePointerLeave,
   onEvidenceClick,
 }) {
+  const panelRef = useRef(null);
   const route = getShortcutRoute(routeId);
   const panel = getShortcutRoutePanel(routeId);
+
+  useGSAP(
+    () => {
+      const root = panelRef.current;
+      if (!root) return undefined;
+      const pieces = gsap.utils.toArray(`.${ROUTE_PANEL_PIECE}`, root);
+      return animateRoutePanelEnter(root, pieces);
+    },
+    { scope: panelRef, dependencies: [routeId], revertOnUpdate: true },
+  );
+
   if (!route || !panel) return null;
 
   const panelClass = [
@@ -27,8 +48,11 @@ export function ShortcutRoutePanel({
   ].join(' ');
 
   return (
-    <section className={panelClass} aria-label={route.title}>
-      <nav className="portfolio-guide__route-panel-nav" aria-label="Breadcrumb">
+    <section ref={panelRef} className={panelClass} aria-label={route.title}>
+      <nav
+        className={`portfolio-guide__route-panel-nav ${ROUTE_PANEL_PIECE}`}
+        aria-label="Breadcrumb"
+      >
         <button type="button" className="portfolio-guide__back portfolio-guide__back--nav" onClick={onBack}>
           ← Back
         </button>
@@ -39,15 +63,17 @@ export function ShortcutRoutePanel({
         </span>
       </nav>
 
-      <header className="portfolio-guide__route-panel-head">
+      <header className={`portfolio-guide__route-panel-head ${ROUTE_PANEL_PIECE}`}>
         <p className="portfolio-guide__route-eyebrow">{route.eyebrow}</p>
         <h3 className="portfolio-guide__route-panel-title">{route.title}</h3>
         <p className="portfolio-guide__route-panel-meaning">{panel.meaning}</p>
       </header>
 
-      <ShortcutRouteVisual kind={panel.visual} />
+      <div className={ROUTE_PANEL_PIECE}>
+        <ShortcutRouteVisual kind={panel.visual} />
+      </div>
 
-      <div className="portfolio-guide__route-primary">
+      <div className={`portfolio-guide__route-primary ${ROUTE_PANEL_PIECE}`}>
         <button
           type="button"
           className="portfolio-guide__route-primary-btn"
@@ -67,7 +93,10 @@ export function ShortcutRoutePanel({
       {panel.secondary.length ? (
         <ul className="portfolio-guide__route-secondary" aria-label="Related evidence">
           {panel.secondary.map((link) => (
-            <li key={link.label} className="portfolio-guide__route-secondary-item">
+            <li
+              key={link.label}
+              className={`portfolio-guide__route-secondary-item ${ROUTE_PANEL_PIECE}`}
+            >
               <button
                 type="button"
                 className="portfolio-guide__route-secondary-btn"
@@ -86,7 +115,7 @@ export function ShortcutRoutePanel({
       {panel.tertiaryChip ? (
         <button
           type="button"
-          className="portfolio-guide__route-tertiary-chip"
+          className={`portfolio-guide__route-tertiary-chip ${ROUTE_PANEL_PIECE}`}
           title={panel.tertiaryChip.relevance}
           onPointerEnter={() => onEvidencePointerEnter(panel.tertiaryChip.action)}
           onPointerLeave={() => onEvidencePointerLeave(panel.tertiaryChip.action)}

@@ -106,6 +106,18 @@
   transform: translateX(6px);
 }
 
+.work-narrative__visual--track.work-narrative__visual--locked .work-narrative__visual-hint {
+  opacity: 0;
+  transform: none;
+}
+
+.work-narrative__visual--track.work-narrative__visual--locked:hover .work-narrative__visual-hint,
+.work-narrative__visual--track.work-narrative__visual--locked:focus-visible
+  .work-narrative__visual-hint {
+  opacity: 1;
+  transform: none;
+}
+
 /* —— POV: sources + citations —— */
 .pov-sources-dock__trigger,
 .pov-sources-dock__citation {

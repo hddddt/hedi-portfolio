@@ -121,6 +121,7 @@ export function WorkNarrativeSection({ cases = [] }) {
   const exitWheelConsumedRef = useRef(false);
   const entryProgressRef = useRef(1);
   const capHandoffReadyRef = useRef(false);
+  const prevActiveIdRef = useRef(null);
   const [capHandoffSettled, setCapHandoffSettled] = useState(false);
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
   const [displayCaseIndex, setDisplayCaseIndex] = useState(0);
@@ -189,6 +190,31 @@ export function WorkNarrativeSection({ cases = [] }) {
       setCapHandoffSettled(false);
     }
   }, [entryProgress]);
+
+  /** Cap → Work via native scroll (not only wheel handoff event). */
+  useEffect(() => {
+    const prev = prevActiveIdRef.current;
+    prevActiveIdRef.current = activeId;
+    if (activeId !== 'home-work-narrative' || !n) return undefined;
+    if (prev === 'home-work-narrative') return undefined;
+
+    capHandoffReadyRef.current = true;
+    setCapHandoffSettled(true);
+    entryProgressRef.current = 1;
+    wheelStepConsumedRef.current = false;
+    wheelCooldownRef.current = false;
+    inputLockUntilRef.current = 0;
+
+    const el = wrapRef.current;
+    if (!el) return undefined;
+    const rect = el.getBoundingClientRect();
+    const rawFi = measureWorkFloatIndex(rect, n);
+    if (rawFi < 0.55) {
+      applySettledCase(0);
+      scheduleChapterExitArm(0, n);
+    }
+    return undefined;
+  }, [activeId, n, applySettledCase, scheduleChapterExitArm]);
 
   useEffect(() => {
     const onCapHandoff = () => {
@@ -482,15 +508,20 @@ export function WorkNarrativeSection({ cases = [] }) {
       const capTrack = document.querySelector('.capability-scroll');
       if (capTrack && activeId === 'home-capabilities') {
         const cr = capTrack.getBoundingClientRect();
-        if (isChapterStickyPinned(cr)) return;
+        const vhCap = window.innerHeight;
+        const capInChapter =
+          isChapterStickyPinned(cr) ||
+          (cr.top < vhCap * 0.22 && cr.bottom > vhCap * 0.45);
+        if (capInChapter) return;
       }
 
       const el = wrapRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
       const workEngaged =
         activeId === 'home-work-narrative' ||
-        (rect.top <= PIN_TOP_TOLERANCE_PX && rect.bottom > window.innerHeight * 0.45);
+        (rect.top <= PIN_TOP_TOLERANCE_PX + 8 && rect.bottom > vh * 0.42);
       if (!workEngaged) return;
 
       const isPinned = isChapterStickyPinned(rect);
@@ -820,7 +851,7 @@ export function WorkNarrativeSection({ cases = [] }) {
                       setOpenCaseId(item.id);
                     }}
                     aria-label={
-                      locked ? `${caseOpenLabel(item)} — password required` : caseOpenLabel(item)
+                      locked ? `${caseOpenLabel(item)} — enter key to unlock` : caseOpenLabel(item)
                     }
                     aria-disabled={locked || undefined}
                   >
@@ -835,7 +866,7 @@ export function WorkNarrativeSection({ cases = [] }) {
                         />
                       ) : null}
                       <span className="work-narrative__visual-hint">
-                        {locked ? 'Password required' : 'View case'}
+                        {locked ? 'Enter key' : 'View case'}
                       </span>
                       {locked ? (
                         <span className="work-narrative__lock" aria-hidden="true">
@@ -863,9 +894,6 @@ export function WorkNarrativeSection({ cases = [] }) {
                 const titleStyle = inChapterEntry && i === 0
                   ? workChapterEntryCopy(effectiveEntryProgress, 'title', reducedMotion)
                   : workCaseCopyPartStyle(visualScrollFi, i, 'title', reducedMotion, n);
-                const aiLayerStyle = inChapterEntry && i === 0
-                  ? workChapterEntryCopy(effectiveEntryProgress, 'aiLayer', reducedMotion)
-                  : workCaseCopyPartStyle(visualScrollFi, i, 'aiLayer', reducedMotion, n);
                 const thesisStyle = inChapterEntry && i === 0
                   ? workChapterEntryCopy(effectiveEntryProgress, 'thesis', reducedMotion)
                   : workCaseCopyPartStyle(visualScrollFi, i, 'thesis', reducedMotion, n);
@@ -877,7 +905,6 @@ export function WorkNarrativeSection({ cases = [] }) {
                   : workCaseCopyPartStyle(visualScrollFi, i, 'tags', reducedMotion, n);
                 const textReadable = Math.max(
                   titleStyle.opacity ?? 0,
-                  aiLayerStyle.opacity ?? 0,
                   thesisStyle.opacity ?? 0,
                 );
                 if (textReadable < 0.04 && (layerStyle.opacity ?? 0) < 0.04) {
@@ -897,9 +924,6 @@ export function WorkNarrativeSection({ cases = [] }) {
                       <h3 className="work-narrative__title" style={titleStyle}>
                         {item.title}
                       </h3>
-                      <p className="work-narrative__ai-layer" style={aiLayerStyle}>
-                        {item.narrativeBlock.subtitle}
-                      </p>
                       {item.narrativeBlock.thesis ? (
                         <p className="work-narrative__thesis" style={thesisStyle}>
                           {item.narrativeBlock.thesis}
@@ -933,9 +957,6 @@ export function WorkNarrativeSection({ cases = [] }) {
                       <h3 className="work-narrative__title" style={titleStyle}>
                         {item.title}
                       </h3>
-                      <p className="work-narrative__ai-layer" style={aiLayerStyle}>
-                        {item.layer}
-                      </p>
                       <p className="work-narrative__thesis" style={thesisStyle}>
                         {item.tension}
                       </p>
