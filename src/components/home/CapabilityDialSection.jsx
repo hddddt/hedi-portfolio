@@ -257,14 +257,15 @@ export function CapabilityDialSection({ trackRef }) {
 
   /** Align window scroll to a panel index even when step anchor already matches (fixes drift on chapter entry). */
   const alignScrollToPanel = useCallback(
-    (index, behavior = 'auto') => {
+    (index, behavior = 'auto', options = {}) => {
+      const { force = false } = options;
       const el = wrapRef.current;
       if (!el) return;
       const clamped = Math.min(n - 1, Math.max(0, index));
       const targetY = trackScrollTargetY(el, clamped, n);
       const behaviorResolved = reducedMotion ? 'auto' : behavior;
-      if (Math.abs(window.scrollY - targetY) > 6) {
-        window.scrollTo({ top: targetY, behavior: behaviorResolved });
+      if (force || Math.abs(window.scrollY - targetY) > 6) {
+        window.scrollTo({ top: Math.max(0, targetY), behavior: behaviorResolved });
       }
       stepAnchorRef.current = clamped;
       transitionFromRef.current = clamped;
@@ -279,13 +280,14 @@ export function CapabilityDialSection({ trackRef }) {
   );
 
   const scrollToPanel = useCallback(
-    (index, behavior = 'smooth') => {
+    (index, behavior = 'smooth', options = {}) => {
+      const { force = false } = options;
       const el = wrapRef.current;
       if (!el || n <= 1) return;
 
       const current = stepAnchorRef.current;
       let clamped = Math.min(n - 1, Math.max(0, index));
-      if (Math.abs(clamped - current) > 1) {
+      if (!force && Math.abs(clamped - current) > 1) {
         clamped = current + Math.sign(clamped - current);
       }
       if (clamped === current) {
@@ -492,26 +494,35 @@ export function CapabilityDialSection({ trackRef }) {
 
   useEffect(() => {
     const onChapterNav = (e) => {
-      const { targetId, panelIndex = 0 } = e.detail ?? {};
+      const { targetId, panelIndex = 0, syncOnly, prepare } = e.detail ?? {};
       if (targetId !== 'capabilities') return;
       if (!wrapRef.current) return;
       chapterNavLockUntilRef.current = performance.now() + 920;
       scrollTweenRef.current?.cancel();
+      if (prepare) return;
       const clamped = Math.min(n - 1, Math.max(0, panelIndex));
-      forceFirstPanelOnEntryRef.current = clamped === 0;
+      forceFirstPanelOnEntryRef.current = false;
       openingEntrySettlingRef.current = false;
       setOpeningEntrySettling(false);
       openingEntrySnapPendingRef.current = false;
       entryLatchUntilRef.current = 0;
-      const rect = wrapRef.current.getBoundingClientRect();
-      if (rect.top > PIN_TOP_TOLERANCE_PX) {
-        snapToChapterStart('smooth');
+      chapterPinnedRef.current = true;
+      setChapterPinned(true);
+      stepAnchorRef.current = clamped;
+      transitionFromRef.current = clamped;
+      transitionToRef.current = clamped;
+      setFloatIndex(clamped);
+      setPanelIndex(clamped);
+      wheelCooldownRef.current = false;
+      wheelStepConsumedRef.current = false;
+      setPanelTransit(false);
+      if (!syncOnly) {
+        alignScrollToPanel(clamped, 'smooth', { force: true });
       }
-      scrollToPanel(clamped, 'smooth');
     };
     window.addEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
     return () => window.removeEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
-  }, [n, scrollToPanel, snapToChapterStart]);
+  }, [alignScrollToPanel, n]);
 
   /** Opening exit wipe — snap to panel 0 when Cap engages mid-scroll (activeId may lag). */
   const prevCapExitWipeRef = useRef(0);

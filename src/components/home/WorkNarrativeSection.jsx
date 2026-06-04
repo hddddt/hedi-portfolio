@@ -23,6 +23,7 @@ import {
   workVisualCrossfade,
   WORK_SCROLL,
 } from '../../utils/workChoreography.js';
+import { HOME_CHAPTER_NAV_EVENT } from '../../utils/portfolioGuideTarget.js';
 import { measureChapterEntryProgress } from '../../utils/scrollMotion.js';
 import {
   createTrackScrollTween,
@@ -679,6 +680,31 @@ export function WorkNarrativeSection({ cases = [] }) {
   }, [unlocked, requestAccess]);
 
   useEffect(() => {
+    const goToWorkPanel = (panelIndex) => {
+      if (!n) return;
+      const nextIdx = Math.min(n - 1, Math.max(0, panelIndex));
+      guideScrollLockUntilRef.current = performance.now() + 920;
+      setOpenCaseId(null);
+      scrollToCase(nextIdx, 'smooth', { force: true });
+    };
+
+    const onChapterNav = (e) => {
+      const { targetId, panelIndex = 0, syncOnly } = e.detail ?? {};
+      if (targetId !== 'selected-work') return;
+      const nextIdx = Math.min(n - 1, Math.max(0, panelIndex));
+      guideScrollLockUntilRef.current = performance.now() + 920;
+      setOpenCaseId(null);
+      scrollTweenRef.current?.cancel();
+      caseTransitionLockedRef.current = false;
+      setCaseTransitioning(false);
+      applySettledCase(nextIdx);
+      capHandoffReadyRef.current = true;
+      setCapHandoffSettled(true);
+      if (!syncOnly) {
+        goToWorkPanel(nextIdx);
+      }
+    };
+
     const onGuideFocusCase = (e) => {
       const caseId = e?.detail?.caseId;
       const panelIndex = e?.detail?.panelIndex;
@@ -689,12 +715,15 @@ export function WorkNarrativeSection({ cases = [] }) {
           ? Math.min(n - 1, panelIndex)
           : fromId;
       if (nextIdx < 0) return;
-      guideScrollLockUntilRef.current = performance.now() + 920;
-      setOpenCaseId(null);
-      scrollToCase(nextIdx, 'smooth', { force: true });
+      goToWorkPanel(nextIdx);
     };
+
+    window.addEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
     window.addEventListener('portfolio-guide-focus-case', onGuideFocusCase);
-    return () => window.removeEventListener('portfolio-guide-focus-case', onGuideFocusCase);
+    return () => {
+      window.removeEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
+      window.removeEventListener('portfolio-guide-focus-case', onGuideFocusCase);
+    };
   }, [cases, n, scrollToCase]);
 
   useEffect(

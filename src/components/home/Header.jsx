@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { NAV_CHAPTER_FIELD_HUE } from '../../data/fieldSemanticStates.js';
-import { scrollToGuideTarget } from '../../utils/portfolioGuideTarget.js';
+import { scrollHomeChapterNav } from '../../utils/homeChapterNav.js';
 
 /** href matches NarrativeChapter `guideTargetId` (see portfolioGuideTarget.js). */
 const LINKS = [
@@ -13,7 +13,7 @@ const LINKS = [
 ];
 
 function scrollToSection(targetId) {
-  scrollToGuideTarget(targetId);
+  scrollHomeChapterNav(targetId, 0);
 }
 
 function scrollToFirstScreen() {

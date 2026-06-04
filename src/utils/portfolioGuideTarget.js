@@ -1,14 +1,15 @@
 /** @typedef {{ type: 'section' | 'case' | 'capability', id: string }} GuideDestination */
 
 import { homeCapabilities } from '../data/homeScrollChapters.js';
-
-import { WORK_TRACK_LEAD_IN_VH } from './workChoreography.js';
-import { trackScrollTargetY } from './scrollTrack.js';
+import {
+  dispatchChapterNav,
+  HOME_CHAPTER_NAV_EVENT,
+  performHomeChapterNav,
+} from './homeChapterNav.js';
 
 const ACTIVE_HIGHLIGHT_MS = 1800;
 
-/** Header + guide — chapter sections sync panel state after programmatic scroll. */
-export const HOME_CHAPTER_NAV_EVENT = 'home-chapter-nav';
+export { HOME_CHAPTER_NAV_EVENT, dispatchChapterNav };
 
 /** Logical guide target → DOM element id (1:1 on scroll-home prototype). */
 export const GUIDE_TARGET_DOM_ID = {
@@ -21,14 +22,6 @@ export const GUIDE_TARGET_DOM_ID = {
   'case-02': 'case-02',
   'case-03': 'case-03',
   'case-04': 'case-04',
-};
-
-const SELECTORS = {
-  capabilityTrack: '#capabilities .capability-scroll',
-  capabilityPanelCount: '#capabilities .capability-scroll__snap',
-  workTrack: '#home-work-strongest',
-  workPanelCount: '#home-work-strongest .work-narrative__layer',
-  povTrack: '#point-of-view .pov-scroll',
 };
 
 /**
@@ -106,78 +99,20 @@ export function caseIdToPanelIndex(caseId) {
   return Math.max(0, parseInt(match[1], 10) - 1);
 }
 
-/**
- * Scroll so a pinned vh-track lands on `panelIndex`.
- * Matches CapabilityDialSection / ApproachSection: index / (n - 1).
- * @param {HTMLElement} trackEl
- * @param {number} panelIndex
- * @param {number} panelCount
- */
-function scrollPinnedTrackNMinusOne(trackEl, panelIndex, panelCount) {
-  const rect = trackEl.getBoundingClientRect();
-  const total = Math.max(1, rect.height - window.innerHeight);
-  const idx = Math.min(panelCount - 1, Math.max(0, panelIndex));
-  const traveled = panelCount <= 1 ? 0 : (idx / (panelCount - 1)) * total;
-  const y = window.scrollY + rect.top + traveled;
-  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-}
-
-/**
- * Scroll work carousel — matches WorkNarrativeSection lead-in + n-panel track.
- * @param {HTMLElement} trackEl
- * @param {number} panelIndex
- * @param {number} panelCount
- */
-function scrollWorkTrackN(trackEl, panelIndex, panelCount) {
-  const vh = window.innerHeight;
-  const total = Math.max(1, trackEl.offsetHeight - vh);
-  const leadIn = (WORK_TRACK_LEAD_IN_VH / 100) * vh;
-  const caseTravel = Math.max(1, total - leadIn);
-  const step = caseTravel / panelCount;
-  const idx = Math.min(panelCount - 1, Math.max(0, panelIndex));
-  const traveled = idx === 0 ? 0 : leadIn + idx * step;
-  const y = window.scrollY + trackEl.getBoundingClientRect().top + traveled;
-  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-}
-
-function dispatchChapterNav(targetId, panelIndex = 0) {
-  window.dispatchEvent(
-    new CustomEvent(HOME_CHAPTER_NAV_EVENT, { detail: { targetId, panelIndex } }),
-  );
-}
-
 function scrollCapabilityToPanel(panelIndex = 0) {
-  const track = document.querySelector(SELECTORS.capabilityTrack);
-  if (!(track instanceof HTMLElement)) {
-    console.warn('[PortfolioGuide] Missing target:', 'capabilities');
-    return;
-  }
-  const panelCount = document.querySelectorAll(SELECTORS.capabilityPanelCount).length;
-  const count = Math.max(1, panelCount);
-  const y = trackScrollTargetY(track, panelIndex, count);
-  window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-  dispatchChapterNav('capabilities', panelIndex);
+  performHomeChapterNav('capabilities', panelIndex);
 }
 
 function scrollWorkToPanel(panelIndex = 0) {
-  const track = document.querySelector(SELECTORS.workTrack);
-  if (!(track instanceof HTMLElement)) {
-    console.warn('[PortfolioGuide] Missing target:', 'selected-work');
-    return;
-  }
-  const panelCount = document.querySelectorAll(SELECTORS.workPanelCount).length;
-  scrollWorkTrackN(track, panelIndex, Math.max(1, panelCount));
+  performHomeChapterNav('selected-work', panelIndex);
 }
 
 function scrollPovToPanel(panelIndex = 0) {
-  const track = document.querySelector(SELECTORS.povTrack);
-  if (!(track instanceof HTMLElement)) {
-    console.warn('[PortfolioGuide] Missing target:', 'point-of-view');
-    return;
-  }
-  const panelCount = track.querySelectorAll('.pov-scroll__snap').length;
-  scrollPinnedTrackNMinusOne(track, panelIndex, Math.max(1, panelCount));
-  dispatchChapterNav('point-of-view', panelIndex);
+  performHomeChapterNav('point-of-view', panelIndex);
+}
+
+function scrollMeChapter() {
+  performHomeChapterNav('me', 0);
 }
 
 /**
@@ -186,11 +121,11 @@ function scrollPovToPanel(panelIndex = 0) {
  * @param {number} panelIndex
  */
 export function syncWorkCaseFromGuide(caseId, panelIndex) {
-  window.dispatchEvent(
-    new CustomEvent('portfolio-guide-focus-case', {
-      detail: { caseId, panelIndex },
-    }),
-  );
+  const idx =
+    typeof panelIndex === 'number' && panelIndex >= 0
+      ? panelIndex
+      : caseIdToPanelIndex(caseId);
+  performHomeChapterNav('selected-work', idx);
 }
 
 /**
@@ -201,8 +136,7 @@ export function scrollToGuideTarget(targetId) {
 
   if (caseId) {
     const panelIndex = caseIdToPanelIndex(caseId);
-    syncWorkCaseFromGuide(caseId, panelIndex);
-    scrollWorkToPanel(panelIndex);
+    performHomeChapterNav('selected-work', panelIndex);
     window.setTimeout(() => activateGuideTarget(targetId), 560);
     return;
   }
@@ -215,7 +149,6 @@ export function scrollToGuideTarget(targetId) {
 
   if (targetId === 'selected-work') {
     scrollWorkToPanel(0);
-    syncWorkCaseFromGuide('case01', 0);
     window.setTimeout(() => activateGuideTarget(targetId), 480);
     return;
   }
@@ -227,16 +160,7 @@ export function scrollToGuideTarget(targetId) {
   }
 
   if (targetId === 'me') {
-    const target =
-      document.getElementById('home-beyond-path') ?? resolveGuideTargetElement('me');
-    if (!target) {
-      console.warn('[PortfolioGuide] Missing target:', targetId);
-      return;
-    }
-    const headerClearance = Math.max(56, Math.round(window.innerHeight * 0.06));
-    const y = target.getBoundingClientRect().top + window.scrollY - headerClearance;
-    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-    dispatchChapterNav('me', 0);
+    scrollMeChapter();
     window.setTimeout(() => activateGuideTarget(targetId), 480);
     return;
   }

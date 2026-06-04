@@ -1194,18 +1194,76 @@ html.portfolio-guide-panel-open .portfolio-guide__panel-body {
 }
 
 .portfolio-guide__angle-list {
+  --angle-grid-left: 5;
+  --angle-grid-right: 8;
   list-style: none;
   margin: 0;
   padding: 0;
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
   column-gap: var(--guide-angle-gap-col, 20px);
   row-gap: var(--guide-angle-gap-row, 22px);
 }
 
+/* 2×2 cross — vertical + horizontal center rules */
+.portfolio-guide__angle-list::before,
+.portfolio-guide__angle-list::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.portfolio-guide__angle-list::before {
+  left: calc(
+    (100% - var(--guide-angle-gap-col, 20px)) * var(--angle-grid-left) /
+      (var(--angle-grid-left) + var(--angle-grid-right)) + var(--guide-angle-gap-col, 20px) / 2
+  );
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-0.5px);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(243, 239, 230, 0.16) 8%,
+    rgba(243, 239, 230, 0.2) 50%,
+    rgba(243, 239, 230, 0.16) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 0 0.5px rgba(243, 239, 230, 0.04);
+}
+
+.portfolio-guide__angle-list::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-0.5px);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(243, 239, 230, 0.16) 6%,
+    rgba(243, 239, 230, 0.2) 50%,
+    rgba(243, 239, 230, 0.16) 94%,
+    transparent 100%
+  );
+  box-shadow: 0 0 0 0.5px rgba(243, 239, 230, 0.04);
+}
+
 .portfolio-guide__angle-item {
   position: relative;
+  z-index: 1;
   min-width: 0;
+}
+
+.portfolio-guide__angle-item:nth-child(2n + 1) {
+  padding-right: 6px;
+}
+
+.portfolio-guide__angle-item:nth-child(2n) {
+  padding-left: 10px;
 }
 
 .portfolio-guide__angle-card {

@@ -235,10 +235,17 @@ export function ApproachSection() {
 
   useEffect(() => {
     const onChapterNav = (e) => {
-      const { targetId, panelIndex = 0 } = e.detail ?? {};
+      const { targetId, panelIndex = 0, syncOnly, prepare } = e.detail ?? {};
       if (targetId !== 'point-of-view') return;
       chapterNavLockUntilRef.current = performance.now() + 920;
-      scrollToBeat(panelIndex, 'smooth');
+      if (prepare) return;
+      const clamped = Math.min(n - 1, Math.max(0, panelIndex));
+      beatIndexRef.current = clamped;
+      setScrollFloat(clamped);
+      setBeatIndex(clamped);
+      if (!syncOnly) {
+        scrollToBeat(clamped, 'smooth');
+      }
     };
     window.addEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
     return () => window.removeEventListener(HOME_CHAPTER_NAV_EVENT, onChapterNav);
