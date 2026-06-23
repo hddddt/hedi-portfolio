@@ -40,7 +40,11 @@ export default function App() {
   useEffect(() => {
     if (SCROLL_HOME_PROTOTYPE) {
       document.documentElement.classList.add('home-scroll-page');
-      return () => document.documentElement.classList.remove('home-scroll-page');
+      document.documentElement.dataset.fieldChapter = 'home-landing';
+      return () => {
+        document.documentElement.classList.remove('home-scroll-page');
+        delete document.documentElement.dataset.fieldChapter;
+      };
     }
     return undefined;
   }, []);

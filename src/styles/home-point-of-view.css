@@ -109,7 +109,7 @@
   opacity:0;
   visibility:hidden;
   pointer-events:none;
-  transition:opacity 0.5s ease;
+  transition:opacity 0.72s ease, visibility 0.72s ease;
 }
 
 /* Spatial zones (composition only — typography unchanged per role) */
@@ -130,8 +130,8 @@
 }
 .pov-slide.is-current .pov-line,
 .pov-slide.is-current .pov-pairs{
-  animation:pov-line-in 0.95s cubic-bezier(0.22,1,0.36,1) forwards;
-  animation-delay:calc(var(--line-i, 0) * var(--stagger, 0.12s));
+  animation:pov-line-in 1.08s cubic-bezier(0.22,1,0.36,1) forwards;
+  animation-delay:calc(0.08s + var(--line-i, 0) * var(--stagger, 0.14s));
 }
 .pov-pairs .pov-line,
 .pov-slide--design-close .pov-boundaries .pov-line{

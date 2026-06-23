@@ -31,21 +31,34 @@ export const GUIDE_DECISION_AREAS = {
 /** User-facing Portfolio Shortcut shell copy */
 export const SHORTCUT_ENTRY = {
   label: 'Portfolio Shortcut',
-  tagline: 'Choose an angle, then jump to the evidence that answers it.',
-  freeInputPlaceholder: 'Search by AI topic, role question, or design signal',
-  submitLabel: 'Find',
+  tagline: 'Choose what you want to verify — or ask about Hedi\u2019s work.',
+  freeInputPlaceholder: 'e.g. How does she handle complex requirements?',
+  submitLabel: 'Ask',
+  askHelper: 'Ask about AI workflow, role fit, human control, traceability, or complex requirements.',
 };
 
 export const SHORTCUT_SECTIONS = {
-  keyAngles: 'Review angles',
-  proofPoints: 'Proof points',
-  search: 'Search evidence',
-  shortAnswer: 'Short answer',
-  relatedProof: 'Related proof points',
-  continueWith: 'Continue with',
+  guidedRoutes: 'Guided routes',
+  askAboutWork: 'Ask about the work',
+  directCases: 'Direct cases',
+  openEvidence: 'Evidence to open',
+  continueWith: 'Continue',
+  allRoutes: 'All routes',
+  bestMatchingRoute: 'Best matching route',
+  relevantEvidence: 'Evidence to open',
+  matchReason: 'Best answer',
+  keyAngles: 'Guided routes',
+  proofPoints: 'Direct cases',
+  search: 'Ask about the work',
+  shortAnswer: 'Best answer',
+  whyHediFits: 'Why Hedi fits',
+  relatedProof: 'Evidence to open',
+  continueWithLegacy: 'Continue with',
 };
 
 export {
+  SHORTCUT_ASK_CHIPS,
+  SHORTCUT_DIRECT_CASES,
   SHORTCUT_KEY_ANGLES,
   SHORTCUT_ROUTES,
   SHORTCUT_PROOF_POINTS,
@@ -54,6 +67,8 @@ export {
   getShortcutRoute,
   getShortcutRoutePanel,
   getShortcutAngleResult,
+  matchShortcutRoute,
+  SHORTCUT_CHIP_QUERIES,
 } from './portfolioShortcutContent.js';
 
 /** @deprecated use SHORTCUT_PROOF_POINTS */
@@ -64,26 +79,27 @@ export const GUIDE_ENTRY = SHORTCUT_ENTRY;
 
 export const GUIDE_SYSTEM = {
   purpose:
-    'Four lenses into belief, problem domain, method, and expanded design boundary — interpretive, not a recruiter checklist.',
+    'Portfolio evidence routing — role positioning, capabilities, project proof, and answer boundaries. Not open-ended chat.',
   audiences: ['recruiters', 'hiring managers', 'design leads', 'PM / engineering teams', 'AI product teams'],
   answerPrinciples: [
-    'Start with the judgment.',
-    'Keep each layer distinct — belief, problems, method, expanded boundary.',
-    'Point to evidence and method lenses, not only case menus.',
-    'Stay sharp and human — not generic AI copy.',
+    'One concise best answer first.',
+    'Connect to capabilities with 2\u20133 why-Hedi-fits bullets.',
+    'Point to 2\u20133 clickable evidence rows from portfolio proof only.',
+    'Stay within shown work — no invented metrics or generic AI advice.',
   ],
 };
 
 export const GUIDE_RESULT_SECTIONS = {
   youAsked: 'Query',
-  takeaway: 'Summary',
-  shortMeaning: 'Summary',
+  takeaway: 'Best answer',
+  shortMeaning: 'Best answer',
   focus: 'Focus',
-  relatedPaths: 'Matched evidence',
+  relatedPaths: 'Evidence to open',
   askFromAngle: 'Refine',
-  followUp: 'Related',
-  whereToLook: 'Matched evidence',
-  matchReason: 'Why it matches',
+  followUp: 'Answer',
+  whyHediFits: 'Why Hedi fits',
+  whereToLook: 'Evidence to open',
+  matchReason: 'Best answer',
 };
 
 /** Maps flow id → decision area (including legacy follow-up flows). */

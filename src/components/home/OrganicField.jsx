@@ -6,6 +6,7 @@ import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { getOrganicFieldViewportPortalNode } from '../../utils/organicFieldViewportPortal.js';
 import { usePerspective } from '../../context/PerspectiveContext.jsx';
 import { applyGreenBreathingLayer } from '../../utils/greenFieldBreathing.js';
+import { maxFieldDevicePixelRatio } from '../../utils/scrollPerformance.js';
 import { createOrganicFieldRenderer } from './organicFieldGl.js';
 import {
   computeHeroFieldTargets,
@@ -253,7 +254,7 @@ function OrganicFieldCanvas({ inCard = false }) {
     let light = ambInit.light ?? false;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, maxFieldDevicePixelRatio());
       const slot = inCardRef.current ? canvas.parentElement : null;
       const box = slot?.getBoundingClientRect();
 
@@ -783,7 +784,7 @@ export function LandingOrganicField() {
   );
 }
 
-/** Later chapters — viewport layer behind scroll content. */
+/** Viewport WebGL — gated until scroll orchestrator reports field-ready. */
 export function ViewportOrganicField() {
   const { progress, openingComplete, openingCapHandoff } = useFieldNarrative();
   const { activeId } = useNarrativeScroll();

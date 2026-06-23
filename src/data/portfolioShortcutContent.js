@@ -2,6 +2,8 @@
  * Portfolio Shortcut — intent-to-evidence routing (not chat / FAQ / sitemap).
  */
 
+import { KNOWLEDGE_EVIDENCE } from './portfolioShortcutKnowledge.js';
+
 /** @typedef {{ type: 'section' | 'case' | 'capability', id: string }} ShortcutAction */
 
 /** @typedef {{
@@ -12,6 +14,26 @@
  */
 
 /** @typedef {{
+ *   num: string,
+ *   title: string,
+ *   signal: string,
+ *   action: ShortcutAction,
+ * }} ShortcutEvidenceRow
+ */
+
+/** @typedef {{
+ *   routeId: string,
+ *   intro: string,
+ *   meaning?: string,
+ *   evidence: ShortcutEvidenceRow[],
+ *   continueRoutes: string[],
+ *   visual?: string,
+ *   primary?: ShortcutPrimaryAction,
+ *   secondary?: ShortcutSecondaryLink[],
+ * }} ShortcutRoutePanel
+ */
+
+/** @typedef {{
  *   label: string,
  *   helper: string,
  *   destinationLabel: string,
@@ -19,12 +41,11 @@
  * }} ShortcutPrimaryAction
  */
 
-/** @typedef {'framing' | 'operationalization' | 'scope' | 'relationship'} ShortcutPanelVisualKind
- */
-
 /** @typedef {{
  *   id: string,
+ *   index: string,
  *   title: string,
+ *   signal: string,
  *   eyebrow: string,
  *   oneLiner: string,
  *   question: string,
@@ -32,49 +53,60 @@
  * }} ShortcutRoute
  */
 
-/** @typedef {{
- *   routeId: string,
- *   panelType: string,
- *   meaning: string,
- *   visual: ShortcutPanelVisualKind,
- *   primary: ShortcutPrimaryAction,
- *   secondary: ShortcutSecondaryLink[],
- *   tertiaryChip?: ShortcutSecondaryLink | null,
- * }} ShortcutRoutePanel
- */
+export const SHORTCUT_ASK_CHIPS = [
+  'Beyond UI',
+  'AI workflow',
+  'Human-in-the-loop',
+  'Traceability',
+];
+
+export const SHORTCUT_DIRECT_CASES = [
+  { id: 'case01', label: 'Conversational AI', action: { type: 'case', id: 'case01' } },
+  { id: 'case02', label: 'Contract Intelligence', action: { type: 'case', id: 'case02' } },
+  { id: 'case03', label: 'Supply Chain Agents', action: { type: 'case', id: 'case03' } },
+  { id: 'case04', label: 'AI Companion', action: { type: 'case', id: 'case04' } },
+];
 
 export const SHORTCUT_ROUTES = [
   {
-    id: 'ambiguity-structure',
-    title: 'Ambiguity → Structure',
-    eyebrow: 'How she starts',
-    oneLiner: 'Frames unclear AI needs before the interface.',
-    question: 'How does she move from ambiguity to structure?',
-    intent: 'method / framing-first',
+    id: 'requirements-to-product-logic',
+    index: '01',
+    title: 'From requirements to product logic',
+    signal: 'Stakeholder needs → workflows, roles, acceptance criteria',
+    eyebrow: 'Capability 01',
+    oneLiner: 'Translates complex requirements into clear product structures.',
+    question: 'How does Hedi handle complex requirements?',
+    intent: 'requirements / BA-adjacent / structure-first',
   },
   {
-    id: 'ai-usable-work',
-    title: 'AI → Usable Work',
-    eyebrow: 'What she designs',
-    oneLiner: 'Turns AI capability into usable product work.',
-    question: 'What AI work does she actually do?',
-    intent: 'AI work / operationalization-first',
+    id: 'ai-output-to-workflow',
+    index: '02',
+    title: 'From AI output to operational workflow',
+    signal: 'Output → next steps, handoffs, recovery, completion',
+    eyebrow: 'Capability 02',
+    oneLiner: 'Designs what happens after AI produces an answer.',
+    question: 'How does Hedi design AI workflows beyond the interface?',
+    intent: 'AI workflow / post-response / operationalization',
   },
   {
-    id: 'design-role-expansion',
-    title: 'Design Role Expansion',
-    eyebrow: 'Where design expands',
-    oneLiner: 'Shapes operating conditions beyond screens.',
-    question: 'How is design expanding in the AI era?',
-    intent: 'role scope / positioning-first',
+    id: 'automation-to-human-control',
+    index: '03',
+    title: 'From automation to human control',
+    signal: 'Review · approve · override · escalate · own',
+    eyebrow: 'Capability 03',
+    oneLiner: 'Defines where people stay involved in automated processes.',
+    question: 'Where does Hedi define human control in AI-supported workflows?',
+    intent: 'human-in-the-loop / governance / control boundaries',
   },
   {
-    id: 'human-ai-relationship',
-    title: 'Human-AI Relationship',
-    eyebrow: 'How people stay involved',
-    oneLiner: 'Defines how people stay informed, involved, and able to act with AI.',
-    question: 'What is the relationship between people and AI in her work?',
-    intent: 'human-AI relation / POV-first',
+    id: 'decisions-to-traceable-systems',
+    index: '04',
+    title: 'From decisions to traceable systems',
+    signal: 'Decision states · sources · audit · confirmation',
+    eyebrow: 'Capability 04',
+    oneLiner: 'Structures how decisions are made, reviewed, and traced.',
+    question: 'How does Hedi make AI-assisted decisions reviewable?',
+    intent: 'traceability / auditability / accountable completion',
   },
 ];
 
@@ -83,109 +115,109 @@ export const SHORTCUT_KEY_ANGLES = SHORTCUT_ROUTES;
 
 /** @type {Record<string, ShortcutRoutePanel>} */
 export const SHORTCUT_ROUTE_PANELS = {
-  'ambiguity-structure': {
-    routeId: 'ambiguity-structure',
-    panelType: 'Framing Panel',
-    meaning:
-      'Turns unclear AI needs into task logic, workflow gaps, and completion criteria before the interface.',
-    visual: 'convergence',
-    primary: {
-      label: 'View AI Problem Framing',
-      helper: 'See how unclear AI briefs become role definition, workflow gaps, and success criteria.',
-      destinationLabel: 'Capabilities · AI Problem Framing',
-      action: { type: 'capability', id: 'ai-problem-framing' },
-    },
-    secondary: [
+  'requirements-to-product-logic': {
+    routeId: 'requirements-to-product-logic',
+    intro:
+      'Verify how stakeholder needs, business constraints, and domain requirements become workflows, roles, decision logic, and acceptance criteria.',
+    evidence: [
       {
-        label: 'Conversational AI',
-        relevance: 'Ambiguity in unresolved conversations',
-        action: { type: 'case', id: 'case01' },
+        num: '01',
+        title: 'From requirements to product logic',
+        signal: 'Requirements translation · stakeholder alignment · workflow structure',
+        action: { type: 'capability', id: 'requirements-to-product-logic' },
       },
       {
-        label: 'Contract Intelligence',
-        relevance: 'Ambiguity in AI-assisted review decisions',
-        action: { type: 'case', id: 'case02' },
-      },
-    ],
-  },
-  'ai-usable-work': {
-    routeId: 'ai-usable-work',
-    panelType: 'Operationalization Panel',
-    meaning:
-      'Turns AI capability into usable product work: role, workflow fit, system states, boundaries, and completion paths.',
-    visual: 'operationalization',
-    primary: {
-      label: 'See AI work examples',
-      helper: 'How different AI capabilities become workflow, review, control, and continuity.',
-      destinationLabel: 'Work section start / Work overview',
-      action: { type: 'section', id: 'home-work-narrative' },
-    },
-    secondary: [
-      {
-        label: 'Conversational AI',
-        relevance: 'Conversation capability becomes routing, recovery, continuation, and handoff',
-        action: { type: 'case', id: 'case01' },
-      },
-      {
-        label: 'Contract Intelligence',
-        relevance: 'AI analysis becomes reviewable, traceable work',
-        action: { type: 'case', id: 'case02' },
-      },
-    ],
-    tertiaryChip: {
-      label: 'Supply Chain Agents',
-      relevance: 'Automation becomes controlled enterprise execution',
-      action: { type: 'case', id: 'case03' },
-    },
-  },
-  'design-role-expansion': {
-    routeId: 'design-role-expansion',
-    panelType: 'Scope Panel',
-    meaning:
-      'Design moves beyond screens into the operating conditions where AI, people, workflows, control, and responsibility meet.',
-    visual: 'scope',
-    primary: {
-      label: 'Explore operating layers',
-      helper: 'See the capability layers behind AI product and workflow design.',
-      destinationLabel: 'Capabilities section',
-      action: { type: 'section', id: 'home-capabilities' },
-    },
-    secondary: [
-      {
-        label: 'Supply Chain Agents',
-        relevance: 'Design at the level of checkpoints and execution boundaries',
+        num: '02',
+        title: 'Supply Chain Agents',
+        signal: 'Complex enterprise workflow structure',
         action: { type: 'case', id: 'case03' },
       },
       {
-        label: 'Point of View',
-        relevance: 'Why AI design moves beyond interface into responsibility and completion',
+        num: '03',
+        title: 'Contract Intelligence',
+        signal: 'Review context and decision architecture',
+        action: { type: 'case', id: 'case02' },
+      },
+    ],
+    continueRoutes: ['ai-output-to-workflow', 'decisions-to-traceable-systems'],
+  },
+  'ai-output-to-workflow': {
+    routeId: 'ai-output-to-workflow',
+    intro:
+      'Verify how AI output becomes continued work: next steps, handoffs, review moments, fallbacks, and recovery paths.',
+    evidence: [
+      {
+        num: '01',
+        title: 'Conversational AI',
+        signal: 'Post-response workflow · routing · recovery · handoff',
+        action: { type: 'case', id: 'case01' },
+      },
+      {
+        num: '02',
+        title: 'Contract Intelligence',
+        signal: 'AI analysis → reviewable decision',
+        action: { type: 'case', id: 'case02' },
+      },
+      {
+        num: '03',
+        title: 'From AI output to operational workflow',
+        signal: 'Next-step flows · handoff logic · recovery flows',
+        action: { type: 'capability', id: 'ai-output-to-workflow' },
+      },
+    ],
+    continueRoutes: ['automation-to-human-control', 'requirements-to-product-logic'],
+  },
+  'automation-to-human-control': {
+    routeId: 'automation-to-human-control',
+    intro:
+      'Verify where people review, approve, override, escalate, or take responsibility inside automated and AI-supported processes.',
+    evidence: [
+      {
+        num: '01',
+        title: 'Supply Chain Agents',
+        signal: 'Human checkpoints · intervention gates · control boundaries',
+        action: { type: 'case', id: 'case03' },
+      },
+      {
+        num: '02',
+        title: 'Contract Intelligence',
+        signal: 'Human confirmation in AI-assisted review',
+        action: { type: 'case', id: 'case02' },
+      },
+      {
+        num: '03',
+        title: 'From automation to human control',
+        signal: 'Review points · approval gates · escalation logic',
+        action: { type: 'capability', id: 'automation-to-human-control' },
+      },
+    ],
+    continueRoutes: ['decisions-to-traceable-systems', 'ai-output-to-workflow'],
+  },
+  'decisions-to-traceable-systems': {
+    routeId: 'decisions-to-traceable-systems',
+    intro:
+      'Verify how decisions are made, reviewed, documented, and traced across AI-assisted and enterprise workflows.',
+    evidence: [
+      {
+        num: '01',
+        title: 'Contract Intelligence',
+        signal: 'Traceable review states · source visibility · audit trail',
+        action: { type: 'case', id: 'case02' },
+      },
+      {
+        num: '02',
+        title: 'From decisions to traceable systems',
+        signal: 'Decision states · review history · human confirmation',
+        action: { type: 'capability', id: 'decisions-to-traceable-systems' },
+      },
+      {
+        num: '03',
+        title: 'Point of View',
+        signal: 'Capability is not completion',
         action: { type: 'section', id: 'home-approach' },
       },
     ],
-  },
-  'human-ai-relationship': {
-    routeId: 'human-ai-relationship',
-    panelType: 'Relationship Panel',
-    meaning: 'Defines how people stay informed, involved, responsible, and able to act with AI.',
-    visual: 'relationship',
-    primary: {
-      label: 'Read the human-AI stance',
-      helper: 'How her POV defines the relationship between AI capability and human agency.',
-      destinationLabel: 'Point of View section',
-      action: { type: 'section', id: 'home-approach' },
-    },
-    secondary: [
-      {
-        label: 'AI Companion',
-        relevance: 'Continuity and presence in repeated human-AI interaction',
-        action: { type: 'case', id: 'case04' },
-      },
-      {
-        label: 'Supply Chain Agents',
-        relevance: 'People stay involved through checkpoints, escalation, and control',
-        action: { type: 'case', id: 'case03' },
-      },
-    ],
+    continueRoutes: ['requirements-to-product-logic', 'automation-to-human-control'],
   },
 };
 
@@ -213,7 +245,7 @@ export function getShortcutAngleResult(routeId) {
   return getShortcutRoutePanel(routeId);
 }
 
-/** Legacy — kept for optional direct evidence jumps from search flows */
+/** Legacy — direct case strip + search routing */
 export const SHORTCUT_PROOF_POINTS = [
   {
     id: 'case01',
@@ -244,3 +276,121 @@ export const SHORTCUT_PROOF_POINTS = [
     action: { type: 'case', id: 'case04' },
   },
 ];
+
+const ROUTE_MATCH_TERMS = {
+  'requirements-to-product-logic': [
+    'requirement',
+    'stakeholder',
+    'ambigu',
+    'structure',
+    'framing',
+    'unclear',
+    'brief',
+    'messy',
+    'vague',
+    'domain',
+    'acceptance',
+    'business constraint',
+    'translate',
+    'ba ',
+  ],
+  'ai-output-to-workflow': [
+    'usable',
+    'workflow',
+    'output',
+    'handoff',
+    'recovery',
+    'operational',
+    'post-response',
+    'routing',
+    'chatbot',
+    'conversational',
+    'ai work',
+    'after ai',
+    'next step',
+  ],
+  'automation-to-human-control': [
+    'human',
+    'loop',
+    'control',
+    'intervention',
+    'override',
+    'approve',
+    'escalation',
+    'governance',
+    'automation',
+    'responsibility',
+    'checkpoint',
+  ],
+  'decisions-to-traceable-systems': [
+    'traceability',
+    'traceable',
+    'audit',
+    'reviewable',
+    'decision',
+    'source',
+    'confirmation',
+    'compliance',
+    'history',
+    'accountable',
+  ],
+};
+
+/** Legacy route ids → current capability-aligned routes */
+const LEGACY_ROUTE_ALIASES = {
+  'ambiguity-structure': 'requirements-to-product-logic',
+  'ai-usable-work': 'ai-output-to-workflow',
+  'design-role-expansion': 'requirements-to-product-logic',
+  'human-ai-relationship': 'automation-to-human-control',
+};
+
+/**
+ * @param {string} question
+ * @returns {ShortcutRoute | null}
+ */
+export function matchShortcutRoute(question) {
+  const text = String(question ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[?!.]+$/g, '');
+  if (!text) return null;
+
+  let bestId = null;
+  let bestScore = 0;
+
+  for (const route of SHORTCUT_ROUTES) {
+    const terms = ROUTE_MATCH_TERMS[route.id] ?? [];
+    let score = 0;
+    for (const term of terms) {
+      if (text.includes(term)) score += 1;
+    }
+    if (route.question.toLowerCase().includes(text) || text.includes(route.title.toLowerCase())) {
+      score += 3;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = route.id;
+    }
+  }
+
+  return bestScore > 0 ? getShortcutRoute(bestId) : null;
+}
+
+/**
+ * @param {string} routeId
+ * @returns {ShortcutRoute | null}
+ */
+export function resolveShortcutRouteId(routeId) {
+  const resolved = LEGACY_ROUTE_ALIASES[routeId] ?? routeId;
+  return getShortcutRoute(resolved);
+}
+
+/** Chip label → suggested ask query */
+export const SHORTCUT_CHIP_QUERIES = {
+  'Beyond UI': 'What shows that Hedi works beyond UI screens?',
+  'AI workflow': 'How does Hedi design AI workflows beyond the interface?',
+  'Human-in-the-loop': 'Where does Hedi define human control in AI-supported workflows?',
+  Traceability: 'How does Hedi make AI-assisted decisions reviewable?',
+};
+
+export { KNOWLEDGE_EVIDENCE };

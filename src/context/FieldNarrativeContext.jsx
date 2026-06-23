@@ -7,31 +7,30 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  computeFieldNarrative,
-  measureOpeningScrollProgress,
-} from '../utils/fieldNarrative.js';
-import { measureCapWorkOrchestration } from '../utils/capabilitiesChoreography.js';
-import { homeCapabilities } from '../data/homeScrollChapters.js';
-import { useOpeningCapHandoffScrollTrigger } from '../hooks/useOpeningCapHandoffScrollTrigger.js';
+import { computeFieldNarrative } from '../utils/fieldNarrative.js';
 import { computeOpeningBootAt } from '../utils/openingBootSequence.js';
-import { isPortfolioGuidePanelLocked } from '../utils/portfolioGuidePanelState.js';
+import { useScrollOrchestrator } from './ScrollOrchestratorContext.jsx';
 
 const FieldNarrativeContext = createContext(null);
 
 const DEFAULT_FIELD = computeFieldNarrative(0);
 
 export function FieldNarrativeProvider({ children }) {
-  const openingScrollRef = useRef(null);
-  const reduceMotionRef = useRef(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
+  const {
+    snapshotRef,
+    openingCompleteRef,
+    handoffZoneRef,
+    registerOpeningScroll,
+    subscribe,
+    setBootComplete,
+    setBootInitialized,
+    prefersReducedMotion: prmFromOrchestrator,
+  } = useScrollOrchestrator();
+
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(prmFromOrchestrator);
   const [progress, setProgress] = useState(0);
+  const [openingRawProgress, setOpeningRawProgress] = useState(0);
   const [openingComplete, setOpeningComplete] = useState(false);
-  const openingCompleteRef = useRef(false);
   const [openingCapHandoff, setOpeningCapHandoff] = useState(0);
   const openingCapHandoffRef = useRef(0);
   const [openingCapExitWipe, setOpeningCapExitWipe] = useState(0);
@@ -61,176 +60,58 @@ export function FieldNarrativeProvider({ children }) {
   }, []);
   const [springPos, setSpringPos] = useState({ x: 0.5, y: 0.5 });
   const timeRef = useRef(0);
-  const handoffZoneRef = useRef(0);
   const openingBootRef = useRef(computeOpeningBootAt(0, prefersReducedMotion));
-  const updateOpeningBoot = useCallback((boot) => {
-    openingBootRef.current = boot;
-    if (typeof document === 'undefined') return;
-    const root = document.querySelector('.home-scroll-root');
-    if (!root) return;
-    const chapter = document.documentElement?.dataset?.fieldChapter ?? '';
-    if (chapter && chapter !== 'home-landing') {
-      delete root.dataset.openingBootActive;
-      return;
-    }
-    if ((boot?.complete ?? 0) < 0.98) {
-      root.dataset.openingBootActive = 'true';
-    } else {
-      delete root.dataset.openingBootActive;
-    }
-    /* Plate surface release is owned by OpeningBridgeSection (post sphere paint). */
-  }, []);
 
-  const applyHandoffMapped = useCallback((mapped) => {
-    if (isPortfolioGuidePanelLocked()) return;
-    const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
-    handoffZoneRef.current = mapped.zone;
-    openingCapExitWipeRef.current = mapped.wipe;
-    setOpeningCapExitWipe(mapped.wipe);
-    openingCapHandoffRef.current = bootDone ? mapped.fieldHandoff : 0;
-    setOpeningCapHandoff(bootDone ? mapped.fieldHandoff : 0);
-    openingCapThesisFadeRef.current = mapped.thesisFade;
-    setOpeningCapThesisFade(mapped.thesisFade);
-    if (typeof document !== 'undefined') {
-      const root = document.querySelector('.home-scroll-root');
-      if (root) {
-        root.style.setProperty('--hero-cap-handoff', String(mapped.fieldHandoff.toFixed(4)));
-        root.style.setProperty('--opening-cap-exit-wipe', String(mapped.wipe.toFixed(4)));
-        root.style.setProperty('--opening-cap-thesis-fade', String(mapped.thesisFade.toFixed(4)));
-        if (mapped.zone > 0.02 && mapped.zone < 0.98) {
-          root.dataset.openingHandoff = 'active';
-        } else {
-          delete root.dataset.openingHandoff;
-        }
-      }
-    }
-    if (
-      !isPortfolioGuidePanelLocked() &&
-      mapped.zone < 0.04 &&
-      window.scrollY < window.innerHeight * 0.35
-    ) {
-      openingCompleteRef.current = false;
-    }
-  }, []);
-
-  useOpeningCapHandoffScrollTrigger({
-    enabled: true,
-    reduceMotion: prefersReducedMotion,
-    onProgress: applyHandoffMapped,
-  });
-
-  const syncOpening = useCallback(() => {
-    const el = openingScrollRef.current;
-    const raw = measureOpeningScrollProgress(el, reduceMotionRef.current);
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
-    const r = el?.getBoundingClientRect();
-    const capEl =
-      typeof document !== 'undefined'
-        ? document.getElementById('capabilities') ??
-          document.querySelector('[data-narrative-chapter="home-capabilities"]')
-        : null;
-    const capRect = capEl?.getBoundingClientRect();
-    const openingInView =
-      r != null && r.top < vh * 0.92 && r.bottom > vh * 0.08;
-
-    const capTrack =
-      typeof document !== 'undefined' ? document.querySelector('.capability-scroll') : null;
-    const workTrack =
-      typeof document !== 'undefined' ? document.getElementById('home-work-strongest') : null;
-    const capTrackRect = capTrack?.getBoundingClientRect() ?? null;
-    const workTrackRect = workTrack?.getBoundingClientRect() ?? null;
-    const capWork = measureCapWorkOrchestration(
-      capTrackRect,
-      workTrackRect,
-      homeCapabilities.length,
-      vh,
-    );
-    capWorkHandoffRef.current = capWork.handoff;
-    setCapWorkHandoff(capWork.handoff);
-    frozenCapFloatRef.current = capWork.frozenFloat;
-    if (typeof document !== 'undefined') {
-      const root = document.querySelector('.home-scroll-root');
-      if (root) {
-        root.style.setProperty('--cap-work-handoff', String(capWork.handoff.toFixed(4)));
-      }
-    }
-
-    const pastOpening = r != null && r.bottom <= vh * 0.06;
-    const capEntering =
-      capRect != null &&
-      capRect.top < vh * 0.48 &&
-      capRect.bottom > vh * 0.12;
-
-    const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
-    if (bootDone && pastOpening && capEntering && handoffZoneRef.current > 0.35) {
-      openingCompleteRef.current = true;
-    } else if (bootDone && raw >= 0.998 && !openingInView) {
-      openingCompleteRef.current = true;
-    } else if (
-      !isPortfolioGuidePanelLocked() &&
-      openingInView &&
-      raw < 0.48 &&
-      handoffZoneRef.current < 0.04
-    ) {
-      openingCompleteRef.current = false;
-    }
-
-    const nextProgress = openingCompleteRef.current ? 1 : raw;
-    setProgress(nextProgress);
-    setOpeningComplete(openingCompleteRef.current);
-  }, []);
-
-  const registerOpeningScroll = useCallback(
-    (el) => {
-      openingScrollRef.current = el;
-      if (el) {
-        requestAnimationFrame(syncOpening);
-      }
+  const updateOpeningBoot = useCallback(
+    (boot) => {
+      openingBootRef.current = boot;
+      setBootInitialized();
+      setBootComplete((boot?.complete ?? 0) > 0.98);
     },
-    [syncOpening],
+    [setBootComplete, setBootInitialized],
   );
 
   useEffect(() => {
-    const root = document.querySelector('.home-scroll-root');
-    if (root) {
-      root.style.setProperty('--hero-cap-handoff', '0');
-      root.style.setProperty('--opening-cap-exit-wipe', '0');
-      root.style.setProperty('--opening-cap-thesis-fade', '0');
-      delete root.dataset.openingHandoff;
-    }
-    reduceMotionRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setPrefersReducedMotion(reduceMotionRef.current);
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => {
-      reduceMotionRef.current = mq.matches;
-      setPrefersReducedMotion(mq.matches);
-    };
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+    return subscribe((snapshot) => {
+      const cap = snapshot.handoff.openingCap;
+      openingCapHandoffRef.current = cap.fieldHandoff;
+      openingCapExitWipeRef.current = cap.wipe;
+      openingCapThesisFadeRef.current = cap.thesisFade;
+      capWorkHandoffRef.current = snapshot.handoff.capWork;
+      frozenCapFloatRef.current = snapshot.handoff.capWorkFrozenFloat;
+      handoffBlendRef.current = snapshot.handoff.orbBlend;
+      openingCompleteRef.current = snapshot.opening.openingComplete;
 
-  useEffect(() => {
-    window.addEventListener('scroll', syncOpening, { passive: true });
-    window.addEventListener('resize', syncOpening, { passive: true });
-    syncOpening();
-    return () => {
-      window.removeEventListener('scroll', syncOpening);
-      window.removeEventListener('resize', syncOpening);
-    };
-  }, [syncOpening]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const el = openingScrollRef.current;
-    const vh = window.innerHeight;
-    const bootDone = (openingBootRef.current?.complete ?? 0) > 0.98;
-    if (bootDone && window.scrollY > vh * 1.25 && !el) {
-      openingCompleteRef.current = true;
-      setProgress(1);
-      setOpeningComplete(true);
-    }
-    return undefined;
-  }, []);
+      setProgress((prev) =>
+        Math.abs(prev - snapshot.opening.progress) > 0.002
+          ? snapshot.opening.progress
+          : prev,
+      );
+      setOpeningRawProgress((prev) =>
+        Math.abs(prev - snapshot.opening.rawProgress) > 0.002
+          ? snapshot.opening.rawProgress
+          : prev,
+      );
+      setOpeningComplete((prev) =>
+        prev !== snapshot.opening.openingComplete ? snapshot.opening.openingComplete : prev,
+      );
+      setOpeningCapHandoff((prev) =>
+        Math.abs(prev - cap.fieldHandoff) > 0.003 ? cap.fieldHandoff : prev,
+      );
+      setOpeningCapExitWipe((prev) =>
+        Math.abs(prev - cap.wipe) > 0.003 ? cap.wipe : prev,
+      );
+      setOpeningCapThesisFade((prev) =>
+        Math.abs(prev - cap.thesisFade) > 0.003 ? cap.thesisFade : prev,
+      );
+      setCapWorkHandoff((prev) =>
+        Math.abs(prev - snapshot.handoff.capWork) > 0.003 ? snapshot.handoff.capWork : prev,
+      );
+      setHandoffBlendState((prev) =>
+        Math.abs(prev - snapshot.handoff.orbBlend) > 0.003 ? snapshot.handoff.orbBlend : prev,
+      );
+    });
+  }, [subscribe, openingCompleteRef]);
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -261,6 +142,7 @@ export function FieldNarrativeProvider({ children }) {
     () => ({
       field,
       progress,
+      openingRawProgress,
       openingComplete,
       openingCapHandoff,
       openingCapHandoffRef,
@@ -284,10 +166,12 @@ export function FieldNarrativeProvider({ children }) {
       prefersReducedMotion,
       openingBootRef,
       updateOpeningBoot,
+      snapshotRef,
     }),
     [
       field,
       progress,
+      openingRawProgress,
       openingComplete,
       openingCapHandoff,
       openingCapExitWipe,
@@ -299,6 +183,7 @@ export function FieldNarrativeProvider({ children }) {
       registerOpeningScroll,
       prefersReducedMotion,
       updateOpeningBoot,
+      snapshotRef,
     ],
   );
 
@@ -313,6 +198,7 @@ export function useFieldNarrative() {
     return {
       field: DEFAULT_FIELD,
       progress: 0,
+      openingRawProgress: 0,
       openingComplete: false,
       openingCapHandoff: 0,
       openingCapHandoffRef: { current: 0 },
@@ -336,6 +222,7 @@ export function useFieldNarrative() {
       prefersReducedMotion: false,
       openingBootRef: { current: computeOpeningBootAt(9999, true) },
       updateOpeningBoot: () => {},
+      snapshotRef: { current: null },
     };
   }
   return ctx;

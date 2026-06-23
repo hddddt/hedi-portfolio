@@ -513,48 +513,41 @@
 .home-scroll-root[data-viewport-field-ready='true'] .cap-dial__ambient-wash{
   opacity:calc((0.14 + var(--cap-env-in, 0) * 0.06) * (1 - var(--cap-work-handoff) * 0.45));
 }
-.capability-sticky[data-cap-theme='ai-problem-framing'] .cap-dial__ambient-residual--a-gather{
+.capability-sticky[data-cap-theme='requirements-to-product-logic'] .cap-dial__ambient-residual--a-gather{
   background:radial-gradient(
     ellipse 28% 18% at 7% var(--cap-green-gather-y, 44%),
     color-mix(in srgb, var(--cap-residual-a) 48%, rgba(132,168,128,0.38) 52%),
     transparent 68%
   );
 }
-.capability-sticky[data-cap-theme='human-ai-workflow-design'] .cap-dial__ambient-residual--a-gather{
+.capability-sticky[data-cap-theme='ai-output-to-workflow'] .cap-dial__ambient-residual--a-gather{
   background:radial-gradient(
     ellipse 28% 18% at 7% var(--cap-green-gather-y, 44%),
     color-mix(in srgb, var(--cap-residual-a) 44%, rgba(108,148,142,0.4) 56%),
     transparent 68%
   );
 }
-.capability-sticky[data-cap-theme='decision-traceability'] .cap-dial__ambient-residual--a-gather{
+.capability-sticky[data-cap-theme='decisions-to-traceable-systems'] .cap-dial__ambient-residual--a-gather{
   opacity:calc(
     (0.18 + var(--cap-env-in, 0) * 0.05) *
     (0.32 + var(--cap-green-activation, 0) * 0.65)
   );
 }
-.capability-sticky[data-cap-theme='human-in-the-loop-control'] .cap-dial__ambient-residual--a-haze,
-.capability-sticky[data-cap-theme='human-in-the-loop-control'] .cap-dial__ambient-residual--a-gather{
+.capability-sticky[data-cap-theme='automation-to-human-control'] .cap-dial__ambient-residual--a-haze,
+.capability-sticky[data-cap-theme='automation-to-human-control'] .cap-dial__ambient-residual--a-gather{
   filter:blur(calc(48px + var(--cap-read-stability, 0) * 8px));
 }
-.capability-sticky[data-cap-theme='ai-continuity-presence'] .cap-dial__ambient-residual--a-gather{
-  background:radial-gradient(
-    ellipse 28% 18% at 7% var(--cap-green-gather-y, 44%),
-    color-mix(in srgb, var(--cap-residual-a) 42%, rgba(108,138,152,0.4) 58%),
-    transparent 68%
-  );
+.capability-sticky[data-cap-theme='decisions-to-traceable-systems'] .cap-dial__ambient-residual--c{
+  transform:translate3d(1%,-1%,0);
 }
-.capability-sticky[data-cap-theme='human-ai-workflow-design'] .cap-dial__ambient-residual--b{
+.capability-sticky[data-cap-theme='ai-output-to-workflow'] .cap-dial__ambient-residual--b{
   transform:translate3d(1.5%,-1%,0);
 }
-.capability-sticky[data-cap-theme='decision-traceability'] .cap-dial__ambient-wash{
+.capability-sticky[data-cap-theme='decisions-to-traceable-systems'] .cap-dial__ambient-wash{
   opacity:calc((0.07 + var(--cap-env-in, 0) * 0.03) * (1 - var(--cap-work-handoff) * 0.55));
 }
-.capability-sticky[data-cap-theme='human-in-the-loop-control'] .cap-dial__ambient-residual--b{
+.capability-sticky[data-cap-theme='automation-to-human-control'] .cap-dial__ambient-residual--b{
   filter:blur(calc(50px + var(--cap-read-stability, 0) * 8px));
-}
-.capability-sticky[data-cap-theme='ai-continuity-presence'] .cap-dial__ambient-residual--c{
-  transform:translate3d(1%,-1%,0);
 }
 /* Capabilities → Work handoff — field narrows toward evidence stage */
 .capability-sticky .cap-dial__ambient-wash{
@@ -1033,7 +1026,7 @@
   transition:none;
   max-width:min(15ch,132px);
 }
-.cap-dial__arc-label[data-cap='human-ai-workflow-design']{
+.cap-dial__arc-label[data-cap='ai-output-to-workflow']{
   max-width:min(16ch,140px);
 }
 .cap-dial__arc-label-text{
@@ -1174,10 +1167,10 @@
   display:block;
   white-space:normal;
 }
-.cap-dial__state-layer[data-cap-id='human-in-the-loop-control'] .cap-dial__headline{
+.cap-dial__state-layer[data-cap-id='automation-to-human-control'] .cap-dial__headline{
   max-width:min(26ch,100%);
 }
-.cap-dial__state-layer[data-cap-id='human-in-the-loop-control'] .cap-dial__headline-line{
+.cap-dial__state-layer[data-cap-id='automation-to-human-control'] .cap-dial__headline-line{
   white-space:nowrap;
 }
 .cap-dial__headline-line:nth-child(n+3){
@@ -1474,7 +1467,7 @@
     font-size:15px;
     padding:7px 12px;
   }
-  .cap-dial__state-layer[data-cap-id='human-in-the-loop-control'] .cap-dial__headline-line{
+  .cap-dial__state-layer[data-cap-id='automation-to-human-control'] .cap-dial__headline-line{
     white-space:normal;
   }
 
@@ -2135,7 +2128,7 @@
 .work-narrative__title{
   margin:0;
   font-family:var(--display-sans);
-  font-size:clamp(1.75rem,2.85vw,2.55rem);
+  font-size:clamp(1.85rem,3vw,2.7rem);
   font-weight:500;
   letter-spacing:-0.045em;
   line-height:1.06;
@@ -2156,7 +2149,7 @@
 .work-narrative__thesis{
   margin:0;
   font-family:var(--font-editorial);
-  font-size:clamp(14px,1.2vw,17px);
+  font-size:clamp(15px,1.32vw,18px);
   line-height:1.56;
   color:rgba(250,248,243,.78);
   max-width:36ch;
@@ -2174,7 +2167,7 @@
   position:relative;
   padding-left:0.95em;
   font-family:var(--font-editorial);
-  font-size:clamp(13px,1.08vw,15px);
+  font-size:clamp(14px,1.18vw,16px);
   line-height:1.5;
   color:rgba(250,248,243,.62);
 }
@@ -2241,11 +2234,11 @@
 .work-narrative__tags--primary .work-narrative__tag{
   font-size:clamp(10px,0.86vw,12px);
   letter-spacing:0.12em;
-  padding:0;
-  border:0;
-  border-radius:0;
-  color:var(--guide-ivory-muted,rgba(243,239,230,.52));
-  background:transparent;
+  padding:5px 11px;
+  border:1px solid rgba(250,248,243,.22);
+  border-radius:999px;
+  color:var(--guide-ivory-muted,rgba(243,239,230,.58));
+  background:rgba(250,248,243,.03);
 }
 .work-narrative__tag{
   display:inline-block;
@@ -2254,19 +2247,16 @@
   font-weight:450;
   letter-spacing:0.12em;
   text-transform:uppercase;
-  padding:0;
-  border-radius:0;
-  border:0;
-  color:var(--guide-ivory-muted,rgba(243,239,230,.52));
-  background:transparent;
+  padding:5px 11px;
+  border-radius:999px;
+  border:1px solid rgba(250,248,243,.22);
+  color:var(--guide-ivory-muted,rgba(243,239,230,.58));
+  background:rgba(250,248,243,.03);
   line-height:1.25;
 }
 .work-narrative__tags--primary .work-narrative__tag + .work-narrative__tag::before,
 .work-narrative__tags .work-narrative__tag + .work-narrative__tag::before{
-  content:'·';
-  margin:0 0.45em 0 0.2em;
-  color:var(--guide-rule-strong,rgba(243,239,230,.07));
-  font-weight:400;
+  content:none;
 }
 .work-narrative__row{display:flex;flex-direction:column;gap:4px;min-height:4.5rem}
 .work-narrative__k{

@@ -17,10 +17,13 @@ import {
 } from '../../data/portfolioGuideFlows.js';
 import {
   GUIDE_RESULT_SECTIONS,
+  SHORTCUT_ASK_CHIPS,
+  SHORTCUT_CHIP_QUERIES,
+  SHORTCUT_DIRECT_CASES,
   SHORTCUT_ENTRY,
-  SHORTCUT_PROOF_POINTS,
   SHORTCUT_ROUTES,
   SHORTCUT_SECTIONS,
+  matchShortcutRoute,
 } from '../../data/portfolioGuideSystem.js';
 import { ShortcutRoutePanel } from './ShortcutRoutePanel.jsx';
 import {
@@ -42,6 +45,8 @@ import {
 } from '../../utils/portfolioGuideMotion.js';
 import '../../styles/portfolio-guide.css';
 import '../../styles/portfolio-shortcut-marker.css';
+import { useMobileHomeMode } from '../../utils/mobileHomeMode.js';
+import { MobilePortfolioShortcut } from './MobilePortfolioShortcut.jsx';
 
 gsap.registerPlugin(useGSAP);
 
@@ -79,11 +84,14 @@ function GuideFollowUpAnswer({
       <p className="portfolio-guide__followup-title">{answer.title}</p>
       <p className="portfolio-guide__followup-short">{answer.shortAnswer}</p>
       {answer.points?.length ? (
-        <ul className="portfolio-guide__followup-points">
-          {answer.points.map((point) => (
-            <li key={point}>{point}</li>
-          ))}
-        </ul>
+        <>
+          <p className="portfolio-guide__followup-where-label">{GUIDE_RESULT_SECTIONS.whyHediFits}</p>
+          <ul className="portfolio-guide__followup-points">
+            {answer.points.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        </>
       ) : null}
       {answer.whereToLook?.length ? (
         <div className="portfolio-guide__followup-where">
@@ -116,12 +124,100 @@ function GuideFollowUpAnswer({
   );
 }
 
+function GuideAskResult({
+  question,
+  matchedRoute,
+  matchReason,
+  evidence,
+  onBack,
+  onRouteSelect,
+  onEvidencePointerEnter,
+  onEvidencePointerLeave,
+  onEvidenceClick,
+}) {
+  return (
+    <section className="portfolio-guide__ask-result" aria-label="Ask result">
+      <nav className="portfolio-guide__route-panel-nav" aria-label="Back">
+        <button type="button" className="portfolio-guide__back portfolio-guide__back--nav" onClick={onBack}>
+          ← Back
+        </button>
+      </nav>
+
+      <p className="portfolio-guide__ask-result-query">{question}</p>
+
+      {matchedRoute ? (
+        <div className="portfolio-guide__ask-result-route">
+          <p className="portfolio-guide__block-label portfolio-guide__block-label--secondary">
+            {SHORTCUT_SECTIONS.bestMatchingRoute}
+          </p>
+          <button
+            type="button"
+            className="portfolio-guide__route-row portfolio-guide__route-row--featured"
+            onClick={() => onRouteSelect(matchedRoute.id)}
+          >
+            <span className="portfolio-guide__route-row-index">{matchedRoute.index}</span>
+            <span className="portfolio-guide__route-row-copy">
+              <span className="portfolio-guide__route-row-title">{matchedRoute.title}</span>
+              <span className="portfolio-guide__route-row-signal">{matchedRoute.signal}</span>
+            </span>
+            <span className="portfolio-guide__route-row-arrow" aria-hidden="true">
+              ↗
+            </span>
+          </button>
+        </div>
+      ) : null}
+
+      {matchReason ? (
+        <p className="portfolio-guide__ask-result-reason">
+          <span className="portfolio-guide__ask-result-reason-label">{SHORTCUT_SECTIONS.matchReason}</span>
+          {matchReason}
+        </p>
+      ) : null}
+
+      {evidence?.length ? (
+        <div className="portfolio-guide__ask-result-evidence">
+          <p className="portfolio-guide__block-label portfolio-guide__block-label--secondary">
+            {SHORTCUT_SECTIONS.relevantEvidence}
+          </p>
+          <ul className="portfolio-guide__route-evidence-list">
+            {evidence.map((item, i) => (
+              <li key={item.label}>
+                <button
+                  type="button"
+                  className="portfolio-guide__route-evidence-link"
+                  onPointerEnter={() => onEvidencePointerEnter(item.action)}
+                  onPointerLeave={() => onEvidencePointerLeave(item.action)}
+                  onClick={(event) => onEvidenceClick(event, item.action)}
+                >
+                  <span className="portfolio-guide__route-evidence-copy">
+                    <span className="portfolio-guide__route-evidence-num">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="portfolio-guide__route-evidence-text">
+                      <span className="portfolio-guide__route-evidence-label">{item.label}</span>
+                      <span className="portfolio-guide__route-evidence-signal">{item.description}</span>
+                    </span>
+                  </span>
+                  <span className="portfolio-guide__route-evidence-arrow" aria-hidden="true">
+                    ↗
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 const GUIDE_TRIGGER_MODE =
   typeof import.meta.env.VITE_GUIDE_TRIGGER_MODE === 'string'
     ? import.meta.env.VITE_GUIDE_TRIGGER_MODE.toLowerCase()
     : 'normal';
 
 export function PortfolioGuide() {
+  const isMobileHome = useMobileHomeMode();
   const { activeId } = useNarrativeScroll();
   const { setGuideOpen } = useOrbScene();
 
@@ -167,6 +263,7 @@ export function PortfolioGuide() {
   const [resultProcessing, setResultProcessing] = useState(false);
   const [pathsRevealing, setPathsRevealing] = useState(false);
   const [followUpPathsRevealing, setFollowUpPathsRevealing] = useState(false);
+  const [askResult, setAskResult] = useState(null);
   const pathModuleRef = useGuidePathsReveal(pathsRevealing, {
     itemSelector: '.portfolio-guide__path-track-item',
     headSelector: '.portfolio-guide__path-module-head',
@@ -457,6 +554,7 @@ export function PortfolioGuide() {
     setAngleResultId(null);
     setResultFlowId(null);
     setDisplayQuestion('');
+    setAskResult(null);
     clearFollowUpState();
     window.requestAnimationFrame(() => {
       panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -523,6 +621,50 @@ export function PortfolioGuide() {
     runFreeQuestionAnswer(question);
   };
 
+  const runAskRouting = useCallback(
+    (question) => {
+      pulseOrb();
+      flashOrbMood('warm');
+      setResultProcessing(false);
+      setFollowUpAnswer(null);
+      setFollowUpReading(true);
+      window.clearTimeout(processingTimerRef.current);
+      processingTimerRef.current = window.setTimeout(() => {
+        try {
+          const matchedRoute = matchShortcutRoute(question);
+          const answer = getFreeGuideAnswer(question, resultFlowId);
+          setAskResult({
+            question,
+            matchedRoute,
+            matchReason: answer.shortAnswer,
+            evidence: (answer.whereToLook ?? []).slice(0, 3),
+          });
+          setView('ask');
+          setAngleResultId(null);
+          setResultFlowId(null);
+          saveGuideLog(question, matchedRoute?.id ?? 'ask');
+          window.requestAnimationFrame(() => {
+            panelBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+          });
+        } catch (err) {
+          if (typeof console !== 'undefined') {
+            console.error('[PortfolioGuide] ask routing failed', err);
+          }
+          setAskResult({
+            question,
+            matchedRoute: null,
+            matchReason: 'Try a focused question about workflow, traceability, control, or a specific case.',
+            evidence: [],
+          });
+          setView('ask');
+        } finally {
+          setFollowUpReading(false);
+        }
+      }, GUIDE_PROCESSING_MS);
+    },
+    [resultFlowId, pulseOrb, flashOrbMood, saveGuideLog],
+  );
+
   const handleCustomSubmit = (e) => {
     e.preventDefault();
     const question = customQuestion.trim();
@@ -535,7 +677,13 @@ export function PortfolioGuide() {
       return;
     }
 
-    runFreeQuestionAnswer(question);
+    runAskRouting(question);
+    setCustomQuestion('');
+  };
+
+  const handleAskChip = (chip) => {
+    const query = SHORTCUT_CHIP_QUERIES[chip] ?? chip;
+    runAskRouting(query);
   };
 
   useEffect(
@@ -768,13 +916,16 @@ export function PortfolioGuide() {
                   <span />
                 </span>
                 <span className="portfolio-guide__processing-label">
-                  {resultProcessing ? 'Finding evidence' : 'Searching'}
+                  {resultProcessing ? 'Finding evidence' : 'Routing'}
                 </span>
               </div>
             )}
             <header className="portfolio-guide__head portfolio-guide__enter-stage portfolio-guide__enter-stage--title">
               <div className="portfolio-guide__head-copy">
                 <h2 className="portfolio-guide__headline">{SHORTCUT_ENTRY.label}</h2>
+                {view === 'home' ? (
+                  <p className="portfolio-guide__tagline">{SHORTCUT_ENTRY.tagline}</p>
+                ) : null}
               </div>
             </header>
 
@@ -787,39 +938,38 @@ export function PortfolioGuide() {
             {view === 'home' || routeExpandId ? (
               <>
                 <section
-                  className="portfolio-guide__angles portfolio-guide__enter-stage portfolio-guide__enter-stage--paths"
+                  className="portfolio-guide__routes portfolio-guide__enter-stage portfolio-guide__enter-stage--paths"
                   role="group"
-                  aria-label={SHORTCUT_SECTIONS.keyAngles}
+                  aria-label={SHORTCUT_SECTIONS.guidedRoutes}
                 >
                   <p className="portfolio-guide__block-label portfolio-guide__block-label--primary">
-                    {SHORTCUT_SECTIONS.keyAngles}
+                    {SHORTCUT_SECTIONS.guidedRoutes}
                   </p>
-                  <ul className="portfolio-guide__angle-list">
-                    {SHORTCUT_ROUTES.map((route, routeIndex) => (
-                      <li key={route.id} className="portfolio-guide__angle-item">
+                  <ul className="portfolio-guide__route-row-list">
+                    {SHORTCUT_ROUTES.map((route) => (
+                      <li key={route.id} className="portfolio-guide__route-row-item">
                         <button
                           type="button"
                           className={[
-                            'portfolio-guide__angle-card',
-                            routeIndex === 0 ? 'portfolio-guide__angle-card--recommended' : '',
-                            routeExpandId === route.id ? 'portfolio-guide__angle-card--confirmed' : '',
+                            'portfolio-guide__route-row',
+                            routeExpandId === route.id ? 'portfolio-guide__route-row--confirmed' : '',
                             routeExpandId && routeExpandId !== route.id
-                              ? 'portfolio-guide__angle-card--receded'
+                              ? 'portfolio-guide__route-row--receded'
                               : '',
                           ]
                             .filter(Boolean)
                             .join(' ')}
                           data-route-id={route.id}
-                          style={{ '--angle-i': routeIndex }}
                           onClick={() => showAngleResult(route.id)}
                           disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
                         >
-                          <span className="portfolio-guide__angle-card-copy">
-                            <span className="portfolio-guide__angle-card-eyebrow">{route.eyebrow}</span>
-                            <span className="portfolio-guide__angle-card-title">{route.title}</span>
+                          <span className="portfolio-guide__route-row-index">{route.index}</span>
+                          <span className="portfolio-guide__route-row-copy">
+                            <span className="portfolio-guide__route-row-title">{route.title}</span>
+                            <span className="portfolio-guide__route-row-signal">{route.signal}</span>
                           </span>
-                          <span className="portfolio-guide__angle-card-arrow" aria-hidden="true">
-                            →
+                          <span className="portfolio-guide__route-row-arrow" aria-hidden="true">
+                            ↗
                           </span>
                         </button>
                       </li>
@@ -828,39 +978,75 @@ export function PortfolioGuide() {
                 </section>
 
                 <section
-                  className="portfolio-guide__evidence-block portfolio-guide__enter-stage portfolio-guide__enter-stage--evidence"
-                  aria-label={SHORTCUT_SECTIONS.proofPoints}
+                  className="portfolio-guide__ask-block portfolio-guide__enter-stage portfolio-guide__enter-stage--ask"
+                  aria-label={SHORTCUT_SECTIONS.askAboutWork}
                 >
                   <p className="portfolio-guide__block-label portfolio-guide__block-label--secondary">
-                    {SHORTCUT_SECTIONS.proofPoints}
+                    {SHORTCUT_SECTIONS.askAboutWork}
                   </p>
-                  <ul className="portfolio-guide__cards">
-                    {SHORTCUT_PROOF_POINTS.map((item, cardIndex) => (
-                      <li
-                        key={item.id}
-                        className="portfolio-guide__card-item"
-                        style={{ '--card-i': cardIndex }}
+                  <p className="portfolio-guide__ask-helper">{SHORTCUT_ENTRY.askHelper}</p>
+                  <form className="portfolio-guide__search-form portfolio-guide__search-form--inline" onSubmit={handleCustomSubmit}>
+                    <input
+                      id="portfolio-shortcut-search"
+                      value={customQuestion}
+                      onChange={(e) => setCustomQuestion(e.target.value)}
+                      className="portfolio-guide__search-field"
+                      placeholder={SHORTCUT_ENTRY.freeInputPlaceholder}
+                      aria-label={SHORTCUT_ENTRY.freeInputPlaceholder}
+                      disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
+                    />
+                    <button
+                      type="submit"
+                      className="portfolio-guide__search-submit portfolio-guide__search-submit--ask"
+                      aria-label={SHORTCUT_ENTRY.submitLabel}
+                      disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
+                    >
+                      <span className="portfolio-guide__search-submit-label">{SHORTCUT_ENTRY.submitLabel}</span>
+                    </button>
+                  </form>
+                  <div className="portfolio-guide__ask-chips" role="group" aria-label="Suggested questions">
+                    {SHORTCUT_ASK_CHIPS.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        className="portfolio-guide__ask-chip"
+                        onClick={() => handleAskChip(chip)}
+                        disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
                       >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section
+                  className="portfolio-guide__direct-cases portfolio-guide__enter-stage portfolio-guide__enter-stage--cases"
+                  aria-label={SHORTCUT_SECTIONS.directCases}
+                >
+                  <p className="portfolio-guide__block-label portfolio-guide__block-label--tertiary">
+                    {SHORTCUT_SECTIONS.directCases}
+                  </p>
+                  <p className="portfolio-guide__case-strip">
+                    {SHORTCUT_DIRECT_CASES.map((item, i) => (
+                      <span key={item.id} className="portfolio-guide__case-strip-item">
+                        {i > 0 ? (
+                          <span className="portfolio-guide__case-strip-sep" aria-hidden="true">
+                            {' · '}
+                          </span>
+                        ) : null}
                         <button
                           type="button"
-                          className="portfolio-guide__card portfolio-guide__card--evidence"
+                          className="portfolio-guide__case-strip-link"
                           onPointerEnter={() => handleEvidencePointerEnter(item.action)}
                           onPointerLeave={() => handleEvidencePointerLeave(item.action)}
                           onClick={(event) => handleEvidenceClick(event, item.action)}
                           disabled={followUpReading || resultProcessing || Boolean(routeExpandId)}
                         >
-                          <span className="portfolio-guide__card-kicker">{item.num}</span>
-                          <span className="portfolio-guide__card-copy">
-                            <span className="portfolio-guide__card-title">{item.title}</span>
-                            <span className="portfolio-guide__card-desc">{item.signal}</span>
-                          </span>
-                          <span className="portfolio-guide__card-arrow" aria-hidden="true">
-                            ↗
-                          </span>
+                          {item.label}
                         </button>
-                      </li>
+                      </span>
                     ))}
-                  </ul>
+                  </p>
                 </section>
               </>
             ) : null}
@@ -870,13 +1056,28 @@ export function PortfolioGuide() {
                 key={angleResultId}
                 routeId={angleResultId}
                 onBack={returnHome}
+                onRouteSelect={showAngleResult}
                 onEvidencePointerEnter={handleEvidencePointerEnter}
                 onEvidencePointerLeave={handleEvidencePointerLeave}
                 onEvidenceClick={handleEvidenceClick}
               />
             ) : null}
 
-            {(view === 'home' || view === 'angle') && followUpAnswer ? (
+            {view === 'ask' && askResult ? (
+              <GuideAskResult
+                question={askResult.question}
+                matchedRoute={askResult.matchedRoute}
+                matchReason={askResult.matchReason}
+                evidence={askResult.evidence}
+                onBack={returnHome}
+                onRouteSelect={showAngleResult}
+                onEvidencePointerEnter={handleEvidencePointerEnter}
+                onEvidencePointerLeave={handleEvidencePointerLeave}
+                onEvidenceClick={handleEvidenceClick}
+              />
+            ) : null}
+
+            {view === 'angle' && followUpAnswer ? (
               <GuideFollowUpAnswer
                 answer={followUpAnswer}
                 pathsRevealing={followUpPathsRevealing}
@@ -1031,36 +1232,6 @@ export function PortfolioGuide() {
 
             </div>
 
-            {view === 'home' || view === 'angle' ? (
-              <footer className="portfolio-guide__panel-footer portfolio-guide__enter-stage portfolio-guide__enter-stage--search">
-                <p className="portfolio-guide__block-label portfolio-guide__block-label--footer">
-                  {SHORTCUT_SECTIONS.search}
-                </p>
-                <form
-                  className="portfolio-guide__search-form portfolio-guide__search-form--secondary portfolio-guide__query-console"
-                  onSubmit={handleCustomSubmit}
-                >
-                  <input
-                    id="portfolio-shortcut-search"
-                    value={customQuestion}
-                    onChange={(e) => setCustomQuestion(e.target.value)}
-                    className="portfolio-guide__search-field"
-                    placeholder={SHORTCUT_ENTRY.freeInputPlaceholder}
-                    aria-label={SHORTCUT_ENTRY.freeInputPlaceholder}
-                    disabled={followUpReading}
-                  />
-                  <button
-                    type="submit"
-                    className="portfolio-guide__search-submit portfolio-guide__search-submit--find"
-                    aria-label={SHORTCUT_ENTRY.submitLabel}
-                    disabled={followUpReading}
-                  >
-                    <span className="portfolio-guide__search-submit-label">{SHORTCUT_ENTRY.submitLabel}</span>
-                  </button>
-                </form>
-              </footer>
-            ) : null}
-
             {view === 'flow' ? (
               <footer className="portfolio-guide__panel-footer portfolio-guide__enter-stage portfolio-guide__enter-stage--refine">
                 <form
@@ -1077,7 +1248,7 @@ export function PortfolioGuide() {
                   />
                   <button
                     type="submit"
-                    className="portfolio-guide__search-submit portfolio-guide__search-submit--find"
+                    className="portfolio-guide__search-submit portfolio-guide__search-submit--ask"
                     aria-label={SHORTCUT_ENTRY.submitLabel}
                     disabled={followUpReading}
                   >
@@ -1144,6 +1315,10 @@ export function PortfolioGuide() {
       ) : null}
     </div>
   );
+
+  if (isMobileHome) {
+    return <MobilePortfolioShortcut />;
+  }
 
   if (typeof document !== 'undefined') {
     return createPortal(shell, getPortfolioGuidePortalNode());

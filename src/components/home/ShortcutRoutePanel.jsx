@@ -1,12 +1,16 @@
 import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { getShortcutRoute, getShortcutRoutePanel } from '../../data/portfolioShortcutContent.js';
+import {
+  SHORTCUT_ROUTES,
+  getShortcutRoute,
+  getShortcutRoutePanel,
+} from '../../data/portfolioShortcutContent.js';
+import { SHORTCUT_SECTIONS } from '../../data/portfolioGuideSystem.js';
 import {
   ROUTE_PANEL_PIECE,
   animateRoutePanelEnter,
 } from '../../utils/portfolioGuideMotion.js';
-import { ShortcutRouteVisual } from './ShortcutRouteVisual.jsx';
 
 gsap.registerPlugin(useGSAP);
 
@@ -14,6 +18,7 @@ gsap.registerPlugin(useGSAP);
  * @param {{
  *   routeId: string,
  *   onBack: () => void,
+ *   onRouteSelect: (routeId: string) => void,
  *   onEvidencePointerEnter: (action: { type: string, id: string }) => void,
  *   onEvidencePointerLeave: (action: { type: string, id: string }) => void,
  *   onEvidenceClick: (event: React.MouseEvent, action: { type: string, id: string }) => void,
@@ -22,6 +27,7 @@ gsap.registerPlugin(useGSAP);
 export function ShortcutRoutePanel({
   routeId,
   onBack,
+  onRouteSelect,
   onEvidencePointerEnter,
   onEvidencePointerLeave,
   onEvidenceClick,
@@ -42,68 +48,67 @@ export function ShortcutRoutePanel({
 
   if (!route || !panel) return null;
 
-  const panelClass = [
-    'portfolio-guide__route-panel',
-    `portfolio-guide__route-panel--${panel.visual}`,
-  ].join(' ');
+  const continueRoutes = (panel.continueRoutes ?? [])
+    .map((id) => SHORTCUT_ROUTES.find((r) => r.id === id))
+    .filter(Boolean);
 
   return (
-    <section ref={panelRef} className={panelClass} aria-label={route.title}>
+    <section ref={panelRef} className="portfolio-guide__route-panel" aria-label={route.title}>
       <nav className="portfolio-guide__route-panel-nav" aria-label="Back">
         <button type="button" className="portfolio-guide__back portfolio-guide__back--nav" onClick={onBack}>
-          ← Back
+          ← {SHORTCUT_SECTIONS.allRoutes}
         </button>
       </nav>
 
       <header className={`portfolio-guide__route-panel-head ${ROUTE_PANEL_PIECE}`}>
-        <p className="portfolio-guide__route-eyebrow">{route.eyebrow}</p>
         <h3 className="portfolio-guide__route-panel-title">{route.title}</h3>
-        <p className="portfolio-guide__route-panel-meaning">{panel.meaning}</p>
+        <p className="portfolio-guide__route-panel-meaning">{panel.intro ?? panel.meaning}</p>
       </header>
 
-      <div className={ROUTE_PANEL_PIECE}>
-        <ShortcutRouteVisual kind={panel.visual} />
-      </div>
-
-      <p className={`portfolio-guide__route-primary-landmark ${ROUTE_PANEL_PIECE}`}>
-        {panel.primary.label}
-      </p>
-
-      {panel.secondary.length ? (
-        <ul className="portfolio-guide__route-secondary" aria-label="Evidence paths">
-          {panel.secondary.map((link) => (
-            <li
-              key={link.label}
-              className={`portfolio-guide__route-secondary-item ${ROUTE_PANEL_PIECE}`}
-            >
+      <div className={`portfolio-guide__route-evidence ${ROUTE_PANEL_PIECE}`}>
+        <p className="portfolio-guide__route-evidence-landmark">{SHORTCUT_SECTIONS.openEvidence}</p>
+        <ul className="portfolio-guide__route-evidence-list">
+          {panel.evidence.map((row) => (
+            <li key={`${row.num}-${row.title}`}>
               <button
                 type="button"
-                className="portfolio-guide__route-secondary-btn"
-                onPointerEnter={() => onEvidencePointerEnter(link.action)}
-                onPointerLeave={() => onEvidencePointerLeave(link.action)}
-                onClick={(event) => onEvidenceClick(event, link.action)}
+                className="portfolio-guide__route-evidence-link"
+                onPointerEnter={() => onEvidencePointerEnter(row.action)}
+                onPointerLeave={() => onEvidencePointerLeave(row.action)}
+                onClick={(event) => onEvidenceClick(event, row.action)}
               >
-                <span className="portfolio-guide__route-secondary-label">{link.label}</span>
-                <span className="portfolio-guide__route-secondary-arrow" aria-hidden="true">
-                  →
+                <span className="portfolio-guide__route-evidence-copy">
+                  <span className="portfolio-guide__route-evidence-num">{row.num}</span>
+                  <span className="portfolio-guide__route-evidence-text">
+                    <span className="portfolio-guide__route-evidence-label">{row.title}</span>
+                    <span className="portfolio-guide__route-evidence-signal">{row.signal}</span>
+                  </span>
+                </span>
+                <span className="portfolio-guide__route-evidence-arrow" aria-hidden="true">
+                  ↗
                 </span>
               </button>
             </li>
           ))}
         </ul>
-      ) : null}
+      </div>
 
-      {panel.tertiaryChip ? (
-        <button
-          type="button"
-          className={`portfolio-guide__route-tertiary-chip ${ROUTE_PANEL_PIECE}`}
-          title={panel.tertiaryChip.relevance}
-          onPointerEnter={() => onEvidencePointerEnter(panel.tertiaryChip.action)}
-          onPointerLeave={() => onEvidencePointerLeave(panel.tertiaryChip.action)}
-          onClick={(event) => onEvidenceClick(event, panel.tertiaryChip.action)}
-        >
-          {panel.tertiaryChip.label}
-        </button>
+      {continueRoutes.length ? (
+        <div className={`portfolio-guide__route-continue ${ROUTE_PANEL_PIECE}`}>
+          <p className="portfolio-guide__route-continue-label">{SHORTCUT_SECTIONS.continueWith}:</p>
+          <div className="portfolio-guide__route-continue-chips">
+            {continueRoutes.map((nextRoute) => (
+              <button
+                key={nextRoute.id}
+                type="button"
+                className="portfolio-guide__route-continue-chip"
+                onClick={() => onRouteSelect(nextRoute.id)}
+              >
+                {nextRoute.title}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
     </section>
   );

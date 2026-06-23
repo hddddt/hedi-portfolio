@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSmoothedScrollProgress } from '../../hooks/useSmoothedScrollProgress.js';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
+import { povBeats } from '../../data/pointOfViewChapters.js';
+import { povPhases } from '../../utils/scrollTrackConfigs.js';
+import { trackScrollTargetY } from '../../utils/scrollTimeline.js';
 import {
   measureWorkFloatIndex,
+  measureWorkReleaseProgress,
+  syncWorkStepAnchor,
   workCaseCopyLayerStyle,
   workCaseCopyPartStyle,
   workCaseCopyVisible,
@@ -19,12 +24,18 @@ import {
   workSpineFloatIndex,
   workStageIndex,
   workTrackHeightVh,
+  snapWorkCaseScrollY,
   workTrackScrollTargetY,
   workVisualCrossfade,
   WORK_SCROLL,
 } from '../../utils/workChoreography.js';
+import { measureCapabilityFloatIndex, measureCapabilityReleaseProgress } from '../../utils/capabilitiesChoreography.js';
 import { HOME_CHAPTER_NAV_EVENT } from '../../utils/portfolioGuideTarget.js';
+import { performHomeChapterNav } from '../../utils/homeChapterNav.js';
+import { beginChapterTransition, endChapterTransition, isChapterTransition } from '../../utils/chapterTransitionLock.js';
+import { homeCapabilities } from '../../data/homeScrollChapters.js';
 import { measureChapterEntryProgress } from '../../utils/scrollMotion.js';
+import { preloadImage } from '../../utils/scrollPerformance.js';
 import {
   createTrackScrollTween,
   easeInOutCubic,
@@ -33,10 +44,15 @@ import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { caseFieldHue } from '../../data/fieldSemanticStates.js';
 import { useProjectAccess } from '../../context/ProjectAccessContext.jsx';
 import { WorkCaseDetail } from './WorkCaseDetail.jsx';
+import { useMobileHomeMode } from '../../utils/mobileHomeMode.js';
+
+const WORK_POV_HANDOFF_EVENT = 'portfolio:work-pov-handoff';
 
 const WHEEL_STEP_THRESHOLD = 22;
-const SCROLL_TWEEN_MS = 480;
-const STEP_INPUT_LOCK_MS = 480;
+const SCROLL_TWEEN_MS = 400;
+const STEP_INPUT_LOCK_MS = 220;
+/** Brief lock after Cap→Work handoff — keep at 0 so the next wheel step is immediate. */
+const HANDOFF_INPUT_LOCK_MS = 0;
 const PANEL_SNAP_EPSILON = 0.05;
 
 /** Mac trackpad / mouse — deltaMode-aware vertical delta. */
@@ -49,15 +65,10 @@ function wheelDeltaY(e) {
 const PIN_TOP_TOLERANCE_PX = 3;
 const CHAPTER_ENTRY_DONE = 0.992;
 const CHAPTER_EXIT_EPSILON = 0.12;
-/** Scroll past last-case anchor before treating as intentional chapter exit. */
-const CHAPTER_EXIT_SCROLL_VH = 0.22;
 /** Dwell on last case before chapter exit can arm. */
 const EXIT_ARM_DWELL_MS = 1000;
 /** After penultimate→last step, block chapter exit (same trackpad gesture). */
 const LAST_CASE_ARRIVAL_LOCK_MS = EXIT_ARM_DWELL_MS + STEP_INPUT_LOCK_MS;
-const EXIT_WHEEL_THRESHOLD = 46;
-const LAST_CASE_SCROLL_BUFFER_PX = 6;
-const EXIT_STEPS_REQUIRED = 2;
 
 function isChapterStickyPinned(rect) {
   return (
@@ -76,29 +87,63 @@ function caseOpenLabel(item) {
   return `Open ${title} case study`;
 }
 
-function workLastCaseScrollY(trackEl, panelCount) {
-  if (!trackEl || panelCount <= 1) return window.scrollY;
-  return workTrackScrollTargetY(trackEl, panelCount - 1, panelCount);
+function resolvePovScrollTrack() {
+  return (
+    document.querySelector('#point-of-view .pov-scroll') ??
+    document.querySelector('[data-narrative-chapter="home-approach"] .pov-scroll') ??
+    document.querySelector('.pov-scroll')
+  );
 }
 
-function workScrollPastLastCase(trackEl, panelCount, bufferPx = LAST_CASE_SCROLL_BUFFER_PX) {
-  return window.scrollY > workLastCaseScrollY(trackEl, panelCount) + bufferPx;
+function povFirstBeatScrollY() {
+  const track = resolvePovScrollTrack();
+  const beatN = povBeats.length;
+  if (!track || beatN <= 1) return null;
+  return trackScrollTargetY(track, povPhases(beatN), 0);
 }
 
-function workScrollPastExitThreshold(trackEl, panelCount) {
-  const lastY = workLastCaseScrollY(trackEl, panelCount);
-  return window.scrollY > lastY + window.innerHeight * CHAPTER_EXIT_SCROLL_VH;
+function capBlocksWorkWheel(activeId) {
+  if (
+    activeId === 'home-work-narrative' ||
+    activeId === 'home-approach' ||
+    isChapterTransition('cap-work')
+  ) {
+    return false;
+  }
+  const capTrack = document.querySelector('.capability-scroll');
+  if (!capTrack) return false;
+  const cr = capTrack.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const capPinned = isChapterStickyPinned(cr);
+  const capNear =
+    capPinned || (cr.top < vh * 0.22 && cr.bottom > vh * 0.45);
+  if (!capNear) return false;
+
+  const capN = homeCapabilities.length;
+  const rawFi = measureCapabilityFloatIndex(cr, capN);
+  const releaseP = measureCapabilityReleaseProgress(cr, capN);
+  const onLastCap = rawFi >= capN - 1 - 0.35 || releaseP > 0.01;
+
+  if (onLastCap && releaseP < 0.98) return true;
+  if (capPinned && releaseP < 0.82) return true;
+  return false;
 }
 
-/** Last case settled and post-arrival lock expired — avoids 3→4 swipe exiting chapter. */
-function canConsiderWorkChapterExit(anchor, rawFi, panelCount, lockUntilMs) {
-  if (panelCount <= 1 || anchor < panelCount - 1) return false;
-  if (performance.now() < lockUntilMs) return false;
-  if (Math.abs(rawFi - anchor) > PANEL_SNAP_EPSILON) return false;
-  return true;
+function capReleaseInProgress(activeId) {
+  if (activeId === 'home-work-narrative' || activeId === 'home-approach') {
+    return false;
+  }
+  const capTrack = document.querySelector('.capability-scroll');
+  if (!capTrack) return false;
+  const releaseP = measureCapabilityReleaseProgress(
+    capTrack.getBoundingClientRect(),
+    homeCapabilities.length,
+  );
+  return releaseP > 0.02 && releaseP < 0.96;
 }
 
 export function WorkNarrativeSection({ cases = [] }) {
+  const isMobileHome = useMobileHomeMode();
   const { activeId } = useNarrativeScroll();
   const { unlocked, requestAccess, pendingCaseId, clearPendingCase } = useProjectAccess();
   const { setCaseDetailOpen, setWorkCaseFocus } = useOrbScene();
@@ -120,8 +165,11 @@ export function WorkNarrativeSection({ cases = [] }) {
   const exitArmTimerRef = useRef(null);
   const lastCaseArrivalLockUntilRef = useRef(0);
   const exitWheelConsumedRef = useRef(false);
+  const workExitingToPovRef = useRef(false);
+  const displayCaseIndexRef = useRef(0);
   const entryProgressRef = useRef(1);
   const capHandoffReadyRef = useRef(false);
+  const capHandoffNavActiveRef = useRef(false);
   const prevActiveIdRef = useRef(null);
   const [capHandoffSettled, setCapHandoffSettled] = useState(false);
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
@@ -133,6 +181,7 @@ export function WorkNarrativeSection({ cases = [] }) {
   const [reducedMotion, setReducedMotion] = useState(false);
 
   activeCaseIndexRef.current = activeCaseIndex;
+  displayCaseIndexRef.current = displayCaseIndex;
 
   const scheduleChapterExitArm = useCallback(
     (caseIndex, panelCount) => {
@@ -175,6 +224,9 @@ export function WorkNarrativeSection({ cases = [] }) {
   }, []);
 
   const n = cases.length;
+  useEffect(() => {
+    if (cases[0]?.coverSrc) preloadImage(cases[0].coverSrc);
+  }, [cases]);
   const entryProgress = useSmoothedScrollProgress(
     wrapRef,
     measureChapterEntryProgress,
@@ -182,15 +234,24 @@ export function WorkNarrativeSection({ cases = [] }) {
   );
   entryProgressRef.current = entryProgress;
 
-  const effectiveEntryProgress = capHandoffSettled ? 1 : entryProgress;
+  const capHandoffActive =
+    capHandoffSettled ||
+    capHandoffReadyRef.current ||
+    capHandoffNavActiveRef.current;
+  const effectiveEntryProgress = capHandoffActive ? 1 : entryProgress;
   const inChapterEntry =
-    effectiveEntryProgress < CHAPTER_ENTRY_DONE && !capHandoffSettled;
+    effectiveEntryProgress < CHAPTER_ENTRY_DONE && !capHandoffActive;
 
   useEffect(() => {
-    if (entryProgress >= CHAPTER_ENTRY_DONE) {
+    if (workExitingToPovRef.current) return;
+    if (
+      activeId === 'home-approach' ||
+      activeId === 'home-life-archive' ||
+      activeId === 'home-landing'
+    ) {
       setCapHandoffSettled(false);
     }
-  }, [entryProgress]);
+  }, [activeId]);
 
   /** Cap → Work via native scroll (not only wheel handoff event). */
   useEffect(() => {
@@ -198,22 +259,68 @@ export function WorkNarrativeSection({ cases = [] }) {
     prevActiveIdRef.current = activeId;
     if (activeId !== 'home-work-narrative' || !n) return undefined;
     if (prev === 'home-work-narrative') return undefined;
+    if (workExitingToPovRef.current) return undefined;
+    if (isChapterTransition('cap-work') && prev === 'home-capabilities') return undefined;
 
     capHandoffReadyRef.current = true;
     setCapHandoffSettled(true);
     entryProgressRef.current = 1;
     wheelStepConsumedRef.current = false;
     wheelCooldownRef.current = false;
-    inputLockUntilRef.current = 0;
+    chapterExitArmedRef.current = false;
+    exitWheelStepsRef.current = 0;
+    clearTimeout(exitArmTimerRef.current);
 
     const el = wrapRef.current;
-    if (!el) return undefined;
-    const rect = el.getBoundingClientRect();
-    const rawFi = measureWorkFloatIndex(rect, n);
-    if (rawFi < 0.55) {
-      applySettledCase(0);
-      scheduleChapterExitArm(0, n);
+
+    if (prev === 'home-approach') {
+      inputLockUntilRef.current = performance.now() + HANDOFF_INPUT_LOCK_MS;
+      workExitingToPovRef.current = false;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const rawFi = measureWorkFloatIndex(rect, n);
+        const releaseP = measureWorkReleaseProgress(rect, n);
+        const fromPovBelow = releaseP > 0.03 || rawFi >= n - 0.65;
+        const idx = fromPovBelow
+          ? n - 1
+          : Math.min(n - 1, Math.max(0, Math.round(rawFi)));
+        applySettledCase(idx);
+        scheduleChapterExitArm(idx, n);
+      } else {
+        applySettledCase(n - 1);
+        scheduleChapterExitArm(n - 1, n);
+      }
+      return undefined;
     }
+
+    inputLockUntilRef.current = performance.now() + STEP_INPUT_LOCK_MS;
+
+    const enteringFromCapOrLanding =
+      prev === 'home-capabilities' || prev === 'home-landing' || prev == null;
+
+    if (!enteringFromCapOrLanding) {
+      if (el) {
+        const rawFi = measureWorkFloatIndex(el.getBoundingClientRect(), n);
+        syncWorkStepAnchor(rawFi, stepAnchorRef);
+        const idx = Math.min(n - 1, Math.max(0, stepAnchorRef.current));
+        applySettledCase(idx);
+        scheduleChapterExitArm(idx, n);
+      }
+      return undefined;
+    }
+
+    if (prev === 'home-capabilities' && el) {
+      const rawFi = measureWorkFloatIndex(el.getBoundingClientRect(), n);
+      if (rawFi > 0.55) {
+        syncWorkStepAnchor(rawFi, stepAnchorRef);
+        applySettledCase(stepAnchorRef.current);
+        scheduleChapterExitArm(stepAnchorRef.current, n);
+        return undefined;
+      }
+    }
+
+    applySettledCase(0);
+    scheduleChapterExitArm(0, n);
     return undefined;
   }, [activeId, n, applySettledCase, scheduleChapterExitArm]);
 
@@ -221,16 +328,16 @@ export function WorkNarrativeSection({ cases = [] }) {
     const onCapHandoff = () => {
       const el = wrapRef.current;
       if (!el || !n) return;
+      if (workExitingToPovRef.current) return;
+      if (activeCaseIndexRef.current > 0 || stepAnchorRef.current > 0) return;
+      capHandoffNavActiveRef.current = true;
       capHandoffReadyRef.current = true;
       setCapHandoffSettled(true);
       entryProgressRef.current = 1;
       wheelStepConsumedRef.current = false;
       wheelCooldownRef.current = false;
       exitWheelConsumedRef.current = false;
-      lastCaseArrivalLockUntilRef.current = performance.now() + LAST_CASE_ARRIVAL_LOCK_MS;
       inputLockUntilRef.current = 0;
-      const y = workTrackScrollTargetY(el, 0, n);
-      window.scrollTo(0, y);
       applySettledCase(0);
       scheduleChapterExitArm(0, n);
     };
@@ -383,6 +490,80 @@ export function WorkNarrativeSection({ cases = [] }) {
     [applySettledCase, n, reducedMotion, scheduleChapterExitArm],
   );
 
+  const startWorkPovHandoff = useCallback(() => {
+    if (workExitingToPovRef.current) return;
+
+    const targetY = povFirstBeatScrollY();
+    if (targetY == null || !Number.isFinite(targetY)) return;
+
+    workExitingToPovRef.current = true;
+    chapterExitArmedRef.current = true;
+    beginChapterTransition('work-pov');
+    capHandoffReadyRef.current = true;
+    setCapHandoffSettled(true);
+    entryProgressRef.current = 1;
+    scrollTweenRef.current?.cancel();
+    caseTransitionLockedRef.current = false;
+    setCaseTransitioning(false);
+    wheelCooldownRef.current = false;
+    wheelStepConsumedRef.current = false;
+    applySettledCase(n - 1);
+    window.dispatchEvent(new CustomEvent(WORK_POV_HANDOFF_EVENT));
+
+    if (Math.abs(window.scrollY - targetY) < 16) {
+      endChapterTransition('work-pov');
+      workExitingToPovRef.current = false;
+      return;
+    }
+
+    if (reducedMotion) {
+      window.scrollTo(0, targetY);
+      endChapterTransition('work-pov');
+      workExitingToPovRef.current = false;
+      return;
+    }
+
+    if (!performHomeChapterNav('point-of-view', 0)) {
+      window.scrollTo(0, targetY);
+      endChapterTransition('work-pov');
+      workExitingToPovRef.current = false;
+    }
+  }, [applySettledCase, n, reducedMotion]);
+
+  useEffect(() => {
+    const onNav = (e) => {
+      const { targetId, syncOnly } = e.detail ?? {};
+      if (targetId === 'point-of-view' && syncOnly) {
+        workExitingToPovRef.current = false;
+        wheelCooldownRef.current = false;
+        wheelStepConsumedRef.current = false;
+        inputLockUntilRef.current = performance.now() + STEP_INPUT_LOCK_MS;
+      }
+      if (targetId === 'selected-work' && syncOnly) {
+        capHandoffNavActiveRef.current = false;
+        endChapterTransition('cap-work');
+        wheelCooldownRef.current = false;
+        wheelStepConsumedRef.current = false;
+        inputLockUntilRef.current = 0;
+      }
+    };
+    window.addEventListener(HOME_CHAPTER_NAV_EVENT, onNav);
+    return () => window.removeEventListener(HOME_CHAPTER_NAV_EVENT, onNav);
+  }, []);
+
+  const isOnLastWorkCaseAt = useCallback(
+    (rect) => {
+      if (!n || !rect) return false;
+      const anchor = stepAnchorRef.current;
+      const caseIdx = activeCaseIndexRef.current;
+      if (anchor < n - 1 || caseIdx < n - 1) return false;
+      const rawFi = measureWorkFloatIndex(rect, n);
+      const releaseP = measureWorkReleaseProgress(rect, n);
+      return rawFi >= n - 1 - 0.22 || releaseP > 0.1;
+    },
+    [n],
+  );
+
   const bumpCase = useCallback(
     (dir) => {
       if (wheelStepConsumedRef.current) return;
@@ -394,6 +575,12 @@ export function WorkNarrativeSection({ cases = [] }) {
       const current = stepAnchorRef.current;
       const next = Math.min(n - 1, Math.max(0, current + dir));
       if (next === current) {
+        if (dir === 1 && current >= n - 1) {
+          const el = wrapRef.current;
+          if (el && isOnLastWorkCaseAt(el.getBoundingClientRect())) {
+            startWorkPovHandoff();
+          }
+        }
         wheelStepConsumedRef.current = false;
         return;
       }
@@ -402,7 +589,7 @@ export function WorkNarrativeSection({ cases = [] }) {
       wheelStepConsumedRef.current = true;
       scrollToCase(next, reducedMotion ? 'auto' : 'smooth');
     },
-    [n, reducedMotion, scrollToCase],
+    [n, reducedMotion, scrollToCase, startWorkPovHandoff, isOnLastWorkCaseAt],
   );
 
   useEffect(() => {
@@ -414,8 +601,11 @@ export function WorkNarrativeSection({ cases = [] }) {
       const el = wrapRef.current;
       if (!el) return;
 
+      if (workExitingToPovRef.current || isChapterTransition()) return;
+
       const rect = el.getBoundingClientRect();
       const rawFi = measureWorkFloatIndex(rect, n);
+      const releaseP = measureWorkReleaseProgress(rect, n);
       const anchor = stepAnchorRef.current;
       const pinned = isChapterStickyPinned(rect);
       const tweenRunning = scrollTweenRef.current?.isRunning();
@@ -425,35 +615,34 @@ export function WorkNarrativeSection({ cases = [] }) {
         tweenRunning ||
         performance.now() < inputLockUntilRef.current;
 
+      if (
+        releaseP > 0.025 ||
+        activeId === 'home-approach'
+      ) {
+        return;
+      }
+
       if (pinned && n > 1) {
-        const atEnd = anchor >= n - 1;
         const atStart = anchor <= 0;
-        const leavingDown =
-          atEnd &&
-          chapterExitArmedRef.current &&
-          performance.now() >= lastCaseArrivalLockUntilRef.current &&
-          workScrollPastExitThreshold(el, n);
         const leavingUp = atStart && rawFi < anchor - CHAPTER_EXIT_EPSILON;
 
-        if (leavingDown || leavingUp) {
-          if (!inputLocked) {
+        if (leavingUp) {
+          if (!inputLocked && !caseTransitioning) {
             setDisplayCaseIndex(rawFi);
           }
           return;
         }
 
-        if (
-          atEnd &&
-          !inputLocked &&
-          !caseTransitioning &&
-          !tweenRunning &&
-          performance.now() >= lastCaseArrivalLockUntilRef.current &&
-          workScrollPastLastCase(el, n) &&
-          (!chapterExitArmedRef.current || exitWheelStepsRef.current < EXIT_STEPS_REQUIRED)
-        ) {
-          window.scrollTo(0, workLastCaseScrollY(el, n));
+        if (inputLocked || caseTransitioning || isChapterTransition()) {
           return;
         }
+
+        syncWorkStepAnchor(rawFi, stepAnchorRef);
+        const synced = stepAnchorRef.current;
+        if (Math.abs(rawFi - synced) < PANEL_SNAP_EPSILON) {
+          setDisplayCaseIndex(synced);
+        }
+        return;
       }
 
       if (entryProgressRef.current < CHAPTER_ENTRY_DONE && !capHandoffReadyRef.current) {
@@ -464,16 +653,14 @@ export function WorkNarrativeSection({ cases = [] }) {
         return;
       }
 
-      if (pinned) {
-        if (Math.abs(rawFi - anchor) < PANEL_SNAP_EPSILON) {
-          setDisplayCaseIndex(anchor);
-        }
-        return;
-      }
+      if (capReleaseInProgress(activeId) || !capHandoffReadyRef.current) return;
 
       const nearest = Math.round(rawFi);
-      if (Math.abs(rawFi - nearest) < 0.14) {
-        applySettledCase(nearest);
+      if (Math.abs(rawFi - nearest) < 0.14 && !isChapterTransition()) {
+        const current = stepAnchorRef.current;
+        if (nearest !== current && Math.abs(nearest - current) === 1) {
+          applySettledCase(nearest);
+        }
       }
     };
 
@@ -482,30 +669,79 @@ export function WorkNarrativeSection({ cases = [] }) {
     return () => {
       window.removeEventListener('scroll', onScroll);
     };
-  }, [applySettledCase, caseTransitioning, isInputLocked, n, openCaseId]);
+  }, [activeId, applySettledCase, caseTransitioning, isInputLocked, n, openCaseId]);
 
   useEffect(() => {
-    if (reducedMotion || !n || openCaseId) return undefined;
+    if (isMobileHome || !n || openCaseId) return undefined;
 
     let wheelAccum = 0;
-    let exitWheelAccum = 0;
 
     wheelAccumResetRef.current = () => {
       wheelAccum = 0;
-      exitWheelAccum = 0;
       exitWheelConsumedRef.current = false;
     };
 
-    const tryWheelStep = (dir) => {
+    const tryWheelStep = (dir, rect) => {
       if (wheelStepConsumedRef.current) return false;
       if (wheelCooldownRef.current || scrollTweenRef.current?.isRunning()) return false;
       if (performance.now() < inputLockUntilRef.current) return false;
+      if (dir === 1 && rect && isOnLastWorkCaseAt(rect)) {
+        startWorkPovHandoff();
+        wheelAccum = 0;
+        return true;
+      }
       bumpCase(dir);
       wheelAccum = 0;
       return true;
     };
 
     const onWheel = (e) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      if (rect.bottom < 48 || rect.top > vh + 48) return;
+
+      const workPinned = isChapterStickyPinned(rect);
+      const workEngaged =
+        activeId === 'home-work-narrative' ||
+        (workPinned && rect.bottom > vh * 0.42);
+      const deltaY = wheelDeltaY(e);
+
+      if (workEngaged && isOnLastWorkCaseAt(rect) && deltaY > 0) {
+        if (activeId === 'home-approach') {
+          return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        if (workExitingToPovRef.current) {
+          return;
+        }
+
+        if (scrollTweenRef.current?.isRunning()) {
+          scrollTweenRef.current.cancel();
+          setCaseTransitioning(false);
+          caseTransitionLockedRef.current = false;
+        }
+        wheelCooldownRef.current = false;
+        wheelStepConsumedRef.current = false;
+        stepAnchorRef.current = n - 1;
+        applySettledCase(n - 1);
+        startWorkPovHandoff();
+        return;
+      }
+
+      if (workExitingToPovRef.current) {
+        return;
+      }
+
+      if (isChapterTransition('work-pov')) return;
+      if (isChapterTransition('cap-work') && activeId !== 'home-work-narrative') return;
+
+      if (capBlocksWorkWheel(activeId)) return;
+
       const capTrack = document.querySelector('.capability-scroll');
       if (capTrack && activeId === 'home-capabilities') {
         const cr = capTrack.getBoundingClientRect();
@@ -516,74 +752,22 @@ export function WorkNarrativeSection({ cases = [] }) {
         if (capInChapter) return;
       }
 
-      const el = wrapRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const workEngaged =
-        activeId === 'home-work-narrative' ||
-        (rect.top <= PIN_TOP_TOLERANCE_PX + 8 && rect.bottom > vh * 0.42);
       if (!workEngaged) return;
 
-      const isPinned = isChapterStickyPinned(rect);
-      if (!isPinned) return;
+      const workReady =
+        activeId === 'home-work-narrative' ||
+        capHandoffReadyRef.current ||
+        workPinned;
+      if (!workReady) return;
 
-      if (entryProgressRef.current < CHAPTER_ENTRY_DONE && !capHandoffReadyRef.current) {
-        return;
-      }
-
-      const rawFi = measureWorkFloatIndex(rect, n);
-      const deltaY = wheelDeltaY(e);
       const scrollingDown = deltaY > 0.5;
       const scrollingUp = deltaY < -0.5;
       if (!scrollingDown && !scrollingUp) return;
 
       const anchor = stepAnchorRef.current;
-      const onLastCase = anchor >= n - 1;
       const atFirst = anchor <= 0;
-      const exitReady = canConsiderWorkChapterExit(
-        anchor,
-        rawFi,
-        n,
-        lastCaseArrivalLockUntilRef.current,
-      );
 
       if (scrollingUp && atFirst) {
-        return;
-      }
-
-      if (scrollingDown && onLastCase) {
-        if (
-          exitReady &&
-          chapterExitArmedRef.current &&
-          exitWheelStepsRef.current >= EXIT_STEPS_REQUIRED
-        ) {
-          return;
-        }
-
-        e.preventDefault();
-        wheelAccum = 0;
-
-        if (!exitReady || isInputLocked() || !chapterExitArmedRef.current) {
-          exitWheelAccum = 0;
-          exitWheelConsumedRef.current = false;
-          if (workScrollPastLastCase(el, n)) {
-            window.scrollTo(0, workLastCaseScrollY(el, n));
-          }
-          return;
-        }
-
-        if (exitWheelConsumedRef.current) {
-          return;
-        }
-
-        exitWheelAccum += deltaY;
-        if (exitWheelAccum >= EXIT_WHEEL_THRESHOLD) {
-          exitWheelAccum = 0;
-          exitWheelConsumedRef.current = true;
-          exitWheelStepsRef.current += 1;
-          window.scrollTo(0, workLastCaseScrollY(el, n));
-        }
         return;
       }
 
@@ -602,16 +786,16 @@ export function WorkNarrativeSection({ cases = [] }) {
       const wheelDir = scrollingDown ? 1 : -1;
 
       if (Math.abs(deltaY) >= WHEEL_STEP_THRESHOLD) {
-        tryWheelStep(wheelDir);
+        tryWheelStep(wheelDir, rect);
         return;
       }
 
       wheelAccum += deltaY;
 
       if (wheelAccum >= WHEEL_STEP_THRESHOLD) {
-        tryWheelStep(1);
+        tryWheelStep(1, rect);
       } else if (wheelAccum <= -WHEEL_STEP_THRESHOLD) {
-        tryWheelStep(-1);
+        tryWheelStep(-1, rect);
       }
     };
 
@@ -620,7 +804,7 @@ export function WorkNarrativeSection({ cases = [] }) {
       window.removeEventListener('wheel', onWheel, { capture: true });
       wheelAccumResetRef.current = null;
     };
-  }, [activeId, bumpCase, n, openCaseId, reducedMotion, isInputLocked]);
+  }, [activeId, applySettledCase, bumpCase, isMobileHome, isOnLastWorkCaseAt, n, openCaseId, startWorkPovHandoff]);
 
   useEffect(() => {
     if (!n || openCaseId) return undefined;
@@ -629,8 +813,13 @@ export function WorkNarrativeSection({ cases = [] }) {
       const el = wrapRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      if (!isChapterStickyPinned(rect)) return;
-      if (entryProgressRef.current < CHAPTER_ENTRY_DONE && !capHandoffReadyRef.current) {
+      const vh = window.innerHeight;
+      const inWork =
+        activeId === 'home-work-narrative' ||
+        capHandoffReadyRef.current ||
+        (rect.top < vh * 0.22 && rect.bottom > vh * 0.42);
+      if (!inWork) return;
+      if (!capHandoffReadyRef.current && entryProgressRef.current < CHAPTER_ENTRY_DONE) {
         return;
       }
 
@@ -645,7 +834,7 @@ export function WorkNarrativeSection({ cases = [] }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [bumpCase, n, openCaseId, isInputLocked]);
+  }, [activeId, bumpCase, n, openCaseId, isInputLocked]);
 
   useEffect(() => {
     if (!unlocked || !pendingCaseId) return;
@@ -692,7 +881,11 @@ export function WorkNarrativeSection({ cases = [] }) {
       const { targetId, panelIndex = 0, syncOnly } = e.detail ?? {};
       if (targetId !== 'selected-work') return;
       const nextIdx = Math.min(n - 1, Math.max(0, panelIndex));
-      guideScrollLockUntilRef.current = performance.now() + 920;
+      if (!syncOnly) {
+        guideScrollLockUntilRef.current = performance.now() + 920;
+      } else {
+        guideScrollLockUntilRef.current = performance.now() + HANDOFF_INPUT_LOCK_MS;
+      }
       setOpenCaseId(null);
       scrollTweenRef.current?.cancel();
       caseTransitionLockedRef.current = false;
@@ -700,6 +893,13 @@ export function WorkNarrativeSection({ cases = [] }) {
       applySettledCase(nextIdx);
       capHandoffReadyRef.current = true;
       setCapHandoffSettled(true);
+      const el = wrapRef.current;
+      if (el) {
+        const snapY = snapWorkCaseScrollY(el, nextIdx, n);
+        if (Math.abs(window.scrollY - snapY) > 6) {
+          window.scrollTo(0, snapY);
+        }
+      }
       if (!syncOnly) {
         goToWorkPanel(nextIdx);
       }
@@ -769,8 +969,8 @@ export function WorkNarrativeSection({ cases = [] }) {
         className={`work-scroll work-scroll--snap${openItem ? ' work-scroll--detail-open' : ''}`}
         aria-hidden={openItem ? true : undefined}
         inert={openItem ? true : undefined}
-        style={{ height: `${trackVh}vh`, minHeight: `${trackVh}vh` }}
-        aria-roledescription="carousel"
+        style={isMobileHome ? undefined : { height: `${trackVh}vh`, minHeight: `${trackVh}vh` }}
+        aria-roledescription={isMobileHome ? undefined : 'carousel'}
         aria-label="Selected work"
       >
         <div className="work-scroll__snaps" aria-hidden="true">
@@ -794,7 +994,8 @@ export function WorkNarrativeSection({ cases = [] }) {
           >
             <div
               className={`work-narrative__rail motion-reveal-child${!inChapterEntry && !caseTransitioning ? ' is-rail-settled' : ''}`}
-              style={railScrollStyle}
+              style={isMobileHome ? { display: 'none' } : railScrollStyle}
+              aria-hidden={isMobileHome ? true : undefined}
               aria-label={`Case ${formatCaseRailIndex(idx)} of 0${n}`}
             >
               <div className="work-narrative__rail-meter" aria-hidden="true">
@@ -817,15 +1018,18 @@ export function WorkNarrativeSection({ cases = [] }) {
             </div>
 
             <div
-              className={`work-narrative__stage work-narrative__stage--spine motion-reveal-group${workRevealed ? ' is-visible' : ''}`}
+              className={`work-narrative__stage work-narrative__stage--spine motion-reveal-group${workRevealed ? ' is-visible' : ''}${isMobileHome ? ' work-narrative__stage--mobile' : ''}`}
             >
-              {cases.map((item, i) => {
-                if (inChapterEntry && i !== 0) return null;
-                if (!workCaseInVisualBand(visualScrollFi, i, n)) return null;
+              {!isMobileHome
+                ? cases.map((item, i) => {
+                if (!isMobileHome && inChapterEntry && i !== 0) return null;
+                if (!isMobileHome && !workCaseInVisualBand(visualScrollFi, i, n)) return null;
                 const dist = i - choreoIndex;
-                const isActive = i === settledCaseIndex && Math.abs(dist) < 0.42;
-                const isNextPreview = dist > 0.32 && dist < 1.15 && !isActive;
-                const visualStyle = inChapterEntry && i === 0
+                const isActive = isMobileHome ? false : i === settledCaseIndex && Math.abs(dist) < 0.42;
+                const isNextPreview = !isMobileHome && dist > 0.32 && dist < 1.15 && !isActive;
+                const visualStyle = isMobileHome
+                  ? undefined
+                  : inChapterEntry && i === 0
                   ? workChapterEntryVisual(effectiveEntryProgress, reducedMotion)
                   : workVisualCrossfade(visualScrollFi, i, reducedMotion, n);
                 const locked = !unlocked;
@@ -837,11 +1041,11 @@ export function WorkNarrativeSection({ cases = [] }) {
                     data-field-hue={caseFieldHue(item.id) ?? 'green'}
                     data-case-id={item.id}
                     style={{
-                      ...visualStyle,
-                      zIndex: visualStyle.zIndex ?? 0,
+                      ...(visualStyle ?? {}),
+                      zIndex: visualStyle?.zIndex ?? 0,
                       '--case-accent': item.accent,
                     }}
-                    onPointerEnter={() => {
+                    onPointerEnter={isMobileHome ? undefined : () => {
                       hoverCaseIdRef.current = item.id;
                       setWorkCaseFocus({
                         caseId: item.id,
@@ -849,7 +1053,7 @@ export function WorkNarrativeSection({ cases = [] }) {
                         strength: 1,
                       });
                     }}
-                    onPointerLeave={() => {
+                    onPointerLeave={isMobileHome ? undefined : () => {
                       hoverCaseIdRef.current = null;
                       const caseId = cases[settledCaseIndex]?.id;
                       if (caseId) {
@@ -860,7 +1064,7 @@ export function WorkNarrativeSection({ cases = [] }) {
                         });
                       }
                     }}
-                    onFocus={() => {
+                    onFocus={isMobileHome ? undefined : () => {
                       hoverCaseIdRef.current = item.id;
                       setWorkCaseFocus({
                         caseId: item.id,
@@ -868,7 +1072,7 @@ export function WorkNarrativeSection({ cases = [] }) {
                         strength: 1,
                       });
                     }}
-                    onBlur={() => {
+                    onBlur={isMobileHome ? undefined : () => {
                       hoverCaseIdRef.current = null;
                     }}
                     onClick={(e) => {
@@ -890,8 +1094,12 @@ export function WorkNarrativeSection({ cases = [] }) {
                           className="work-narrative__cover"
                           src={item.coverSrc}
                           alt=""
-                          loading={i === idx ? 'eager' : 'lazy'}
+                          loading={Math.abs(i - idx) <= 1 ? 'eager' : 'lazy'}
                           decoding="async"
+                          fetchPriority={i === idx ? 'high' : 'low'}
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0.25';
+                          }}
                         />
                       ) : null}
                       <span className="work-narrative__visual-hint">
@@ -912,42 +1120,102 @@ export function WorkNarrativeSection({ cases = [] }) {
                     </span>
                   </button>
                 );
-              })}
+              })
+                : null}
             </div>
 
-            <div className="work-narrative__copy work-narrative__copy--switch motion-reveal-child">
+            <div
+              className={
+                isMobileHome
+                  ? 'work-narrative__mobile-list motion-reveal-child'
+                  : 'work-narrative__copy work-narrative__copy--switch motion-reveal-child'
+              }
+            >
               {cases.map((item, i) => {
-                if (inChapterEntry && i !== 0) return null;
-                if (!workCaseCopyVisible(visualScrollFi, i, n)) return null;
-                const layerStyle = workCaseCopyLayerStyle(visualScrollFi, i, reducedMotion, n);
-                const titleStyle = inChapterEntry && i === 0
+                if (!isMobileHome && inChapterEntry && i !== 0) return null;
+                if (!isMobileHome && !workCaseCopyVisible(visualScrollFi, i, n)) return null;
+                const layerStyle = isMobileHome
+                  ? undefined
+                  : workCaseCopyLayerStyle(visualScrollFi, i, reducedMotion, n);
+                const titleStyle = isMobileHome
+                  ? undefined
+                  : inChapterEntry && i === 0
                   ? workChapterEntryCopy(effectiveEntryProgress, 'title', reducedMotion)
                   : workCaseCopyPartStyle(visualScrollFi, i, 'title', reducedMotion, n);
-                const thesisStyle = inChapterEntry && i === 0
+                const thesisStyle = isMobileHome
+                  ? undefined
+                  : inChapterEntry && i === 0
                   ? workChapterEntryCopy(effectiveEntryProgress, 'thesis', reducedMotion)
                   : workCaseCopyPartStyle(visualScrollFi, i, 'thesis', reducedMotion, n);
-                const signalsStyle = inChapterEntry && i === 0
+                const signalsStyle = isMobileHome
+                  ? undefined
+                  : inChapterEntry && i === 0
                   ? workChapterEntryCopy(effectiveEntryProgress, 'signals', reducedMotion)
                   : workCaseCopyPartStyle(visualScrollFi, i, 'signals', reducedMotion, n);
-                const tagsStyle = inChapterEntry && i === 0
+                const tagsStyle = isMobileHome
+                  ? undefined
+                  : inChapterEntry && i === 0
                   ? workChapterEntryCopy(effectiveEntryProgress, 'tags', reducedMotion)
                   : workCaseCopyPartStyle(visualScrollFi, i, 'tags', reducedMotion, n);
-                const textReadable = Math.max(
-                  titleStyle.opacity ?? 0,
-                  thesisStyle.opacity ?? 0,
-                );
-                if (textReadable < 0.04 && (layerStyle.opacity ?? 0) < 0.04) {
+                const textReadable = isMobileHome
+                  ? 1
+                  : Math.max(
+                      titleStyle.opacity ?? 0,
+                      thesisStyle.opacity ?? 0,
+                    );
+                if (!isMobileHome && textReadable < 0.04 && (layerStyle.opacity ?? 0) < 0.04) {
                   return null;
                 }
-                const isActive = i === settledCaseIndex || textReadable > 0.72;
+                const isActive = isMobileHome ? true : i === settledCaseIndex || textReadable > 0.72;
                 return (
                 <article
                   key={item.id}
                   id={`case-0${i + 1}`}
-                  className={`work-narrative__layer work-narrative__layer--scroll work-narrative__layer--switch${isActive ? ' is-active' : ''}`}
+                  className={`work-narrative__layer work-narrative__layer--scroll work-narrative__layer--switch${isActive ? ' is-active' : ''}${isMobileHome ? ' work-narrative__mobile-case' : ''}`}
                   style={layerStyle}
-                  aria-hidden={textReadable < 0.45}
+                  aria-hidden={!isMobileHome && textReadable < 0.45}
                 >
+                  {isMobileHome ? (
+                    <button
+                      type="button"
+                      className={`work-narrative__visual work-narrative__visual--mobile${!unlocked ? ' work-narrative__visual--locked' : ''}`}
+                      data-case-id={item.id}
+                      style={{ '--case-accent': item.accent }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!unlocked) {
+                          requestAccess(item.id);
+                          return;
+                        }
+                        setOpenCaseId(item.id);
+                      }}
+                      aria-label={
+                        !unlocked
+                          ? `${caseOpenLabel(item)} — enter key to unlock`
+                          : caseOpenLabel(item)
+                      }
+                      aria-disabled={!unlocked || undefined}
+                    >
+                      <span className="work-narrative__visual-inner">
+                        {item.coverSrc ? (
+                          <img
+                            className="work-narrative__cover"
+                            src={item.coverSrc}
+                            alt=""
+                            loading={i <= 1 ? 'eager' : 'lazy'}
+                            decoding="async"
+                            fetchPriority={i === 0 ? 'high' : 'low'}
+                            onError={(e) => {
+                              e.currentTarget.style.opacity = '0.25';
+                            }}
+                          />
+                        ) : null}
+                        <span className="work-narrative__visual-hint">
+                          {!unlocked ? 'Enter key' : 'View case'}
+                        </span>
+                      </span>
+                    </button>
+                  ) : null}
                   {item.narrativeBlock ? (
                     <>
                       <h3 className="work-narrative__title" style={titleStyle}>

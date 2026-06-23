@@ -31,6 +31,38 @@ const INTENT_RULES = [
     ],
   },
   {
+    flowId: 'differentFromTraditionalUx',
+    terms: [
+      'beyond ui',
+      'beyond screen',
+      'beyond interface',
+      'not just ui',
+      'ui only',
+      'visual design only',
+      'traditional ux',
+      'compare to ux',
+      'vs ux',
+      'works beyond',
+    ],
+  },
+  {
+    flowId: 'decisionTraceability',
+    terms: ['traceability', 'traceable', 'audit', 'reviewable', 'decision history', 'source visibility'],
+  },
+  {
+    flowId: 'humanInTheLoopControl',
+    terms: [
+      'human-in-the-loop',
+      'human in the loop',
+      'human control',
+      'intervention',
+      'override',
+      'approval gate',
+      'escalation',
+      'control boundary',
+    ],
+  },
+  {
     flowId: 'roleFit',
     terms: [
       'recruiter',
@@ -45,6 +77,8 @@ const INTENT_RULES = [
       'position',
       'job',
       'profile',
+      'best suited',
+      'what role',
     ],
   },
   {
@@ -74,6 +108,10 @@ const INTENT_RULES = [
       'undefined',
       'early stage',
       'messy brief',
+      'complex requirement',
+      'requirements',
+      'stakeholder',
+      'business constraint',
     ],
   },
   {
@@ -127,15 +165,11 @@ const INTENT_RULES = [
   },
   {
     flowId: 'contractIntelligence',
-    terms: ['contract', 'legal', 'audit', 'compliance', 'reviewable'],
-  },
-  {
-    flowId: 'differentFromTraditionalUx',
-    terms: ['traditional ux', 'compare to ux', 'vs ux', 'not just ui'],
+    terms: ['contract', 'legal', 'compliance', 'reviewable'],
   },
   {
     flowId: 'ambiguityToStructure',
-    terms: ['turn ambiguity', 'into structure', 'structuring'],
+    terms: ['turn ambiguity', 'into structure', 'structuring', 'complex requirement', 'requirements'],
   },
 ];
 

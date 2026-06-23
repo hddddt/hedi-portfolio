@@ -4,10 +4,11 @@ import {
   lerp,
 } from './scrollStateMachine.js';
 import {
-  easeInOutCubic,
-  TRACK_PANEL_VH,
-  TRACK_RELEASE_VH,
-} from './scrollTrack.js';
+  workPhases,
+  workTrackHeightVhFromPhases,
+} from './scrollTrackConfigs.js';
+import { measureTrack, trackScrollablePx, trackScrollOffset, trackScrollTargetY } from './scrollTimeline.js';
+import { easeInOutCubic } from './scrollTrack.js';
 
 export { getVisualFloatIndex };
 
@@ -60,23 +61,34 @@ export function workPanelDistance(rawFloatIndex, panelIndex) {
   return panelIndex - (rawFloatIndex ?? 0);
 }
 
-function workTrackMetricsFromRect(rect) {
+export function workTrackHeightVh(panelCount, _extraReleaseVh = WORK_TRACK_RELEASE_VH) {
+  return workTrackHeightVhFromPhases(panelCount);
+}
+
+/** Map settled case index (0..n-1) to panelPhases index — panelPhases[0] is approach. */
+function workCasePanelPhaseIndex(caseIndex, caseCount) {
+  const n = Math.max(1, caseCount);
+  const clamped = Math.min(n - 1, Math.max(0, caseIndex));
+  return clamped + 1;
+}
+
+export function measureWorkFloatIndex(rect, panelCount) {
+  if (panelCount <= 1) return 0;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const total = Math.max(1, rect.height - vh);
-  const leadIn = (WORK_TRACK_LEAD_IN_VH / 100) * vh;
-  const caseTravel = Math.max(1, total - leadIn);
-  return { vh, total, leadIn, caseTravel };
+  return measureTrack(rect, workPhases(panelCount), vh).floatIndex;
 }
 
-export function workTrackHeightVh(panelCount, extraReleaseVh = WORK_TRACK_RELEASE_VH) {
-  if (panelCount <= 0) return TRACK_PANEL_VH;
-  if (panelCount <= 1) return WORK_TRACK_LEAD_IN_VH + extraReleaseVh;
-  return WORK_TRACK_LEAD_IN_VH + (panelCount - 1) * TRACK_PANEL_VH + extraReleaseVh;
+/** 0→1 through the sticky track release zone after the last case stop. */
+export function measureWorkReleaseProgress(rect, panelCount) {
+  if (!rect || panelCount <= 1) return 0;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  return measureTrack(rect, workPhases(panelCount), vh).releaseProgress;
 }
 
-function workCaseStep(caseTravel, panelCount) {
-  const intervals = Math.max(1, panelCount - 1);
-  return caseTravel / intervals;
+export function workTrackScrollOffset(trackEl, caseIndex, panelCount) {
+  if (!trackEl || panelCount <= 1) return 0;
+  const phaseIdx = workCasePanelPhaseIndex(caseIndex, panelCount);
+  return trackScrollOffset(trackEl, workPhases(panelCount), phaseIdx);
 }
 
 /**
@@ -91,37 +103,49 @@ export function workTransitionDisplayIndex(fromIndex, toIndex, transitionProgres
   return from + (to - from) * eased;
 }
 
-export function measureWorkFloatIndex(rect, panelCount) {
-  if (panelCount <= 1) return 0;
-  const { total, leadIn, caseTravel } = workTrackMetricsFromRect(rect);
-  const traveled = Math.min(Math.max(-rect.top, 0), total);
-  if (traveled <= leadIn) return 0;
-  const step = workCaseStep(caseTravel, panelCount);
-  return Math.min(panelCount - 1, (traveled - leadIn) / Math.max(1, step));
-}
-
-export function workTrackScrollOffset(trackEl, panelIndex, panelCount) {
-  if (!trackEl || panelCount <= 1) return 0;
-  const vh = window.innerHeight;
-  const total = Math.max(1, trackEl.offsetHeight - vh);
-  const leadIn = (WORK_TRACK_LEAD_IN_VH / 100) * vh;
-  const caseTravel = Math.max(1, total - leadIn);
-  const step = workCaseStep(caseTravel, panelCount);
-  const clamped = Math.min(panelCount - 1, Math.max(0, panelIndex));
-  if (clamped === 0) return 0;
-  return leadIn + clamped * step;
-}
-
-export function workTrackScrollTargetY(trackEl, panelIndex, panelCount) {
+export function workTrackScrollTargetY(trackEl, caseIndex, panelCount) {
   if (!trackEl || panelCount <= 1) {
     return trackEl ? trackEl.getBoundingClientRect().top + window.scrollY : window.scrollY;
   }
-  const clamped = Math.min(panelCount - 1, Math.max(0, panelIndex));
-  return (
-    trackEl.getBoundingClientRect().top +
-    window.scrollY +
-    workTrackScrollOffset(trackEl, clamped, panelCount)
-  );
+  const phaseIdx = workCasePanelPhaseIndex(caseIndex, panelCount);
+  return trackScrollTargetY(trackEl, workPhases(panelCount), phaseIdx);
+}
+
+/**
+ * Cap → Work handoff scroll target — always past the capability release track.
+ * @param {HTMLElement} trackEl
+ * @param {number} caseIndex
+ * @param {number} caseCount
+ */
+export function resolveWorkChapterEntryScrollY(trackEl, caseIndex, caseCount) {
+  if (!trackEl) {
+    const vh = window.innerHeight || 800;
+    return window.scrollY + Math.round(vh * 0.5);
+  }
+  const vh = window.innerHeight || 800;
+  const caseY = workTrackScrollTargetY(trackEl, caseIndex, caseCount);
+  let y = caseY;
+
+  const capTrack = document.querySelector('.capability-scroll');
+  if (capTrack instanceof HTMLElement) {
+    const rect = capTrack.getBoundingClientRect();
+    const scrollable = trackScrollablePx(capTrack.offsetHeight, vh);
+    const capEndY = rect.top + window.scrollY + scrollable;
+    // Clear cap release, but never stop short of the settled case panel.
+    y = Math.max(caseY, capEndY + Math.round(vh * 0.02));
+  }
+
+  // Never nudge only ~0.15vh — that leaves handoff stuck in cap-release / work-approach.
+  if (y <= window.scrollY + 8) {
+    y = Math.max(caseY, window.scrollY + Math.round(vh * 0.35));
+  }
+  return y;
+}
+
+/** Exact window scrollY for a settled work case (Cap→Work finish snap). */
+export function snapWorkCaseScrollY(trackEl, caseIndex, caseCount) {
+  if (!trackEl || caseCount <= 1) return window.scrollY;
+  return workTrackScrollTargetY(trackEl, caseIndex, caseCount);
 }
 
 /** Capabilities exit → Work chapter: pin track with case 1 (index 0) settled on the spine. */

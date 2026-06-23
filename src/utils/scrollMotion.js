@@ -63,14 +63,19 @@ export function measureChapterEntryProgress(rect, vh) {
  */
 export function measureCapabilitiesChapterEntry(trackRect, stickyRect, vh, capExitMask = 0) {
   if (!trackRect || vh < 1) return 0;
-  const gate = smoothstep(0.12, 0.4, capExitMask ?? 0);
-  if (gate < 0.001) return 0;
 
   const top = stickyRect?.top ?? trackRect.top;
   const bottom = stickyRect?.bottom ?? trackRect.bottom;
-  if (top > vh * 0.16 || bottom < vh * 0.52) return 0;
-  if (top <= 2) return gate;
-  return gate * smoothstep(vh * 0.16, 2, top);
+  const engaged = top <= vh * 0.16 && bottom > vh * 0.52;
+  if (!engaged) return 0;
+
+  const pinProgress = top <= 2 ? 1 : smoothstep(vh * 0.16, 2, top);
+  const peelGate = smoothstep(0.12, 0.4, capExitMask ?? 0);
+
+  /** Opening wipe arms the crossfade — but pinned Cap must still read when wipe lags. */
+  if (peelGate < 0.001) return pinProgress;
+  if (top <= 2) return Math.max(peelGate, pinProgress);
+  return peelGate * pinProgress;
 }
 
 /**

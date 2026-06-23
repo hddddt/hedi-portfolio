@@ -4,10 +4,24 @@
  */
 
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { createTrackScrollTween, trackScrollTargetY } from './scrollTrack.js';
-import { workTrackScrollTargetY } from './workChoreography.js';
+import { povPhases } from './scrollTrackConfigs.js';
+import { trackScrollTargetY } from './scrollTimeline.js';
+import { createTrackScrollTween, easeOutCubic } from './scrollTrack.js';
+import {
+  resolveWorkChapterEntryScrollY,
+  snapWorkCaseScrollY,
+  workTrackScrollTargetY,
+} from './workChoreography.js';
+import { beginChapterTransition, endChapterTransition } from './chapterTransitionLock.js';
+import { trackScrollablePx } from './scrollTimeline.js';
 
 export const HOME_CHAPTER_NAV_EVENT = 'home-chapter-nav';
+
+/** Cross-chapter handoff scroll — snappier than in-chapter panel steps. */
+const CHAPTER_HANDOFF_TWEEN_MS = 340;
+
+/** In-chapter guide / header nav scroll. */
+const CHAPTER_NAV_TWEEN_MS = 480;
 
 /** @type {ReturnType<typeof createTrackScrollTween> | null} */
 let navScrollTween = null;
@@ -51,11 +65,13 @@ function scrollWindowTo(top, behavior) {
  * @param {number} top
  * @param {'auto' | 'smooth'} behavior
  * @param {() => void} [onComplete]
+ * @param {number} [duration]
+ * @param {{ forceComplete?: boolean }} [options]
  */
-function navScrollTo(top, behavior, onComplete) {
+function navScrollTo(top, behavior, onComplete, duration = CHAPTER_NAV_TWEEN_MS, options = {}) {
   const y = Math.max(0, top);
   const current = window.scrollY;
-  if (Math.abs(current - y) < 4) {
+  if (!options.forceComplete && Math.abs(current - y) < 4) {
     onComplete?.();
     return;
   }
@@ -71,7 +87,8 @@ function navScrollTo(top, behavior, onComplete) {
   }
   navScrollTween.cancel();
   navScrollTween.tweenTo(y, {
-    duration: 520,
+    duration,
+    ease: easeOutCubic,
     onComplete: () => {
       scrollWindowTo(y, 'auto');
       onComplete?.();
@@ -79,15 +96,20 @@ function navScrollTo(top, behavior, onComplete) {
   });
 }
 
-function refreshScrollLayout() {
+function refreshScrollLayout(defer = true) {
   if (typeof window === 'undefined') return;
-  requestAnimationFrame(() => {
+  const run = () => {
     try {
       ScrollTrigger.refresh(true);
     } catch {
       /* gsap optional at runtime */
     }
-  });
+  };
+  if (defer && typeof requestIdleCallback === 'function') {
+    requestIdleCallback(run, { timeout: 1200 });
+    return;
+  }
+  requestAnimationFrame(run);
 }
 
 function resolveCapTrack() {
@@ -113,28 +135,64 @@ function resolvePovTrack() {
  * @param {number} panelCount
  */
 function povScrollTargetY(trackEl, panelIndex, panelCount) {
-  const vh = window.innerHeight;
-  const total = Math.max(1, trackEl.offsetHeight - vh);
-  const n = Math.max(1, panelCount);
-  const idx = Math.min(n - 1, Math.max(0, panelIndex));
-  const traveled = n <= 1 ? 0 : (idx / (n - 1)) * total;
-  return trackEl.getBoundingClientRect().top + window.scrollY + traveled;
+  return trackScrollTargetY(trackEl, povPhases(panelCount), panelIndex);
 }
+
+function resolvePovChapterEntryScrollY(trackEl, beatIndex, beatCount) {
+  const vh = window.innerHeight || 800;
+  let y = povScrollTargetY(trackEl, beatIndex, beatCount);
+  const workTrack = document.getElementById('home-work-strongest');
+  if (workTrack instanceof HTMLElement) {
+    const rect = workTrack.getBoundingClientRect();
+    const scrollable = trackScrollablePx(workTrack.offsetHeight, vh);
+    const workEndY = rect.top + window.scrollY + scrollable;
+    y = Math.max(y, workEndY + Math.round(vh * 0.02));
+  }
+  if (y <= window.scrollY + 8) {
+    y = window.scrollY + Math.round(vh * 0.15);
+  }
+  return y;
+}
+
+const CHAPTER_TRANSITION_BY_TARGET = {
+  'selected-work': 'cap-work',
+  'point-of-view': 'work-pov',
+};
 
 /**
  * @param {string} targetId
  * @param {number} panelIndex
+ * @param {{ handoff?: boolean }} [options]
  * @returns {boolean}
  */
-export function performHomeChapterNav(targetId, panelIndex = 0) {
-  const behavior = scrollBehavior();
+export function performHomeChapterNav(targetId, panelIndex = 0, options = {}) {
+  const { handoff = false } = options;
+  const behavior = handoff || prefersReducedMotion() ? 'auto' : scrollBehavior();
+  const transitionId = CHAPTER_TRANSITION_BY_TARGET[targetId] ?? null;
+  if (transitionId) beginChapterTransition(transitionId);
 
   const finish = (idx) => {
+    if (targetId === 'selected-work') {
+      const track = document.getElementById('home-work-strongest');
+      const count = Math.max(
+        1,
+        track?.querySelectorAll('.work-narrative__layer').length ?? 1,
+      );
+      if (track instanceof HTMLElement) {
+        scrollWindowTo(snapWorkCaseScrollY(track, idx, count), 'auto');
+      }
+    }
     dispatchChapterNav(targetId, idx, { syncOnly: true });
-    refreshScrollLayout();
+    refreshScrollLayout(!handoff);
+    if (transitionId) endChapterTransition(transitionId);
   };
 
-  if (targetId === 'capabilities' || targetId === 'point-of-view') {
+  const abort = () => {
+    if (transitionId) endChapterTransition(transitionId);
+    return false;
+  };
+
+  if (targetId === 'capabilities' || targetId === 'point-of-view' || targetId === 'selected-work') {
     dispatchChapterNav(targetId, panelIndex, { prepare: true });
   }
 
@@ -160,12 +218,18 @@ export function performHomeChapterNav(targetId, panelIndex = 0) {
     const track = document.getElementById('home-work-strongest');
     if (!(track instanceof HTMLElement)) {
       console.warn('[homeChapterNav] Missing #home-work-strongest');
-      return false;
+      return abort();
     }
     const count = Math.max(1, track.querySelectorAll('.work-narrative__layer').length);
     const idx = Math.min(count - 1, Math.max(0, panelIndex));
-    const y = workTrackScrollTargetY(track, idx, count);
-    navScrollTo(y, behavior, () => finish(idx));
+    const y = resolveWorkChapterEntryScrollY(track, idx, count);
+    navScrollTo(
+      y,
+      behavior,
+      () => finish(idx),
+      handoff ? 0 : CHAPTER_HANDOFF_TWEEN_MS,
+      { forceComplete: handoff },
+    );
     return true;
   }
 
@@ -173,12 +237,12 @@ export function performHomeChapterNav(targetId, panelIndex = 0) {
     const track = resolvePovTrack();
     if (!(track instanceof HTMLElement)) {
       console.warn('[homeChapterNav] Missing POV scroll track');
-      return false;
+      return abort();
     }
     const n = Math.max(1, track.querySelectorAll('.pov-scroll__snap').length);
     const idx = Math.min(n - 1, Math.max(0, panelIndex));
-    const y = povScrollTargetY(track, idx, n);
-    navScrollTo(y, behavior, () => finish(idx));
+    const y = resolvePovChapterEntryScrollY(track, idx, n);
+    navScrollTo(y, behavior, () => finish(idx), CHAPTER_HANDOFF_TWEEN_MS);
     return true;
   }
 

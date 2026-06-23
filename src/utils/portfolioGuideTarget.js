@@ -6,6 +6,7 @@ import {
   HOME_CHAPTER_NAV_EVENT,
   performHomeChapterNav,
 } from './homeChapterNav.js';
+import { isMobileHomeMode } from './mobileHomeMode.js';
 
 const ACTIVE_HIGHLIGHT_MS = 1800;
 
@@ -99,19 +100,60 @@ export function caseIdToPanelIndex(caseId) {
   return Math.max(0, parseInt(match[1], 10) - 1);
 }
 
+function scrollMobileToElement(el, block = 'start') {
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block });
+}
+
+function scrollMobileCapabilityToPanel(panelIndex = 0) {
+  const cap = homeCapabilities[panelIndex];
+  if (!cap) {
+    scrollMobileToElement(resolveGuideTargetElement('capabilities'));
+    return;
+  }
+  const panel = document.querySelector(`[data-cap-id="${cap.id}"]`);
+  scrollMobileToElement(panel ?? resolveGuideTargetElement('capabilities'));
+}
+
+function scrollMobileGuideTarget(targetId) {
+  const el = resolveGuideTargetElement(targetId);
+  scrollMobileToElement(el);
+}
+
 function scrollCapabilityToPanel(panelIndex = 0) {
+  if (isMobileHomeMode()) {
+    scrollMobileCapabilityToPanel(panelIndex);
+    window.setTimeout(() => activateGuideTarget('capabilities'), 320);
+    return;
+  }
   performHomeChapterNav('capabilities', panelIndex);
 }
 
 function scrollWorkToPanel(panelIndex = 0) {
+  if (isMobileHomeMode()) {
+    const caseId = `case-0${panelIndex + 1}`;
+    scrollMobileGuideTarget(caseId);
+    window.setTimeout(() => activateGuideTarget(caseId), 320);
+    return;
+  }
   performHomeChapterNav('selected-work', panelIndex);
 }
 
 function scrollPovToPanel(panelIndex = 0) {
+  if (isMobileHomeMode()) {
+    scrollMobileGuideTarget('point-of-view');
+    window.setTimeout(() => activateGuideTarget('point-of-view'), 320);
+    return;
+  }
   performHomeChapterNav('point-of-view', panelIndex);
 }
 
 function scrollMeChapter() {
+  if (isMobileHomeMode()) {
+    scrollMobileGuideTarget('me');
+    window.setTimeout(() => activateGuideTarget('me'), 320);
+    return;
+  }
   performHomeChapterNav('me', 0);
 }
 
@@ -125,6 +167,10 @@ export function syncWorkCaseFromGuide(caseId, panelIndex) {
     typeof panelIndex === 'number' && panelIndex >= 0
       ? panelIndex
       : caseIdToPanelIndex(caseId);
+  if (isMobileHomeMode()) {
+    scrollMobileGuideTarget(`case-0${idx + 1}`);
+    return;
+  }
   performHomeChapterNav('selected-work', idx);
 }
 
@@ -133,6 +179,17 @@ export function syncWorkCaseFromGuide(caseId, panelIndex) {
  */
 export function scrollToGuideTarget(targetId) {
   const caseId = caseTargetToCaseId(targetId);
+
+  if (isMobileHomeMode()) {
+    if (caseId) {
+      scrollMobileGuideTarget(targetId);
+      window.setTimeout(() => activateGuideTarget(targetId), 320);
+      return;
+    }
+    scrollMobileGuideTarget(targetId);
+    window.setTimeout(() => activateGuideTarget(targetId), 320);
+    return;
+  }
 
   if (caseId) {
     const panelIndex = caseIdToPanelIndex(caseId);

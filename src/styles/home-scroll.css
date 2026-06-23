@@ -340,20 +340,35 @@ html:has(.home-scroll-root[data-opening-boot-active='true']) .home-header__mark,
 .opening-card--boot .opening-card__field-slot{
   opacity:var(--opening-field-slot-opacity, 0);
 }
-/* Hide viewport WebGL only during landing opening boot */
+/* Hide viewport WebGL only during landing opening boot (not during opening→cap handoff) */
 html[data-field-chapter='home-landing']
-  .home-scroll-root[data-opening-boot-active='true']
+  .home-scroll-root[data-opening-boot-active='true']:not([data-opening-handoff='active'])
   .organic-field-host--viewport{
   opacity:0 !important;
   visibility:hidden !important;
   pointer-events:none !important;
 }
 /* Cap+ — never white-out viewport when boot flag stuck or panel opens */
-html:not([data-field-chapter='home-landing'])
+html[data-field-chapter='home-capabilities']
+  .home-scroll-root[data-opening-boot-active='true']::before,
+html[data-field-chapter='home-work-narrative']
+  .home-scroll-root[data-opening-boot-active='true']::before,
+html[data-field-chapter='home-approach']
+  .home-scroll-root[data-opening-boot-active='true']::before,
+html[data-field-chapter='home-life-archive']
   .home-scroll-root[data-opening-boot-active='true']::before{
   background:var(--canvas, #060606);
 }
-html:not([data-field-chapter='home-landing'])
+html[data-field-chapter='home-capabilities']
+  .home-scroll-root[data-opening-boot-active='true']
+  .organic-field-host--viewport,
+html[data-field-chapter='home-work-narrative']
+  .home-scroll-root[data-opening-boot-active='true']
+  .organic-field-host--viewport,
+html[data-field-chapter='home-approach']
+  .home-scroll-root[data-opening-boot-active='true']
+  .organic-field-host--viewport,
+html[data-field-chapter='home-life-archive']
   .home-scroll-root[data-opening-boot-active='true']
   .organic-field-host--viewport{
   opacity:1 !important;
@@ -1620,4 +1635,31 @@ html.portfolio-guide-panel-open .cap-dial__ambient-residual--c{
   .opening-card__scroll-cue-chevron{
     animation:none !important;
   }
+}
+
+/* Scroll orchestrator readiness — brief hide only before first layout measure */
+.home-scroll-root[data-field-ready='false'][data-scroll-ready='false'] .organic-field-host--viewport{
+  opacity:0 !important;
+  visibility:hidden;
+  pointer-events:none;
+}
+.home-scroll-root[data-scroll-ready='true'] .organic-field-host--viewport,
+.home-scroll-root[data-field-ready='true'] .organic-field-host--viewport{
+  transition:opacity 0.28s ease;
+}
+
+/* Windows / low-performance — reduce expensive filters during scroll */
+.home-scroll-root[data-scroll-perf='low'] .cap-dial__ambient-residual,
+.home-scroll-root[data-scroll-perf='low'] .opening-field-fallback__blob,
+.home-scroll-root[data-scroll-perf='low'] .organic-field__canvas{
+  filter:none !important;
+  backdrop-filter:none !important;
+  opacity:0.78;
+}
+.home-scroll-root[data-scroll-perf='low'] .capability-sticky{
+  backdrop-filter:none;
+}
+.home-scroll-root[data-scroll-perf='low'] .work-narrative__cover,
+.home-scroll-root[data-scroll-perf='low'] .life-archive-intent__img{
+  image-rendering:auto;
 }

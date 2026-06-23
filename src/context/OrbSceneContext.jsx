@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveOrbScene } from '../data/orbScenes.js';
 import { caseFieldHue, FIELD_HUE_CSS } from '../data/fieldSemanticStates.js';
 
@@ -154,10 +154,10 @@ const SCENE_PRIMARY_HUE = {
 
 /** Publish semantic hue on document root for CSS interaction tokens. */
 export function OrbSceneSemanticRoot({ activeId, orbScene }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     root.dataset.fieldScene = orbScene ?? 'landing';
-    root.dataset.fieldChapter = activeId ?? '';
+    root.dataset.fieldChapter = activeId ?? 'home-landing';
     const scene = orbScene ?? 'landing';
     const primary = SCENE_PRIMARY_HUE[scene] ?? 'green';
     const tokens =

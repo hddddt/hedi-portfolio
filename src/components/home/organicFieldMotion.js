@@ -10,6 +10,7 @@ import {
   applyWorkCaseFieldActivation,
 } from '../../utils/fieldSemanticMotion.js';
 import { HERO_LANDING_FIELD } from '../../data/organicFieldPalette.js';
+import { homeCapabilities } from '../../data/homeScrollChapters.js';
 import { smoothstep } from '../../utils/fieldNarrative.js';
 import {
   computeHeroFieldTargets,
@@ -46,7 +47,7 @@ export const SIGNAL_GREEN_FIELD_ANCHOR = { x: 0.056, y: 0.5 };
 const SIGNAL_GREEN_RESONANCE_BAND = 0.2;
 
 /** Pinned capability panels — matches homeCapabilities.length */
-const CAPABILITY_PANEL_COUNT = 5;
+const CAPABILITY_PANEL_COUNT = homeCapabilities.length;
 
 const SIGNAL_ACCENT_B = { x: 0.9, y: 0.15 };
 const SIGNAL_ACCENT_C = { x: 0.94, y: 0.22 };
@@ -445,7 +446,6 @@ const SIGNAL_GREEN_THEME_MOTION = [
   { op: 1, rot: 0.001 },
   { op: 0.97, rot: 0 },
   { op: 0.99, rot: -0.001 },
-  { op: 0.96, rot: 0.001 },
 ];
 
 function lerpPanelPose(a, b, t) {

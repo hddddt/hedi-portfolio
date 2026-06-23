@@ -9,6 +9,7 @@ import {
   archiveFragmentStyle,
   beyondWorkEntranceLayers,
 } from '../../utils/povArchiveHandoff.js';
+import { isLowPerformanceMode } from '../../utils/scrollPerformance.js';
 import { LifeArchiveConnectionView } from './LifeArchiveConnectionView.jsx';
 
 import { GuideOrb } from '../home/GuideOrb.jsx';
@@ -62,6 +63,7 @@ export function LifeArchiveExperience() {
   const { handoff, reducedMotion } = usePovArchiveHandoff();
   const { activeId } = useNarrativeScroll();
   const inArchiveChapter = activeId === 'home-life-archive';
+  const eagerPhotoCount = isLowPerformanceMode() ? 4 : 8;
   const revealProgress = inArchiveChapter ? 1 : handoff;
   const entrance = useMemo(
     () => beyondWorkEntranceLayers(revealProgress, reducedMotion),
@@ -246,9 +248,12 @@ export function LifeArchiveExperience() {
                         src={photo.imageSrc}
                         alt=""
                         className="life-archive-intent__img"
-                        loading={index < 12 ? 'eager' : 'lazy'}
+                        loading={index < eagerPhotoCount ? 'eager' : 'lazy'}
                         decoding="async"
                         draggable={false}
+                        onError={(e) => {
+                          e.currentTarget.style.opacity = '0.2';
+                        }}
                       />
                       <span className="life-archive-intent__hover-cap" aria-hidden>
                         <span className="life-archive-intent__hover-title">{photo.title}</span>

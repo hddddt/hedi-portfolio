@@ -6,6 +6,8 @@ import {
   phaseProgress,
   smoothstep,
 } from './scrollMotion.js';
+import { measureTrack } from './scrollTimeline.js';
+import { capabilityPhases } from './scrollTrackConfigs.js';
 import {
   clamp01,
   getPanelTransitionRole,
@@ -267,7 +269,8 @@ const CAP_INCOMING_KEYS = [
 const CAP_FIELDS = ['opacity', 'blur', 'scale', 'y'];
 
 export function measureCapabilityFloatIndex(rect, panelCount) {
-  return measureTrackFloatIndex(rect, panelCount);
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  return measureTrack(rect, capabilityPhases(panelCount), vh).floatIndex;
 }
 
 /** Linear 0–1 progress between step indices from a sticky track rect. */
@@ -731,13 +734,7 @@ export function measureCapWorkOrchestration(capRect, workRect, panelCount, vh) {
 export function measureCapabilityReleaseProgress(rect, panelCount) {
   if (!rect || panelCount <= 1) return 0;
   const vh = window.innerHeight;
-  const total = Math.max(1, rect.height - vh);
-  const traveled = Math.min(Math.max(-rect.top, 0), total);
-  const panelStep = total / panelCount;
-  const lastPanelTravel = panelStep * (panelCount - 1);
-  if (traveled <= lastPanelTravel + 4) return 0;
-  const releaseSpan = Math.max(1, total - lastPanelTravel);
-  return clamp01((traveled - lastPanelTravel) / releaseSpan);
+  return measureTrack(rect, capabilityPhases(panelCount), vh).releaseProgress;
 }
 
 /** 0→1 Cap → Work handoff — prefers scroll release progress; float fallback for tests. */

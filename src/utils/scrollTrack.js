@@ -2,6 +2,13 @@
  * Sticky chapter scroll indexing — each panel gets an equal slice of track height (total / panelCount).
  */
 
+import { capabilityPhases } from './scrollTrackConfigs.js';
+import {
+  measureTrack,
+  trackScrollOffset as timelineTrackScrollOffset,
+  trackScrollTargetY as timelineTrackScrollTargetY,
+} from './scrollTimeline.js';
+
 export const TRACK_PANEL_VH = 100;
 export const TRACK_RELEASE_VH = 100;
 
@@ -18,37 +25,28 @@ export function easeInOutCubic(t) {
   return u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2;
 }
 
-export function trackHeightVh(panelCount, extraReleaseVh = TRACK_RELEASE_VH) {
-  if (panelCount <= 0) return TRACK_PANEL_VH;
-  return panelCount * TRACK_PANEL_VH + extraReleaseVh;
+/** @deprecated Use capabilityTrackHeightVh from scrollTrackConfigs.js */
+export function trackHeightVh(panelCount, _extraReleaseVh = TRACK_RELEASE_VH) {
+  const phases = capabilityPhases(panelCount);
+  return phases.reduce((sum, p) => sum + p.vh, 0);
 }
 
 export function measureTrackFloatIndex(rect, panelCount) {
   if (panelCount <= 1) return 0;
   const vh = window.innerHeight;
-  const total = Math.max(1, rect.height - vh);
-  const traveled = Math.min(Math.max(-rect.top, 0), total);
-  const step = total / panelCount;
-  return Math.min(panelCount - 1, traveled / Math.max(1, step));
+  return measureTrack(rect, capabilityPhases(panelCount), vh).floatIndex;
 }
 
 export function trackScrollOffset(trackEl, panelIndex, panelCount) {
   if (!trackEl || panelCount <= 1) return 0;
-  const total = Math.max(1, trackEl.offsetHeight - window.innerHeight);
-  const step = total / panelCount;
-  return panelIndex * step;
+  return timelineTrackScrollOffset(trackEl, capabilityPhases(panelCount), panelIndex);
 }
 
 export function trackScrollTargetY(trackEl, panelIndex, panelCount) {
   if (!trackEl || panelCount <= 1) {
     return trackEl ? trackEl.getBoundingClientRect().top + window.scrollY : window.scrollY;
   }
-  const clamped = Math.min(panelCount - 1, Math.max(0, panelIndex));
-  return (
-    trackEl.getBoundingClientRect().top +
-    window.scrollY +
-    trackScrollOffset(trackEl, clamped, panelCount)
-  );
+  return timelineTrackScrollTargetY(trackEl, capabilityPhases(panelCount), panelIndex);
 }
 
 export function scrollTrackToPanel(trackEl, panelIndex, panelCount, behavior = 'auto') {

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useFieldNarrative } from '../../context/FieldNarrativeContext.jsx';
 import { capabilitySectionCopy } from '../../data/homeScrollChapters.js';
 import { useOpeningHeroBoot } from '../../hooks/useOpeningHeroBoot.js';
+import { useMobileHomeMode } from '../../utils/mobileHomeMode.js';
 import {
   computeHeroScrollNarrative,
   OPENING_PHASE2_END,
@@ -33,19 +34,22 @@ function mix(a, b, t) {
  * Scroll 0→1: scroll narrative (screens 1–2) + ShaderGradient-style hero field.
  */
 export function OpeningBridgeSection() {
-  const scrollRef = useRef(null);
+  const isMobileHome = useMobileHomeMode();
   const {
     registerOpeningScroll,
     openingCapExitWipe,
     openingCapHandoff,
     openingCapThesisFade,
     updateOpeningBoot,
+    progress,
+    openingRawProgress,
+    openingComplete,
+    prefersReducedMotion: prm,
   } = useFieldNarrative();
-  const [p, setP] = useState(0);
-  const heroProgressRef = useRef(0);
-  const scrollTargetRef = useRef(0);
-  const scrollSmoothRef = useRef(0);
-  const scrollRafRef = useRef(0);
+  const scrollRef = useRef(null);
+  const p = clampHeroProgress(openingComplete ? progress : openingRawProgress);
+  const heroProgressRef = useRef(p);
+  heroProgressRef.current = p;
 
   const setScrollRef = useCallback(
     (el) => {
@@ -54,71 +58,7 @@ export function OpeningBridgeSection() {
     },
     [registerOpeningScroll],
   );
-  const reduceMotionRef = useRef(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
 
-  useEffect(() => {
-    reduceMotionRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setPrefersReducedMotion(reduceMotionRef.current);
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => {
-      reduceMotionRef.current = mq.matches;
-      setPrefersReducedMotion(mq.matches);
-    };
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-
-  useEffect(() => {
-    const measureScrollP = () => {
-      const el = scrollRef.current;
-      if (!el) return 0;
-      const rect = el.getBoundingClientRect();
-      const total = Math.max(1, rect.height - window.innerHeight);
-      const t = Math.min(Math.max(-rect.top, 0), total);
-      let nextP = t / total;
-      if (reduceMotionRef.current) {
-        nextP = nextP >= 0.5 ? 1 : 0;
-      }
-      return nextP;
-    };
-
-    const onScroll = () => {
-      scrollTargetRef.current = measureScrollP();
-    };
-
-    const tick = () => {
-      const target = scrollTargetRef.current;
-      let next = scrollSmoothRef.current;
-      if (reduceMotionRef.current) {
-        next = target;
-      } else {
-        const delta = target - next;
-        const gain = Math.abs(delta) > 0.08 ? 0.32 : 0.2;
-        next += delta * gain;
-        if (Math.abs(target - next) < 0.0006) next = target;
-      }
-      scrollSmoothRef.current = next;
-      const clamped = clampHeroProgress(next);
-      heroProgressRef.current = clamped;
-      setP(clamped);
-      scrollRafRef.current = requestAnimationFrame(tick);
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    scrollRafRef.current = requestAnimationFrame(tick);
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(scrollRafRef.current);
-    };
-  }, []);
-
-  const prm = prefersReducedMotion;
   const {
     elapsedMs,
     boot,
@@ -131,8 +71,8 @@ export function OpeningBridgeSection() {
     onShaderVisualReady,
     onShaderTimeout,
   } = useOpeningHeroBoot({
-    prefersReducedMotion: prm,
-    scrollP: p,
+    prefersReducedMotion: prm || isMobileHome,
+    scrollP: openingRawProgress,
     updateOpeningBoot,
   });
 
