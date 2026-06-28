@@ -2,18 +2,18 @@ import { createPortal } from 'react-dom';
 import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { useOrbScene } from '../../context/OrbSceneContext.jsx';
 import { NAV_CHAPTER_FIELD_HUE } from '../../data/fieldSemanticStates.js';
-import { scrollHomeChapterNav } from '../../utils/homeChapterNav.js';
+import { scrollToGuideTarget } from '../../utils/portfolioGuideTarget.js';
 
 /** href matches NarrativeChapter `guideTargetId` (see portfolioGuideTarget.js). */
 const LINKS = [
-  { href: '#capabilities', targetId: 'capabilities', chapterId: 'home-capabilities', label: 'Capabilities' },
+  { href: '#capabilities', targetId: 'capabilities', chapterId: 'home-capabilities', label: 'Structure' },
   { href: '#selected-work', targetId: 'selected-work', chapterId: 'home-work-narrative', label: 'Work' },
   { href: '#point-of-view', targetId: 'point-of-view', chapterId: 'home-approach', label: 'View' },
   { href: '#me', targetId: 'me', chapterId: 'home-life-archive', label: 'Me' },
 ];
 
 function scrollToSection(targetId) {
-  scrollHomeChapterNav(targetId, 0);
+  scrollToGuideTarget(targetId);
 }
 
 function scrollToFirstScreen() {

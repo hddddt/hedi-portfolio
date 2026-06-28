@@ -1136,8 +1136,8 @@
   justify-self:start;
   align-self:center;
   width:max-content;
-  min-width:min(320px,42vw);
-  max-width:min(440px,52vw);
+  min-width:min(360px,44vw);
+  max-width:min(480px,54vw);
 }
 .cap-dial__state-tags .cap-dial__chip-groups{
   margin-top:0;
@@ -1186,32 +1186,28 @@
   font-weight:480;
   line-height:1.48;
   color:rgba(255,255,255,var(--read-lede-opacity,0.82));
-  max-width:min(40ch,100%);
+  max-width:min(48ch,100%);
 }
 .cap-dial__positioning{
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
-  line-clamp:2;
-  overflow:hidden;
+  white-space:normal;
 }
 .cap-dial__chips{
   list-style:none;
   margin:0;
   padding:0;
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px 10px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
   width:100%;
-  max-width:min(440px,52vw);
+  max-width:min(480px,54vw);
 }
 .cap-dial__chip{
   font-family:var(--font-editorial);
-  font-size:var(--read-font-chip,16px);
+  font-size:clamp(11px,0.88vw,13px);
   font-weight:400;
-  letter-spacing:0.02em;
+  letter-spacing:0.015em;
   text-transform:none;
-  padding:7px 12px;
+  padding:8px 10px;
   border-radius:999px;
   border:1px solid rgba(255,255,255,.16);
   color:rgba(255,255,255,var(--read-body-opacity,0.68));
@@ -1221,7 +1217,13 @@
   transition:none;
   box-sizing:border-box;
   width:100%;
+  min-height:2.75rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   text-align:center;
+  line-height:1.28;
+  text-wrap:balance;
   justify-self:stretch;
 }
 .cap-dial__state-layer.is-settled .cap-dial__chip{
@@ -1236,10 +1238,11 @@
   background:#faf8f3;
   color:rgba(14,13,10,.94);
   box-shadow:0 1px 0 rgba(0,0,0,.14);
-  font-size:clamp(14px,1.15vw,17px);
+  font-size:clamp(11px,0.88vw,13px);
   font-weight:450;
-  letter-spacing:0.018em;
-  padding:9px 16px;
+  letter-spacing:0.015em;
+  padding:8px 10px;
+  min-height:2.75rem;
 }
 .cap-dial__state-layer.is-settled .cap-dial__chip--primary{
   background:#faf8f3;
@@ -1247,18 +1250,19 @@
   box-shadow:0 1px 0 rgba(0,0,0,.12);
 }
 .cap-dial__chips--secondary{
-  gap:6px 8px;
+  gap:8px;
 }
 .cap-dial__chip--secondary{
-  padding:6px 12px;
-  font-size:clamp(12px,0.95vw,15px);
+  padding:8px 10px;
+  font-size:clamp(11px,0.88vw,13px);
   font-weight:400;
-  letter-spacing:0.012em;
+  letter-spacing:0.015em;
   border-radius:999px;
   border-color:rgba(255,255,255,.1);
   background:transparent;
   color:rgba(255,255,255,0.38);
   opacity:0.72;
+  min-height:2.75rem;
 }
 .cap-dial__state-layer.is-settled .cap-dial__chip--secondary{
   border-color:rgba(255,255,255,.12);
@@ -1322,7 +1326,8 @@
   }
   .cap-dial__chips{
     max-width:100%;
-    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
   }
   .cap-dial__stage-row .cap-dial__panel-body{
     max-width:100%;
@@ -1462,10 +1467,17 @@
   }
   .cap-dial__chips{
     gap:8px;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .cap-dial__chips .cap-dial__chip:nth-child(3):last-child{
+    grid-column:1 / -1;
+    max-width:calc(50% - 4px);
+    justify-self:center;
   }
   .cap-dial__chip{
-    font-size:15px;
-    padding:7px 12px;
+    font-size:clamp(11px,2.8vw,13px);
+    padding:8px 10px;
+    min-height:2.65rem;
   }
   .cap-dial__state-layer[data-cap-id='automation-to-human-control'] .cap-dial__headline-line{
     white-space:normal;

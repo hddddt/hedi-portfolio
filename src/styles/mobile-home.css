@@ -292,6 +292,10 @@
   scroll-margin-top: 72px;
 }
 
+#capabilities {
+  scroll-margin-top: clamp(56px, 8vh, 88px);
+}
+
 /* Safe area padding for fixed shortcut chip */
 .home-scroll-root[data-mobile-home='true'] .home-scroll {
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));

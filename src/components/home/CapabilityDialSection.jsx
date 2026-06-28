@@ -492,6 +492,7 @@ export function CapabilityDialSection({ trackRef }) {
 
     if (!entered) return undefined;
     if (capExitingToWorkRef.current || isChapterTransition()) return undefined;
+    if (performance.now() < chapterNavLockUntilRef.current) return undefined;
 
     const el = wrapRef.current;
     if (!el) return undefined;
@@ -583,10 +584,33 @@ export function CapabilityDialSection({ trackRef }) {
       if (targetId !== 'capabilities') return;
       if (capExitingToWorkRef.current || isChapterTransition()) return;
       if (!wrapRef.current) return;
+
+      const clamped = Math.min(n - 1, Math.max(0, panelIndex));
+
+      if (prepare) {
+        chapterNavLockUntilRef.current = performance.now() + 1400;
+        scrollTweenRef.current?.cancel();
+        forceFirstPanelOnEntryRef.current = false;
+        openingEntrySettlingRef.current = false;
+        setOpeningEntrySettling(false);
+        openingEntrySnapPendingRef.current = false;
+        capEntryWheelReadyRef.current = true;
+        entryLatchUntilRef.current = 0;
+        chapterPinnedRef.current = true;
+        setChapterPinned(true);
+        stepAnchorRef.current = clamped;
+        transitionFromRef.current = clamped;
+        transitionToRef.current = clamped;
+        setFloatIndex(clamped);
+        setPanelIndex(clamped);
+        wheelCooldownRef.current = false;
+        wheelStepConsumedRef.current = false;
+        setPanelTransit(false);
+        return;
+      }
+
       chapterNavLockUntilRef.current = performance.now() + 920;
       scrollTweenRef.current?.cancel();
-      if (prepare) return;
-      const clamped = Math.min(n - 1, Math.max(0, panelIndex));
       forceFirstPanelOnEntryRef.current = false;
       openingEntrySettlingRef.current = false;
       setOpeningEntrySettling(false);

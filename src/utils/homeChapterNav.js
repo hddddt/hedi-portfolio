@@ -4,9 +4,11 @@
  */
 
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { homeCapabilities } from '../data/homeScrollChapters.js';
 import { povPhases } from './scrollTrackConfigs.js';
 import { trackScrollTargetY } from './scrollTimeline.js';
 import { createTrackScrollTween, easeOutCubic } from './scrollTrack.js';
+import { isMobileHomeMode } from './mobileHomeMode.js';
 import {
   resolveWorkChapterEntryScrollY,
   snapWorkCaseScrollY,
@@ -197,17 +199,40 @@ export function performHomeChapterNav(targetId, panelIndex = 0, options = {}) {
   }
 
   if (targetId === 'capabilities') {
+    const panelCount = homeCapabilities.length;
+    const idx = Math.min(panelCount - 1, Math.max(0, panelIndex));
+
+    if (isMobileHomeMode()) {
+      const section = document.getElementById('capabilities');
+      if (!section) {
+        console.warn('[homeChapterNav] Missing #capabilities section');
+        return false;
+      }
+      const headerClearance = Math.max(56, Math.round(window.innerHeight * 0.06));
+      const y = section.getBoundingClientRect().top + window.scrollY - headerClearance;
+      navScrollTween?.cancel();
+      navScrollTo(y, behavior, () => finish(idx));
+      return true;
+    }
+
     const track = resolveCapTrack();
     if (!(track instanceof HTMLElement)) {
+      const section = document.getElementById('capabilities');
+      if (section) {
+        const headerClearance = Math.max(56, Math.round(window.innerHeight * 0.06));
+        const y = section.getBoundingClientRect().top + window.scrollY - headerClearance;
+        navScrollTween?.cancel();
+        navScrollTo(y, behavior, () => finish(idx));
+        return true;
+      }
       console.warn('[homeChapterNav] Missing capability scroll track');
       return false;
     }
+
     const count = Math.max(
-      1,
-      track.querySelectorAll('.capability-scroll__snap').length ||
-        document.querySelectorAll('#capabilities .capability-scroll__snap').length,
+      panelCount,
+      track.querySelectorAll('.capability-scroll__snap').length || panelCount,
     );
-    const idx = Math.min(count - 1, Math.max(0, panelIndex));
     const y = trackScrollTargetY(track, idx, count);
     navScrollTween?.cancel();
     navScrollTo(y, behavior, () => finish(idx));

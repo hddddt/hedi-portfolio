@@ -4,7 +4,7 @@ import { useNarrativeScroll } from '../../context/NarrativeScrollContext.jsx';
 import { scrollToGuideTarget } from '../../utils/portfolioGuideTarget.js';
 
 const LINKS = [
-  { targetId: 'capabilities', chapterId: 'home-capabilities', label: 'Capabilities' },
+  { targetId: 'capabilities', chapterId: 'home-capabilities', label: 'Structure' },
   { targetId: 'selected-work', chapterId: 'home-work-narrative', label: 'Work' },
   { targetId: 'point-of-view', chapterId: 'home-approach', label: 'Point of View' },
   { targetId: 'me', chapterId: 'home-life-archive', label: 'Beyond Work' },
